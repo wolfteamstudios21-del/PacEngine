@@ -1,0 +1,367 @@
+You’re aiming for an ecosystem, not just an engine—that’s the right instinct. Let’s lock this into **concrete modules + files** so PacEngine is a *native Pac runtime* from day one.
+
+---
+
+## 1. Repo layout with PacData + ConflictSim
+
+Extend your structure to this:
+
+```bash
+pacengine/
+ ├── CMakeLists.txt
+ ├── engine/
+ │    ├── runtime/          # PacRuntime (PacCore v3 loop)
+ │    ├── ecs/
+ │    ├── scheduler/
+ │    ├── conflict_sim/     # Conflict Sim module
+ │    ├── trace/
+ │    ├── db/               # Internal DB abstraction
+ │    └── worker/           # Worker API (for autoscaling)
+ ├── pacdata/               # Schema + loaders
+ │    ├── include/
+ │    │    ├── PacData.hpp
+ │    │    └── PacDataLoader.hpp
+ │    └── src/
+ │         ├── PacData.cpp
+ │         └── PacDataLoader.cpp
+ ├── tools/
+ │    └── editor/
+ ├── game/
+ ├── tests/
+ ├── docs/
+```
+
+---
+
+## 2. PacData: the contract layer
+
+### 2.1 Minimal PacData schema (conceptual JSON)
+
+This is what PacAI exports and PacEngine consumes:
+
+```json
+{
+  "pacdata_version": "1.0.0",
+  "paccore_version": "3.0.0",
+  "world": {
+    "name": "test_world",
+    "shards": [],
+    "entities": [],
+    "gms": [],
+    "conflict_sim": {
+      "enabled": true,
+      "scenarios": []
+    }
+  }
+}
+```
+
+### 2.2 C++ representation (`pacdata/include/PacData.hpp`)
+
+```cpp
+#pragma once
+#include <string>
+#include <vector>
+
+namespace pac {
+
+struct PacDataVersion {
+    std::string pacdata;
+    std::string paccore;
+};
+
+struct ConflictScenario {
+    std::string id;
+    // later: factions, objectives, rules, etc.
+};
+
+struct ConflictSimConfig {
+    bool enabled = false;
+    std::vector<ConflictScenario> scenarios;
+};
+
+struct WorldDef {
+    std::string name;
+    ConflictSimConfig conflict_sim;
+    // later: entities, components, GMs, shards...
+};
+
+struct PacData {
+    PacDataVersion version;
+    WorldDef world;
+};
+
+} // namespace pac
+```
+
+### 2.3 Loader interface (`pacdata/include/PacDataLoader.hpp`)
+
+```cpp
+#pragma once
+#include "PacData.hpp"
+#include <string>
+
+namespace pac {
+
+class PacDataLoader {
+public:
+    static PacData load_from_file(const std::string& path);
+};
+
+} // namespace pac
+```
+
+Implementation can be a simple JSON lib later; for now you can stub it to return a fixed `PacData` for tests.
+
+---
+
+## 3. Wiring PacData into PacRuntime
+
+Update `PacRuntime` to be **PacData-first**.
+
+### 3.1 PacRuntime config
+
+```cpp
+// PacRuntime.hpp
+struct RuntimeConfig {
+    std::string pacdata_file;   // instead of generic world_file
+    std::uint64_t max_ticks = 0;
+    bool record_trace = true;
+};
+```
+
+### 3.2 PacRuntime uses PacData + ConflictSim
+
+```cpp
+// PacRuntime.cpp
+#include "PacRuntime.hpp"
+#include "pacdata/PacDataLoader.hpp"
+#include "conflict_sim/ConflictSim.hpp"
+#include "Trace.hpp"
+
+namespace pac {
+
+PacRuntime::PacRuntime(const RuntimeConfig& cfg)
+    : config_(cfg) {}
+
+void PacRuntime::run() {
+    PacData data = PacDataLoader::load_from_file(config_.pacdata_file);
+
+    // version validation hook
+    validate_versions(data.version);
+
+    World world(data);          // World built from PacData
+    ConflictSim conflict(world, data.world.conflict_sim);
+
+    Trace trace("trace_1.bin");
+
+    bool running = true;
+    while (running) {
+        input_phase();
+        gm_phase();
+        simulation_phase(world, conflict);
+        replication_phase();
+
+        if (config_.record_trace)
+            trace.record_tick(world, tick_);
+
+        ++tick_;
+        if (config_.max_ticks > 0 && tick_ >= config_.max_ticks)
+            running = false;
+    }
+}
+
+} // namespace pac
+```
+
+You can keep `simulation_phase()` simple for now:
+
+```cpp
+void PacRuntime::simulation_phase(World& world, ConflictSim& conflict) {
+    // later: ECS + scheduler
+    if (conflict.enabled())
+        conflict.tick(world, tick_);
+}
+```
+
+---
+
+## 4. ConflictSim as a native module
+
+### 4.1 Interface (`engine/conflict_sim/include/ConflictSim.hpp`)
+
+```cpp
+#pragma once
+#include "pacdata/PacData.hpp"
+
+namespace pac {
+
+class World;
+
+class ConflictSim {
+public:
+    ConflictSim(World& world, const ConflictSimConfig& cfg);
+
+    bool enabled() const { return enabled_; }
+    void tick(World& world, std::uint64_t tick);
+
+private:
+    bool enabled_;
+    ConflictSimConfig config_;
+};
+
+} // namespace pac
+```
+
+### 4.2 Stub implementation
+
+```cpp
+// ConflictSim.cpp
+#include "ConflictSim.hpp"
+#include "World.hpp"
+#include <iostream>
+
+namespace pac {
+
+ConflictSim::ConflictSim(World&, const ConflictSimConfig& cfg)
+    : enabled_(cfg.enabled), config_(cfg) {}
+
+void ConflictSim::tick(World&, std::uint64_t tick) {
+    if (!enabled_) return;
+    // later: real conflict logic
+    (void)tick;
+}
+
+} // namespace pac
+```
+
+This gives you:
+
+- Native ConflictSim
+- Driven by PacData
+- No PacAI dependency
+
+---
+
+## 5. Internal DB + Worker API in this architecture
+
+### 5.1 Internal DB (engine/runtime/db)
+
+**Goal:** PacRuntime can persist world/trace in a way that later maps to PacCore infra.
+
+```cpp
+// IDatabase.hpp
+#pragma once
+#include <cstdint>
+#include <string>
+
+namespace pac {
+
+class World;
+
+class IDatabase {
+public:
+    virtual ~IDatabase() = default;
+    virtual void save_world_state(const World& world, std::uint64_t tick) = 0;
+    virtual void save_trace_chunk(const void* data, std::size_t size) = 0;
+};
+
+} // namespace pac
+```
+
+**LocalDatabase**: simple file-based implementation for now.
+
+PacRuntime gets an `IDatabase*` (or smart pointer) and uses it inside `record_trace()` and maybe periodic snapshots.
+
+---
+
+### 5.2 Worker API (engine/runtime/worker)
+
+PacEngine doesn’t scale itself; it exposes a **job unit** PacCore can scale.
+
+```cpp
+// WorkerJob.hpp
+#pragma once
+#include <string>
+#include <cstdint>
+
+namespace pac {
+
+struct WorkerJob {
+    std::string pacdata_file;
+    std::uint64_t ticks;
+};
+
+} // namespace pac
+```
+
+```cpp
+// WorkerAPI.hpp
+#pragma once
+#include "WorkerJob.hpp"
+
+namespace pac {
+
+class WorkerAPI {
+public:
+    virtual ~WorkerAPI() = default;
+    virtual int run_job(const WorkerJob& job) = 0;
+};
+
+} // namespace pac
+```
+
+A default `LocalWorker` can just:
+
+```cpp
+int LocalWorker::run_job(const WorkerJob& job) {
+    RuntimeConfig cfg;
+    cfg.pacdata_file = job.pacdata_file;
+    cfg.max_ticks = job.ticks;
+    PacRuntime runtime(cfg);
+    runtime.run();
+    return 0;
+}
+```
+
+Later, PacCore/Fly.io wraps this in autoscaling infrastructure.
+
+---
+
+## 6. Versioning + validation (lock this early)
+
+In `PacDataLoader::load_from_file` or a dedicated validator:
+
+```cpp
+void validate_versions(const PacDataVersion& v) {
+    // Hard-coded for now; later use semver compare
+    if (v.pacdata != "1.0.0") {
+        throw std::runtime_error("Unsupported PacData version: " + v.pacdata);
+    }
+    if (v.paccore.rfind("3.", 0) != 0) {
+        throw std::runtime_error("Unsupported PacCore version: " + v.paccore);
+    }
+}
+```
+
+This is what keeps PacAI exports and PacEngine honest.
+
+---
+
+## 7. What this buys you (practically)
+
+- PacEngine **only understands PacData**  
+- PacAI **only emits PacData**  
+- ConflictSim is **native**, but **data-driven**  
+- Internal DB + Worker API are **engine-level**, not bolted-on hacks  
+- You can:
+  - Run PacAI exports
+  - Run hand-authored PacData
+  - Run ConflictSim scenarios
+  - Scale workers later without touching core runtime
+
+If you want, next step I can:
+
+- Draft `pacdata/CMakeLists.txt` and wire it into the build
+- Give you a **minimal PacAI-style PacData JSON** + loader stub
+- Add a **determinism test that uses PacData + ConflictSim enabled** as your new baseline.
