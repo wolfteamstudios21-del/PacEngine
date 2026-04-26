@@ -163,3 +163,43 @@ This creates a closed-loop ecosystem where:
 - PacAI learns from it
 
 PacEngine is the runtime heart of this loop.
+
+---
+
+## Build & Run
+
+Requires CMake ≥ 3.20 and a C++20 compiler.
+
+```bash
+cd pacengine
+cmake -S . -B build
+cmake --build build -j
+```
+
+Targets produced:
+
+- `pacengine_pacdata` — PacData contract library
+- `pacengine_runtime` — PacRuntime + ConflictSim + Trace + DB + Worker
+- `pacengine_game`    — sample host driven through `LocalWorker`
+- `test_determinism`  — baseline determinism + ConflictSim test
+
+Run the sample host:
+
+```bash
+# demo PacData (no file -> in-memory demo world with conflict_sim enabled)
+./build/game/pacengine_game
+
+# hand-authored PacData
+./build/game/pacengine_game examples/test_world.pacdata.json 128
+```
+
+Run the determinism baseline:
+
+```bash
+cd build
+ctest --output-on-failure
+```
+
+See [`docs/architecture.md`](docs/architecture.md) for the full module map
+and the rationale behind each boundary (PacData, ConflictSim, IDatabase,
+WorkerAPI).
