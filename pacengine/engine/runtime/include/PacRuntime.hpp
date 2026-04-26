@@ -17,6 +17,8 @@ struct RuntimeConfig {
     std::uint64_t max_ticks    = 0;    // 0 = run forever
     bool          record_trace = true;
     std::string   trace_path   = "trace_1.bin";
+    // Optional per-run human-readable event log. Empty == disabled.
+    std::string   event_log_path;
 };
 
 // PacRuntime is the PacCore v3 loop: input → gm → simulation → replication.

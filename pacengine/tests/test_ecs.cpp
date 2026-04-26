@@ -137,8 +137,8 @@ int main() {
     data.version.pacdata = "1.0.0";
     data.version.paccore = "3.0.0";
     data.world.name      = "from_pacdata";
-    data.world.entities.push_back(pac::EntityDef{"unit_x"});
-    data.world.entities.push_back(pac::EntityDef{"unit_y"});
+    data.world.entities.push_back(pac::EntityDef{"unit_x", ""});
+    data.world.entities.push_back(pac::EntityDef{"unit_y", ""});
 
     pac::World w2(data);
     if (w2.entity_count() != 2)

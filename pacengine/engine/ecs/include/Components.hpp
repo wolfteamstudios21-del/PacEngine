@@ -12,4 +12,11 @@ struct PacIdComponent {
     std::string pac_id;
 };
 
+// Optional companion to PacIdComponent. Set when the PacData EntityDef
+// supplies a non-empty `type` (e.g. "agent"). Systems use it to filter
+// which entities they care about without hard-coding ids.
+struct EntityTypeComponent {
+    std::string type;
+};
+
 } // namespace pac

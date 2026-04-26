@@ -1,6 +1,7 @@
 #include "PacRuntime.hpp"
 
 #include "ConflictSim.hpp"
+#include "EventLog.hpp"
 #include "IDatabase.hpp"
 #include "PacDataLoader.hpp"
 #include "Scheduler.hpp"
@@ -36,12 +37,17 @@ void PacRuntime::run() {
 
     World world(data);
 
+    // Optional human-readable per-run log. Disabled when path is empty,
+    // in which case ConflictSim writes nothing (and trace bytes stay
+    // identical across runs that omit the log).
+    EventLog events(config_.event_log_path);
+
     // The scheduler owns every system. ConflictSim is the first one;
     // future systems (movement, GM eval, etc.) are added here in their
     // intended execution order.
     Scheduler scheduler;
-    scheduler.add_system(
-        std::make_unique<ConflictSim>(world, data.world.conflict_sim));
+    scheduler.add_system(std::make_unique<ConflictSim>(
+        world, data.world.conflict_sim, &events));
 
     Trace trace(config_.trace_path);
 

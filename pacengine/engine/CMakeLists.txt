@@ -1,6 +1,7 @@
 add_library(pacengine_runtime STATIC
     runtime/src/PacRuntime.cpp
     runtime/src/World.cpp
+    runtime/src/EventLog.cpp
     runtime/db/src/LocalDatabase.cpp
     runtime/worker/src/LocalWorker.cpp
     conflict_sim/src/ConflictSim.cpp

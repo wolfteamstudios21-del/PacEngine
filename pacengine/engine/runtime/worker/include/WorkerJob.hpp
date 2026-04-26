@@ -11,6 +11,10 @@ namespace pac {
 struct WorkerJob {
     std::string   pacdata_file;
     std::uint64_t ticks = 0;
+    // Optional per-job output paths. The worker forwards them to the
+    // runtime; defaults are derived from PacData/job name when empty.
+    std::string   trace_path;
+    std::string   event_log_path;
 };
 
 } // namespace pac

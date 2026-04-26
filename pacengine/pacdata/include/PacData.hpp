@@ -28,6 +28,7 @@ struct ShardDef {
 
 struct EntityDef {
     std::string id;
+    std::string type;   // optional, e.g. "agent". Empty == unspecified.
     // later: component bag, archetype reference
 };
 

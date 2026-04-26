@@ -12,6 +12,10 @@ World::World(const PacData& data)
     for (const auto& entity_def : data.world.entities) {
         const EntityId e = create_entity();
         add_component<PacIdComponent>(e, PacIdComponent{entity_def.id});
+        if (!entity_def.type.empty()) {
+            add_component<EntityTypeComponent>(
+                e, EntityTypeComponent{entity_def.type});
+        }
     }
 }
 
