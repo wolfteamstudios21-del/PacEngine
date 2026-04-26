@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: pacengine
+    description: PacEngine project + run management
 paths:
   /healthz:
     get:
@@ -24,6 +26,215 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /pacengine/projects:
+    get:
+      operationId: listProjects
+      tags: [pacengine]
+      summary: List available PacData projects
+      description: Lists every PacData document discovered in the workspace examples directory.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectListResponse"
+
+  /pacengine/projects/{projectId}:
+    get:
+      operationId: getProject
+      tags: [pacengine]
+      summary: Load a project's parsed PacData
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDetail"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pacengine/projects/import:
+    post:
+      operationId: importProject
+      tags: [pacengine]
+      summary: Import a PacData document by raw JSON (e.g. PacAI export)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportProjectRequest"
+      responses:
+        "200":
+          description: Imported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportedProject"
+        "400":
+          description: Invalid PacData document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pacengine/projects/{projectId}/runs:
+    post:
+      operationId: runProject
+      tags: [pacengine]
+      summary: Run the PacEngine deterministic loop and return the captured event log
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunRequest"
+      responses:
+        "200":
+          description: Run completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResult"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Engine failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pacengine/projects/{projectId}/determinism-check:
+    post:
+      operationId: determinismCheck
+      tags: [pacengine]
+      summary: Run the project twice and compare the captured event logs and traces
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunRequest"
+      responses:
+        "200":
+          description: Comparison result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeterminismCheckResult"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Engine failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pacengine/templates:
+    get:
+      operationId: listTemplates
+      tags: [pacengine]
+      summary: List built-in project templates
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateListResponse"
+
+  /pacengine/templates/{templateId}/instantiate:
+    post:
+      operationId: instantiateTemplate
+      tags: [pacengine]
+      summary: Create a new project from a template
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstantiateTemplateRequest"
+      responses:
+        "200":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportedProject"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pacengine/stats:
+    get:
+      operationId: getStats
+      tags: [pacengine]
+      summary: Workspace-wide aggregate stats (for the project browser hub)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceStats"
+
+  /pacengine/engine-info:
+    get:
+      operationId: getEngineInfo
+      tags: [pacengine]
+      summary: Report engine binary status (built / not built / version)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineInfo"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +242,341 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+      required: [error]
+
+    ProjectSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Filename-derived id, used in URLs
+        name:
+          type: string
+          description: Human-readable filename without extension
+        filename:
+          type: string
+        worldName:
+          type: string
+        pacdataVersion:
+          type: string
+        paccoreVersion:
+          type: string
+        entityCount:
+          type: integer
+        agentCount:
+          type: integer
+          description: Count of entities with type "agent"
+        conflictSimEnabled:
+          type: boolean
+        scenarioCount:
+          type: integer
+        fileSizeBytes:
+          type: integer
+        modifiedAt:
+          type: string
+          format: date-time
+        accentColor:
+          type: string
+          description: Deterministic accent color derived from project id (HSL string)
+      required:
+        - id
+        - name
+        - filename
+        - worldName
+        - pacdataVersion
+        - paccoreVersion
+        - entityCount
+        - agentCount
+        - conflictSimEnabled
+        - scenarioCount
+        - fileSizeBytes
+        - modifiedAt
+        - accentColor
+
+    ProjectListResponse:
+      type: object
+      properties:
+        projects:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectSummary"
+      required: [projects]
+
+    EntityDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+      required: [id, type]
+
+    ScenarioDetail:
+      type: object
+      properties:
+        id:
+          type: string
+      required: [id]
+
+    ConflictSimDetail:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        scenarios:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScenarioDetail"
+      required: [enabled, scenarios]
+
+    ProjectDetail:
+      type: object
+      properties:
+        summary:
+          $ref: "#/components/schemas/ProjectSummary"
+        entities:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityDetail"
+        conflictSim:
+          $ref: "#/components/schemas/ConflictSimDetail"
+        rawJson:
+          type: string
+      required: [summary, entities, conflictSim, rawJson]
+
+    Template:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+          description: Grouping label (e.g. "Game", "Sandbox", "Simulation")
+        tagline:
+          type: string
+        description:
+          type: string
+        entityCount:
+          type: integer
+        agentCount:
+          type: integer
+        scenarioCount:
+          type: integer
+        accentColor:
+          type: string
+      required:
+        - id
+        - name
+        - category
+        - tagline
+        - description
+        - entityCount
+        - agentCount
+        - scenarioCount
+        - accentColor
+
+    TemplateListResponse:
+      type: object
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: "#/components/schemas/Template"
+      required: [templates]
+
+    ImportProjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Filename (without extension). Sanitized to a-z0-9-_
+        rawJson:
+          type: string
+          description: Raw PacData document text
+      required: [name, rawJson]
+
+    ImportedProject:
+      type: object
+      properties:
+        project:
+          $ref: "#/components/schemas/ProjectSummary"
+      required: [project]
+
+    InstantiateTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+
+    RunRequest:
+      type: object
+      properties:
+        ticks:
+          type: integer
+          minimum: 1
+          maximum: 5000
+      required: [ticks]
+
+    RunArtifacts:
+      type: object
+      properties:
+        durationMs:
+          type: integer
+        eventLines:
+          type: array
+          items:
+            type: string
+        eventLineCount:
+          type: integer
+        traceBytes:
+          type: integer
+        traceSha256:
+          type: string
+        eventLogSha256:
+          type: string
+      required:
+        - durationMs
+        - eventLines
+        - eventLineCount
+        - traceBytes
+        - traceSha256
+        - eventLogSha256
+
+    RunResult:
+      type: object
+      properties:
+        projectId:
+          type: string
+        ticks:
+          type: integer
+        run:
+          $ref: "#/components/schemas/RunArtifacts"
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+      required: [projectId, ticks, run, startedAt, completedAt]
+
+    DeterminismDiffLine:
+      type: object
+      properties:
+        index:
+          type: integer
+        runA:
+          type: string
+        runB:
+          type: string
+      required: [index, runA, runB]
+
+    DeterminismCheckResult:
+      type: object
+      properties:
+        projectId:
+          type: string
+        ticks:
+          type: integer
+        runA:
+          $ref: "#/components/schemas/RunArtifacts"
+        runB:
+          $ref: "#/components/schemas/RunArtifacts"
+        eventsMatch:
+          type: boolean
+        traceMatch:
+          type: boolean
+        diffLines:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeterminismDiffLine"
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+      required:
+        - projectId
+        - ticks
+        - runA
+        - runB
+        - eventsMatch
+        - traceMatch
+        - diffLines
+        - startedAt
+        - completedAt
+
+    VersionBucket:
+      type: object
+      properties:
+        version:
+          type: string
+        count:
+          type: integer
+      required: [version, count]
+
+    WorkspaceStats:
+      type: object
+      properties:
+        projectCount:
+          type: integer
+        totalEntities:
+          type: integer
+        totalAgents:
+          type: integer
+        totalScenarios:
+          type: integer
+        conflictSimEnabledCount:
+          type: integer
+        templateCount:
+          type: integer
+        byPacdataVersion:
+          type: array
+          items:
+            $ref: "#/components/schemas/VersionBucket"
+        byPaccoreVersion:
+          type: array
+          items:
+            $ref: "#/components/schemas/VersionBucket"
+      required:
+        - projectCount
+        - totalEntities
+        - totalAgents
+        - totalScenarios
+        - conflictSimEnabledCount
+        - templateCount
+        - byPacdataVersion
+        - byPaccoreVersion
+
+    EngineInfo:
+      type: object
+      properties:
+        binaryAvailable:
+          type: boolean
+        binaryPath:
+          type: string
+        engineVersion:
+          type: string
+          description: From pacengine version constant or roadmap milestone.
+        pacdataVersion:
+          type: string
+        paccoreVersion:
+          type: string
+      required:
+        - binaryAvailable
+        - binaryPath
+        - engineVersion
+        - pacdataVersion
+        - paccoreVersion

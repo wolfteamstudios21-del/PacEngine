@@ -1,0 +1,24 @@
+{
+  "pacdata_version": "1.0.0",
+  "paccore_version": "3.0.0",
+  "world": {
+    "name": "multi_agent_sandbox",
+    "shards": [],
+    "entities": [
+      { "id": "agent_alpha", "type": "agent" },
+      { "id": "agent_beta", "type": "agent" },
+      { "id": "agent_gamma", "type": "agent" },
+      { "id": "agent_delta", "type": "agent" },
+      { "id": "agent_epsilon", "type": "agent" },
+      { "id": "beacon_north", "type": "landmark" },
+      { "id": "beacon_south", "type": "landmark" }
+    ],
+    "gms": [],
+    "conflict_sim": {
+      "enabled": true,
+      "scenarios": [
+        { "id": "scenario_skirmish" }
+      ]
+    }
+  }
+}

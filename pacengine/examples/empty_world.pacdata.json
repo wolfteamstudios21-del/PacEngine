@@ -1,0 +1,14 @@
+{
+  "pacdata_version": "1.0.0",
+  "paccore_version": "3.0.0",
+  "world": {
+    "name": "empty_world",
+    "shards": [],
+    "entities": [],
+    "gms": [],
+    "conflict_sim": {
+      "enabled": false,
+      "scenarios": []
+    }
+  }
+}

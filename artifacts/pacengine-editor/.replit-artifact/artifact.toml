@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "PacEngine Editor"
+version = "1.0.0"
+id = "artifacts/pacengine-editor"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22118
+
+[services.development]
+run = "pnpm --filter @workspace/pacengine-editor run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pacengine-editor", "run", "build" ]
+publicDir = "artifacts/pacengine-editor/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22118"
+BASE_PATH = "/"

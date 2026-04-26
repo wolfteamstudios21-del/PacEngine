@@ -5,18 +5,35 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  DeterminismCheckResult,
+  EngineInfo,
+  ErrorResponse,
+  HealthStatus,
+  ImportProjectRequest,
+  ImportedProject,
+  InstantiateTemplateRequest,
+  ProjectDetail,
+  ProjectListResponse,
+  RunRequest,
+  RunResult,
+  TemplateListResponse,
+  WorkspaceStats,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -92,6 +109,737 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Lists every PacData document discovered in the workspace examples directory.
+ * @summary List available PacData projects
+ */
+export const getListProjectsUrl = () => {
+  return `/api/pacengine/projects`;
+};
+
+export const listProjects = async (
+  options?: RequestInit,
+): Promise<ProjectListResponse> => {
+  return customFetch<ProjectListResponse>(getListProjectsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListProjectsQueryKey = () => {
+  return [`/api/pacengine/projects`] as const;
+};
+
+export const getListProjectsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProjects>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProjects>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListProjectsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listProjects>>> = ({
+    signal,
+  }) => listProjects({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProjects>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProjectsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProjects>>
+>;
+export type ListProjectsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List available PacData projects
+ */
+
+export function useListProjects<
+  TData = Awaited<ReturnType<typeof listProjects>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProjects>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProjectsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Load a project's parsed PacData
+ */
+export const getGetProjectUrl = (projectId: string) => {
+  return `/api/pacengine/projects/${projectId}`;
+};
+
+export const getProject = async (
+  projectId: string,
+  options?: RequestInit,
+): Promise<ProjectDetail> => {
+  return customFetch<ProjectDetail>(getGetProjectUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetProjectQueryKey = (projectId: string) => {
+  return [`/api/pacengine/projects/${projectId}`] as const;
+};
+
+export const getGetProjectQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProject>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  projectId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetProjectQueryKey(projectId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getProject>>> = ({
+    signal,
+  }) => getProject(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProject>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProjectQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProject>>
+>;
+export type GetProjectQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Load a project's parsed PacData
+ */
+
+export function useGetProject<
+  TData = Awaited<ReturnType<typeof getProject>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  projectId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProjectQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Import a PacData document by raw JSON (e.g. PacAI export)
+ */
+export const getImportProjectUrl = () => {
+  return `/api/pacengine/projects/import`;
+};
+
+export const importProject = async (
+  importProjectRequest: ImportProjectRequest,
+  options?: RequestInit,
+): Promise<ImportedProject> => {
+  return customFetch<ImportedProject>(getImportProjectUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(importProjectRequest),
+  });
+};
+
+export const getImportProjectMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importProject>>,
+    TError,
+    { data: BodyType<ImportProjectRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importProject>>,
+  TError,
+  { data: BodyType<ImportProjectRequest> },
+  TContext
+> => {
+  const mutationKey = ["importProject"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importProject>>,
+    { data: BodyType<ImportProjectRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importProject(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportProjectMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importProject>>
+>;
+export type ImportProjectMutationBody = BodyType<ImportProjectRequest>;
+export type ImportProjectMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Import a PacData document by raw JSON (e.g. PacAI export)
+ */
+export const useImportProject = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importProject>>,
+    TError,
+    { data: BodyType<ImportProjectRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importProject>>,
+  TError,
+  { data: BodyType<ImportProjectRequest> },
+  TContext
+> => {
+  return useMutation(getImportProjectMutationOptions(options));
+};
+
+/**
+ * @summary Run the PacEngine deterministic loop and return the captured event log
+ */
+export const getRunProjectUrl = (projectId: string) => {
+  return `/api/pacengine/projects/${projectId}/runs`;
+};
+
+export const runProject = async (
+  projectId: string,
+  runRequest: RunRequest,
+  options?: RequestInit,
+): Promise<RunResult> => {
+  return customFetch<RunResult>(getRunProjectUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(runRequest),
+  });
+};
+
+export const getRunProjectMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof runProject>>,
+    TError,
+    { projectId: string; data: BodyType<RunRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof runProject>>,
+  TError,
+  { projectId: string; data: BodyType<RunRequest> },
+  TContext
+> => {
+  const mutationKey = ["runProject"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof runProject>>,
+    { projectId: string; data: BodyType<RunRequest> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return runProject(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RunProjectMutationResult = NonNullable<
+  Awaited<ReturnType<typeof runProject>>
+>;
+export type RunProjectMutationBody = BodyType<RunRequest>;
+export type RunProjectMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Run the PacEngine deterministic loop and return the captured event log
+ */
+export const useRunProject = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof runProject>>,
+    TError,
+    { projectId: string; data: BodyType<RunRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof runProject>>,
+  TError,
+  { projectId: string; data: BodyType<RunRequest> },
+  TContext
+> => {
+  return useMutation(getRunProjectMutationOptions(options));
+};
+
+/**
+ * @summary Run the project twice and compare the captured event logs and traces
+ */
+export const getDeterminismCheckUrl = (projectId: string) => {
+  return `/api/pacengine/projects/${projectId}/determinism-check`;
+};
+
+export const determinismCheck = async (
+  projectId: string,
+  runRequest: RunRequest,
+  options?: RequestInit,
+): Promise<DeterminismCheckResult> => {
+  return customFetch<DeterminismCheckResult>(
+    getDeterminismCheckUrl(projectId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(runRequest),
+    },
+  );
+};
+
+export const getDeterminismCheckMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof determinismCheck>>,
+    TError,
+    { projectId: string; data: BodyType<RunRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof determinismCheck>>,
+  TError,
+  { projectId: string; data: BodyType<RunRequest> },
+  TContext
+> => {
+  const mutationKey = ["determinismCheck"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof determinismCheck>>,
+    { projectId: string; data: BodyType<RunRequest> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return determinismCheck(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeterminismCheckMutationResult = NonNullable<
+  Awaited<ReturnType<typeof determinismCheck>>
+>;
+export type DeterminismCheckMutationBody = BodyType<RunRequest>;
+export type DeterminismCheckMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Run the project twice and compare the captured event logs and traces
+ */
+export const useDeterminismCheck = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof determinismCheck>>,
+    TError,
+    { projectId: string; data: BodyType<RunRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof determinismCheck>>,
+  TError,
+  { projectId: string; data: BodyType<RunRequest> },
+  TContext
+> => {
+  return useMutation(getDeterminismCheckMutationOptions(options));
+};
+
+/**
+ * @summary List built-in project templates
+ */
+export const getListTemplatesUrl = () => {
+  return `/api/pacengine/templates`;
+};
+
+export const listTemplates = async (
+  options?: RequestInit,
+): Promise<TemplateListResponse> => {
+  return customFetch<TemplateListResponse>(getListTemplatesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListTemplatesQueryKey = () => {
+  return [`/api/pacengine/templates`] as const;
+};
+
+export const getListTemplatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listTemplates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listTemplates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListTemplatesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listTemplates>>> = ({
+    signal,
+  }) => listTemplates({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listTemplates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListTemplatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listTemplates>>
+>;
+export type ListTemplatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List built-in project templates
+ */
+
+export function useListTemplates<
+  TData = Awaited<ReturnType<typeof listTemplates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listTemplates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListTemplatesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new project from a template
+ */
+export const getInstantiateTemplateUrl = (templateId: string) => {
+  return `/api/pacengine/templates/${templateId}/instantiate`;
+};
+
+export const instantiateTemplate = async (
+  templateId: string,
+  instantiateTemplateRequest: InstantiateTemplateRequest,
+  options?: RequestInit,
+): Promise<ImportedProject> => {
+  return customFetch<ImportedProject>(getInstantiateTemplateUrl(templateId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(instantiateTemplateRequest),
+  });
+};
+
+export const getInstantiateTemplateMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof instantiateTemplate>>,
+    TError,
+    { templateId: string; data: BodyType<InstantiateTemplateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof instantiateTemplate>>,
+  TError,
+  { templateId: string; data: BodyType<InstantiateTemplateRequest> },
+  TContext
+> => {
+  const mutationKey = ["instantiateTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof instantiateTemplate>>,
+    { templateId: string; data: BodyType<InstantiateTemplateRequest> }
+  > = (props) => {
+    const { templateId, data } = props ?? {};
+
+    return instantiateTemplate(templateId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InstantiateTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof instantiateTemplate>>
+>;
+export type InstantiateTemplateMutationBody =
+  BodyType<InstantiateTemplateRequest>;
+export type InstantiateTemplateMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Create a new project from a template
+ */
+export const useInstantiateTemplate = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof instantiateTemplate>>,
+    TError,
+    { templateId: string; data: BodyType<InstantiateTemplateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof instantiateTemplate>>,
+  TError,
+  { templateId: string; data: BodyType<InstantiateTemplateRequest> },
+  TContext
+> => {
+  return useMutation(getInstantiateTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Workspace-wide aggregate stats (for the project browser hub)
+ */
+export const getGetStatsUrl = () => {
+  return `/api/pacengine/stats`;
+};
+
+export const getStats = async (
+  options?: RequestInit,
+): Promise<WorkspaceStats> => {
+  return customFetch<WorkspaceStats>(getGetStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStatsQueryKey = () => {
+  return [`/api/pacengine/stats`] as const;
+};
+
+export const getGetStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getStats>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetStatsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStats>>> = ({
+    signal,
+  }) => getStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStats>>
+>;
+export type GetStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Workspace-wide aggregate stats (for the project browser hub)
+ */
+
+export function useGetStats<
+  TData = Awaited<ReturnType<typeof getStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getStats>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Report engine binary status (built / not built / version)
+ */
+export const getGetEngineInfoUrl = () => {
+  return `/api/pacengine/engine-info`;
+};
+
+export const getEngineInfo = async (
+  options?: RequestInit,
+): Promise<EngineInfo> => {
+  return customFetch<EngineInfo>(getGetEngineInfoUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetEngineInfoQueryKey = () => {
+  return [`/api/pacengine/engine-info`] as const;
+};
+
+export const getGetEngineInfoQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEngineInfo>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getEngineInfo>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetEngineInfoQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getEngineInfo>>> = ({
+    signal,
+  }) => getEngineInfo({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getEngineInfo>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetEngineInfoQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEngineInfo>>
+>;
+export type GetEngineInfoQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Report engine binary status (built / not built / version)
+ */
+
+export function useGetEngineInfo<
+  TData = Awaited<ReturnType<typeof getEngineInfo>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getEngineInfo>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEngineInfoQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

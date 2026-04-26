@@ -45,4 +45,24 @@ Commands:
 - `cd pacengine && cmake -S . -B build` — configure
 - `cmake --build pacengine/build -j` — build all targets
 - `cd pacengine/build && ctest --output-on-failure` — run the determinism test
-- `pacengine/build/game/pacengine_game [pacdata_file] [ticks]` — run sample host
+- `pacengine/build/game/pacengine_game [pacdata_file] [ticks] [--trace <path>] [--event-log <path>]`
+  — run sample host. The `--trace` and `--event-log` flags let an embedding
+  process (the editor's api-server) capture deterministic artifacts at
+  caller-chosen paths.
+
+## PacEngine Editor (web app)
+
+A UE5-style web editor for PacEngine lives at `artifacts/pacengine-editor` (React + Vite, served at `/`).
+The api-server (`artifacts/api-server`) wraps the C++ engine: it reads/writes PacData JSON in
+`pacengine/examples/`, spawns `pacengine_game` as a subprocess to capture event logs and
+trace artifacts, and exposes a built-in template registry.
+
+- API surface: see `lib/api-spec/openapi.yaml` (`/pacengine/projects`, `/pacengine/projects/import`,
+  `/pacengine/projects/:id/runs`, `/pacengine/projects/:id/determinism-check`,
+  `/pacengine/templates`, `/pacengine/templates/:id/instantiate`, `/pacengine/stats`,
+  `/pacengine/engine-info`).
+- Backend modules: `artifacts/api-server/src/lib/{pacengine-paths,pacdata-parser,projects-fs,engine-runner,templates}.ts`
+  and routes in `artifacts/api-server/src/routes/pacengine.ts`.
+- Engine runner spawns `pacengine_game` with `--trace` / `--event-log`, hashes the
+  captured artifacts (SHA-256), and computes a tick-by-tick event-log diff for the
+  determinism-check endpoint.

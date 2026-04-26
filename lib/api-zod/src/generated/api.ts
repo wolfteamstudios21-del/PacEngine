@@ -14,3 +14,275 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Lists every PacData document discovered in the workspace examples directory.
+ * @summary List available PacData projects
+ */
+export const ListProjectsResponse = zod.object({
+  projects: zod.array(
+    zod.object({
+      id: zod.string().describe("Filename-derived id, used in URLs"),
+      name: zod.string().describe("Human-readable filename without extension"),
+      filename: zod.string(),
+      worldName: zod.string(),
+      pacdataVersion: zod.string(),
+      paccoreVersion: zod.string(),
+      entityCount: zod.number(),
+      agentCount: zod
+        .number()
+        .describe('Count of entities with type \"agent\"'),
+      conflictSimEnabled: zod.boolean(),
+      scenarioCount: zod.number(),
+      fileSizeBytes: zod.number(),
+      modifiedAt: zod.coerce.date(),
+      accentColor: zod
+        .string()
+        .describe(
+          "Deterministic accent color derived from project id (HSL string)",
+        ),
+    }),
+  ),
+});
+
+/**
+ * @summary Load a project's parsed PacData
+ */
+export const GetProjectParams = zod.object({
+  projectId: zod.coerce.string(),
+});
+
+export const GetProjectResponse = zod.object({
+  summary: zod.object({
+    id: zod.string().describe("Filename-derived id, used in URLs"),
+    name: zod.string().describe("Human-readable filename without extension"),
+    filename: zod.string(),
+    worldName: zod.string(),
+    pacdataVersion: zod.string(),
+    paccoreVersion: zod.string(),
+    entityCount: zod.number(),
+    agentCount: zod.number().describe('Count of entities with type \"agent\"'),
+    conflictSimEnabled: zod.boolean(),
+    scenarioCount: zod.number(),
+    fileSizeBytes: zod.number(),
+    modifiedAt: zod.coerce.date(),
+    accentColor: zod
+      .string()
+      .describe(
+        "Deterministic accent color derived from project id (HSL string)",
+      ),
+  }),
+  entities: zod.array(
+    zod.object({
+      id: zod.string(),
+      type: zod.string(),
+    }),
+  ),
+  conflictSim: zod.object({
+    enabled: zod.boolean(),
+    scenarios: zod.array(
+      zod.object({
+        id: zod.string(),
+      }),
+    ),
+  }),
+  rawJson: zod.string(),
+});
+
+/**
+ * @summary Import a PacData document by raw JSON (e.g. PacAI export)
+ */
+export const ImportProjectBody = zod.object({
+  name: zod
+    .string()
+    .describe("Filename (without extension). Sanitized to a-z0-9-_"),
+  rawJson: zod.string().describe("Raw PacData document text"),
+});
+
+export const ImportProjectResponse = zod.object({
+  project: zod.object({
+    id: zod.string().describe("Filename-derived id, used in URLs"),
+    name: zod.string().describe("Human-readable filename without extension"),
+    filename: zod.string(),
+    worldName: zod.string(),
+    pacdataVersion: zod.string(),
+    paccoreVersion: zod.string(),
+    entityCount: zod.number(),
+    agentCount: zod.number().describe('Count of entities with type \"agent\"'),
+    conflictSimEnabled: zod.boolean(),
+    scenarioCount: zod.number(),
+    fileSizeBytes: zod.number(),
+    modifiedAt: zod.coerce.date(),
+    accentColor: zod
+      .string()
+      .describe(
+        "Deterministic accent color derived from project id (HSL string)",
+      ),
+  }),
+});
+
+/**
+ * @summary Run the PacEngine deterministic loop and return the captured event log
+ */
+export const RunProjectParams = zod.object({
+  projectId: zod.coerce.string(),
+});
+
+export const runProjectBodyTicksMax = 5000;
+
+export const RunProjectBody = zod.object({
+  ticks: zod.number().min(1).max(runProjectBodyTicksMax),
+});
+
+export const RunProjectResponse = zod.object({
+  projectId: zod.string(),
+  ticks: zod.number(),
+  run: zod.object({
+    durationMs: zod.number(),
+    eventLines: zod.array(zod.string()),
+    eventLineCount: zod.number(),
+    traceBytes: zod.number(),
+    traceSha256: zod.string(),
+    eventLogSha256: zod.string(),
+  }),
+  startedAt: zod.coerce.date(),
+  completedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Run the project twice and compare the captured event logs and traces
+ */
+export const DeterminismCheckParams = zod.object({
+  projectId: zod.coerce.string(),
+});
+
+export const determinismCheckBodyTicksMax = 5000;
+
+export const DeterminismCheckBody = zod.object({
+  ticks: zod.number().min(1).max(determinismCheckBodyTicksMax),
+});
+
+export const DeterminismCheckResponse = zod.object({
+  projectId: zod.string(),
+  ticks: zod.number(),
+  runA: zod.object({
+    durationMs: zod.number(),
+    eventLines: zod.array(zod.string()),
+    eventLineCount: zod.number(),
+    traceBytes: zod.number(),
+    traceSha256: zod.string(),
+    eventLogSha256: zod.string(),
+  }),
+  runB: zod.object({
+    durationMs: zod.number(),
+    eventLines: zod.array(zod.string()),
+    eventLineCount: zod.number(),
+    traceBytes: zod.number(),
+    traceSha256: zod.string(),
+    eventLogSha256: zod.string(),
+  }),
+  eventsMatch: zod.boolean(),
+  traceMatch: zod.boolean(),
+  diffLines: zod.array(
+    zod.object({
+      index: zod.number(),
+      runA: zod.string(),
+      runB: zod.string(),
+    }),
+  ),
+  startedAt: zod.coerce.date(),
+  completedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List built-in project templates
+ */
+export const ListTemplatesResponse = zod.object({
+  templates: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      category: zod
+        .string()
+        .describe(
+          'Grouping label (e.g. \"Game\", \"Sandbox\", \"Simulation\")',
+        ),
+      tagline: zod.string(),
+      description: zod.string(),
+      entityCount: zod.number(),
+      agentCount: zod.number(),
+      scenarioCount: zod.number(),
+      accentColor: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a new project from a template
+ */
+export const InstantiateTemplateParams = zod.object({
+  templateId: zod.coerce.string(),
+});
+
+export const InstantiateTemplateBody = zod.object({
+  name: zod.string(),
+});
+
+export const InstantiateTemplateResponse = zod.object({
+  project: zod.object({
+    id: zod.string().describe("Filename-derived id, used in URLs"),
+    name: zod.string().describe("Human-readable filename without extension"),
+    filename: zod.string(),
+    worldName: zod.string(),
+    pacdataVersion: zod.string(),
+    paccoreVersion: zod.string(),
+    entityCount: zod.number(),
+    agentCount: zod.number().describe('Count of entities with type \"agent\"'),
+    conflictSimEnabled: zod.boolean(),
+    scenarioCount: zod.number(),
+    fileSizeBytes: zod.number(),
+    modifiedAt: zod.coerce.date(),
+    accentColor: zod
+      .string()
+      .describe(
+        "Deterministic accent color derived from project id (HSL string)",
+      ),
+  }),
+});
+
+/**
+ * @summary Workspace-wide aggregate stats (for the project browser hub)
+ */
+export const GetStatsResponse = zod.object({
+  projectCount: zod.number(),
+  totalEntities: zod.number(),
+  totalAgents: zod.number(),
+  totalScenarios: zod.number(),
+  conflictSimEnabledCount: zod.number(),
+  templateCount: zod.number(),
+  byPacdataVersion: zod.array(
+    zod.object({
+      version: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  byPaccoreVersion: zod.array(
+    zod.object({
+      version: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Report engine binary status (built / not built / version)
+ */
+export const GetEngineInfoResponse = zod.object({
+  binaryAvailable: zod.boolean(),
+  binaryPath: zod.string(),
+  engineVersion: zod
+    .string()
+    .describe("From pacengine version constant or roadmap milestone."),
+  pacdataVersion: zod.string(),
+  paccoreVersion: zod.string(),
+});

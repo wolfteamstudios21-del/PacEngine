@@ -1,0 +1,23 @@
+{
+  "pacdata_version": "1.0.0",
+  "paccore_version": "3.0.0",
+  "world": {
+    "name": "conflict_arena",
+    "shards": [],
+    "entities": [
+      { "id": "champion_red", "type": "agent" },
+      { "id": "champion_blue", "type": "agent" },
+      { "id": "champion_green", "type": "agent" },
+      { "id": "arena_floor", "type": "terrain" }
+    ],
+    "gms": [],
+    "conflict_sim": {
+      "enabled": true,
+      "scenarios": [
+        { "id": "scenario_duel_red_blue" },
+        { "id": "scenario_three_way_brawl" },
+        { "id": "scenario_red_vs_world" }
+      ]
+    }
+  }
+}

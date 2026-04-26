@@ -8,3 +8,153 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface ErrorResponse {
+  error: string;
+  details?: string;
+}
+
+export interface ProjectSummary {
+  /** Filename-derived id, used in URLs */
+  id: string;
+  /** Human-readable filename without extension */
+  name: string;
+  filename: string;
+  worldName: string;
+  pacdataVersion: string;
+  paccoreVersion: string;
+  entityCount: number;
+  /** Count of entities with type "agent" */
+  agentCount: number;
+  conflictSimEnabled: boolean;
+  scenarioCount: number;
+  fileSizeBytes: number;
+  modifiedAt: string;
+  /** Deterministic accent color derived from project id (HSL string) */
+  accentColor: string;
+}
+
+export interface ProjectListResponse {
+  projects: ProjectSummary[];
+}
+
+export interface EntityDetail {
+  id: string;
+  type: string;
+}
+
+export interface ScenarioDetail {
+  id: string;
+}
+
+export interface ConflictSimDetail {
+  enabled: boolean;
+  scenarios: ScenarioDetail[];
+}
+
+export interface ProjectDetail {
+  summary: ProjectSummary;
+  entities: EntityDetail[];
+  conflictSim: ConflictSimDetail;
+  rawJson: string;
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  /** Grouping label (e.g. "Game", "Sandbox", "Simulation") */
+  category: string;
+  tagline: string;
+  description: string;
+  entityCount: number;
+  agentCount: number;
+  scenarioCount: number;
+  accentColor: string;
+}
+
+export interface TemplateListResponse {
+  templates: Template[];
+}
+
+export interface ImportProjectRequest {
+  /** Filename (without extension). Sanitized to a-z0-9-_ */
+  name: string;
+  /** Raw PacData document text */
+  rawJson: string;
+}
+
+export interface ImportedProject {
+  project: ProjectSummary;
+}
+
+export interface InstantiateTemplateRequest {
+  name: string;
+}
+
+export interface RunRequest {
+  /**
+   * @minimum 1
+   * @maximum 5000
+   */
+  ticks: number;
+}
+
+export interface RunArtifacts {
+  durationMs: number;
+  eventLines: string[];
+  eventLineCount: number;
+  traceBytes: number;
+  traceSha256: string;
+  eventLogSha256: string;
+}
+
+export interface RunResult {
+  projectId: string;
+  ticks: number;
+  run: RunArtifacts;
+  startedAt: string;
+  completedAt: string;
+}
+
+export interface DeterminismDiffLine {
+  index: number;
+  runA: string;
+  runB: string;
+}
+
+export interface DeterminismCheckResult {
+  projectId: string;
+  ticks: number;
+  runA: RunArtifacts;
+  runB: RunArtifacts;
+  eventsMatch: boolean;
+  traceMatch: boolean;
+  diffLines: DeterminismDiffLine[];
+  startedAt: string;
+  completedAt: string;
+}
+
+export interface VersionBucket {
+  version: string;
+  count: number;
+}
+
+export interface WorkspaceStats {
+  projectCount: number;
+  totalEntities: number;
+  totalAgents: number;
+  totalScenarios: number;
+  conflictSimEnabledCount: number;
+  templateCount: number;
+  byPacdataVersion: VersionBucket[];
+  byPaccoreVersion: VersionBucket[];
+}
+
+export interface EngineInfo {
+  binaryAvailable: boolean;
+  binaryPath: string;
+  /** From pacengine version constant or roadmap milestone. */
+  engineVersion: string;
+  pacdataVersion: string;
+  paccoreVersion: string;
+}
