@@ -25,3 +25,24 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## PacEngine (C++)
+
+A native Pac runtime lives alongside the TS workspace at `pacengine/`. It is a
+self-contained CMake project — not a workspace package — and has its own build
+and test pipeline.
+
+- **Language**: C++20
+- **Build system**: CMake ≥ 3.20
+- **System dependency**: `cmake` (Nix)
+- **Layout**: `pacdata/` (contract), `engine/runtime`, `engine/conflict_sim`,
+  `engine/trace`, `engine/runtime/db`, `engine/runtime/worker`,
+  `game/` (sample host), `tests/` (determinism baseline), `examples/`,
+  `docs/architecture.md`.
+
+Commands:
+
+- `cd pacengine && cmake -S . -B build` — configure
+- `cmake --build pacengine/build -j` — build all targets
+- `cd pacengine/build && ctest --output-on-failure` — run the determinism test
+- `pacengine/build/game/pacengine_game [pacdata_file] [ticks]` — run sample host
