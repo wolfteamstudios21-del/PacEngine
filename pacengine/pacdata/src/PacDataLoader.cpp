@@ -15,6 +15,13 @@ PacData make_demo_pacdata() {
     data.version.paccore = "3.0.0";
 
     data.world.name = "test_world";
+
+    // A small, deterministic entity set so the ECS gets exercised by the
+    // demo run and the determinism baseline has something to assert on.
+    data.world.entities.push_back(EntityDef{"hero_1"});
+    data.world.entities.push_back(EntityDef{"hero_2"});
+    data.world.entities.push_back(EntityDef{"npc_a"});
+
     data.world.conflict_sim.enabled = true;
     data.world.conflict_sim.scenarios.push_back(ConflictScenario{"scenario_alpha"});
 

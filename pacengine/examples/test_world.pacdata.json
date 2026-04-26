@@ -4,7 +4,11 @@
   "world": {
     "name": "test_world",
     "shards": [],
-    "entities": [],
+    "entities": [
+      { "id": "hero_1" },
+      { "id": "hero_2" },
+      { "id": "npc_a" }
+    ],
     "gms": [],
     "conflict_sim": {
       "enabled": true,

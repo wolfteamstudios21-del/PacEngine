@@ -1,7 +1,6 @@
 #pragma once
 
-#include "ConflictSim.hpp"
-#include "World.hpp"
+#include "Scheduler.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -11,6 +10,7 @@ namespace pac {
 
 class IDatabase;
 class Trace;
+class World;
 
 struct RuntimeConfig {
     std::string   pacdata_file;        // PacData document on disk
@@ -20,7 +20,8 @@ struct RuntimeConfig {
 };
 
 // PacRuntime is the PacCore v3 loop: input → gm → simulation → replication.
-// Everything it needs about the world arrives via PacData.
+// The simulation phase delegates to a fixed-order Scheduler that owns
+// every system in the engine, including ConflictSim.
 class PacRuntime {
 public:
     explicit PacRuntime(const RuntimeConfig& cfg);
@@ -28,8 +29,6 @@ public:
     // Optional: inject a database for snapshots / trace persistence.
     void set_database(std::shared_ptr<IDatabase> db) { db_ = std::move(db); }
 
-    // Drive the loop. Returns when max_ticks is reached or the runtime
-    // is asked to stop.
     void run();
 
     std::uint64_t tick() const noexcept { return tick_; }
@@ -37,7 +36,7 @@ public:
 private:
     void input_phase();
     void gm_phase();
-    void simulation_phase(World& world, ConflictSim& conflict);
+    void simulation_phase(Scheduler& scheduler, World& world);
     void replication_phase();
 
     RuntimeConfig              config_;

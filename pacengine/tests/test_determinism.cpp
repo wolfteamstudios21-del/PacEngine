@@ -5,7 +5,9 @@
 // This is the new baseline test for PacEngine — every future change to
 // the runtime, ECS, scheduler, or ConflictSim must keep this passing.
 
+#include "Components.hpp"
 #include "ConflictSim.hpp"
+#include "EntityId.hpp"
 #include "LocalWorker.hpp"
 #include "PacData.hpp"
 #include "PacDataLoader.hpp"
@@ -19,6 +21,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -55,6 +58,24 @@ int main() {
     pac::ConflictSim conflict(world, data.world.conflict_sim);
     if (!conflict.enabled()) {
         return fail("ConflictSim should report enabled when configured so");
+    }
+
+    // 2b. World is built from PacData → ECS, in document order.
+    if (world.entity_count() != data.world.entities.size()) {
+        return fail("World must materialize one ECS entity per PacData entity");
+    }
+    std::vector<std::string> pac_ids_seen;
+    world.for_each<pac::PacIdComponent>(
+        [&](pac::EntityId, const pac::PacIdComponent& comp) {
+            pac_ids_seen.push_back(comp.pac_id);
+        });
+    std::vector<std::string> pac_ids_expected;
+    pac_ids_expected.reserve(data.world.entities.size());
+    for (const auto& e : data.world.entities) {
+        pac_ids_expected.push_back(e.id);
+    }
+    if (pac_ids_seen != pac_ids_expected) {
+        return fail("PacIdComponent iteration must match PacData entity order");
     }
 
     // 3. Two PacRuntime runs over the same PacData produce identical output.

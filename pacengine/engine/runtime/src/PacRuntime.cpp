@@ -3,8 +3,11 @@
 #include "ConflictSim.hpp"
 #include "IDatabase.hpp"
 #include "PacDataLoader.hpp"
+#include "Scheduler.hpp"
 #include "Trace.hpp"
 #include "World.hpp"
+
+#include <memory>
 
 namespace pac {
 
@@ -19,11 +22,8 @@ void PacRuntime::gm_phase() {
     // later: dispatch to GM rules / authoring layer
 }
 
-void PacRuntime::simulation_phase(World& world, ConflictSim& conflict) {
-    // later: ECS + scheduler systems
-    if (conflict.enabled()) {
-        conflict.tick(world, tick_);
-    }
+void PacRuntime::simulation_phase(Scheduler& scheduler, World& world) {
+    scheduler.tick(world, tick_);
 }
 
 void PacRuntime::replication_phase() {
@@ -34,15 +34,22 @@ void PacRuntime::run() {
     PacData data = PacDataLoader::load_from_file(config_.pacdata_file);
     validate_versions(data.version);
 
-    World        world(data);
-    ConflictSim  conflict(world, data.world.conflict_sim);
-    Trace        trace(config_.trace_path);
+    World world(data);
+
+    // The scheduler owns every system. ConflictSim is the first one;
+    // future systems (movement, GM eval, etc.) are added here in their
+    // intended execution order.
+    Scheduler scheduler;
+    scheduler.add_system(
+        std::make_unique<ConflictSim>(world, data.world.conflict_sim));
+
+    Trace trace(config_.trace_path);
 
     bool running = true;
     while (running) {
         input_phase();
         gm_phase();
-        simulation_phase(world, conflict);
+        simulation_phase(scheduler, world);
         replication_phase();
 
         if (config_.record_trace) {
