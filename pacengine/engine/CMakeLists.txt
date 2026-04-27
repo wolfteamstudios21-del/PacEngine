@@ -6,7 +6,10 @@ add_library(pacengine_runtime STATIC
     runtime/worker/src/LocalWorker.cpp
     conflict_sim/src/ConflictSim.cpp
     scheduler/src/Scheduler.cpp
+    systems/movement/src/MovementSystem.cpp
     trace/src/Trace.cpp
+    trace/src/TraceReader.cpp
+    trace/src/TraceDiff.cpp
 )
 
 target_include_directories(pacengine_runtime
@@ -15,6 +18,7 @@ target_include_directories(pacengine_runtime
         ${CMAKE_CURRENT_SOURCE_DIR}/runtime/db/include
         ${CMAKE_CURRENT_SOURCE_DIR}/runtime/worker/include
         ${CMAKE_CURRENT_SOURCE_DIR}/conflict_sim/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/systems/movement/include
         ${CMAKE_CURRENT_SOURCE_DIR}/trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/ecs/include
         ${CMAKE_CURRENT_SOURCE_DIR}/scheduler/include

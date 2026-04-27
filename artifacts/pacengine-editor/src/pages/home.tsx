@@ -51,8 +51,9 @@ export default function Home() {
         toast({ title: "Import Successful", description: `Project ${data.project.name} imported.` });
         setLocation(`/projects/${data.project.id}`);
       },
-      onError: (err) => {
-        toast({ title: "Import Failed", description: err.error, variant: "destructive" });
+      onError: (err: any) => {
+        const errorMsg = (err as { error?: string })?.error || "Unknown error";
+        toast({ title: "Import Failed", description: errorMsg, variant: "destructive" });
       }
     });
   };
@@ -71,8 +72,9 @@ export default function Home() {
         toast({ title: "Template Instantiated", description: `Project ${data.project.name} created.` });
         setLocation(`/projects/${data.project.id}`);
       },
-      onError: (err) => {
-        toast({ title: "Instantiation Failed", description: err.error, variant: "destructive" });
+      onError: (err: any) => {
+        const errorMsg = (err as { error?: string })?.error || "Unknown error";
+        toast({ title: "Instantiation Failed", description: errorMsg, variant: "destructive" });
       }
     });
   };

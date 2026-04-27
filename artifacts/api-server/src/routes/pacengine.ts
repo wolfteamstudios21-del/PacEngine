@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import fs from "node:fs/promises";
 import {
   ListProjectsResponse,
   GetProjectParams,
@@ -17,6 +18,13 @@ import {
   InstantiateTemplateResponse,
   GetStatsResponse,
   GetEngineInfoResponse,
+  GetRunParams,
+  GetRunResponse,
+  GetRunFramesParams,
+  GetRunFramesQueryParams,
+  GetRunFramesResponse,
+  DiffRunsParams,
+  DiffRunsResponse,
 } from "@workspace/api-zod";
 import {
   loadAllProjects,
@@ -28,10 +36,14 @@ import {
 import {
   runEngine,
   getEngineStatus,
+  loadRunMetadata,
+  tracePathFor,
   EngineUnavailableError,
   EngineRunFailedError,
   type EngineRunArtifacts,
 } from "../lib/engine-runner";
+import { parseTraceV2, TraceParseError } from "../lib/trace-reader";
+import { diffTraces } from "../lib/trace-diff";
 import { TEMPLATES, getTemplate, templateToApi } from "../lib/templates";
 import { logger } from "../lib/logger";
 
@@ -95,12 +107,14 @@ router.post(
         pacdataFile: project.filePath,
         ticks: body.ticks,
         runLabel: `${project.id}_run`,
+        projectId: project.id,
       });
       const completedAt = new Date();
       const data = RunProjectResponse.parse({
+        runId: artifacts.runId,
         projectId: project.id,
         ticks: body.ticks,
-        run: artifacts,
+        run: toRunResultPayload(artifacts),
         startedAt: startedAt.toISOString(),
         completedAt: completedAt.toISOString(),
       });
@@ -127,11 +141,13 @@ router.post(
         pacdataFile: project.filePath,
         ticks: body.ticks,
         runLabel: `${project.id}_detA`,
+        projectId: project.id,
       });
       const runB = await runEngine({
         pacdataFile: project.filePath,
         ticks: body.ticks,
         runLabel: `${project.id}_detB`,
+        projectId: project.id,
       });
       const completedAt = new Date();
       const eventsMatch = runA.eventLogSha256 === runB.eventLogSha256;
@@ -140,8 +156,10 @@ router.post(
       const data = DeterminismCheckResponse.parse({
         projectId: project.id,
         ticks: body.ticks,
-        runA,
-        runB,
+        runA: toRunResultPayload(runA),
+        runB: toRunResultPayload(runB),
+        runAId: runA.runId,
+        runBId: runB.runId,
         eventsMatch,
         traceMatch,
         diffLines,
@@ -152,6 +170,96 @@ router.post(
     } catch (err) {
       handleEngineError(res, err);
     }
+  },
+);
+
+// --- Trace-v2 / Replay endpoints ---------------------------------------
+
+router.get("/pacengine/runs/:runId", async (req: Request, res: Response) => {
+  const params = GetRunParams.parse(req.params);
+  const meta = await loadRunMetadata(params.runId);
+  if (!meta) {
+    res.status(404).json({ error: "Run not found" });
+    return;
+  }
+  const data = GetRunResponse.parse({
+    runId: meta.runId,
+    projectId: meta.projectId,
+    ticks: meta.ticks,
+    traceVersion: meta.traceVersion,
+    traceBytes: meta.traceBytes,
+    traceSha256: meta.traceSha256,
+    eventLogSha256: meta.eventLogSha256,
+    completedAt: meta.completedAt,
+  });
+  res.json(data);
+});
+
+router.get(
+  "/pacengine/runs/:runId/frames",
+  async (req: Request, res: Response) => {
+    const params = GetRunFramesParams.parse(req.params);
+    const query = GetRunFramesQueryParams.parse(req.query);
+    const meta = await loadRunMetadata(params.runId);
+    if (!meta) {
+      res.status(404).json({ error: "Run not found" });
+      return;
+    }
+    let buf: Buffer;
+    try {
+      buf = await fs.readFile(tracePathFor(params.runId));
+    } catch {
+      res.status(404).json({ error: "Run trace file missing" });
+      return;
+    }
+    let parsed;
+    try {
+      parsed = parseTraceV2(buf);
+    } catch (err) {
+      const detail = err instanceof TraceParseError ? err.message : String(err);
+      res.status(500).json({ error: "Failed to parse trace", details: detail });
+      return;
+    }
+    const total = parsed.frames.length;
+    const from = clampInt(query.from ?? 0, 0, total);
+    const to = clampInt(query.to ?? total, from, total);
+    const window = parsed.frames.slice(from, to);
+    const data = GetRunFramesResponse.parse({
+      runId: params.runId,
+      from,
+      to,
+      totalFrames: total,
+      frames: window,
+    });
+    res.json(data);
+  },
+);
+
+router.get(
+  "/pacengine/runs/:runId/diff/:otherRunId",
+  async (req: Request, res: Response) => {
+    const params = DiffRunsParams.parse(req.params);
+    const [metaA, metaB] = await Promise.all([
+      loadRunMetadata(params.runId),
+      loadRunMetadata(params.otherRunId),
+    ]);
+    if (!metaA || !metaB) {
+      res.status(404).json({ error: "One or both runs not found" });
+      return;
+    }
+    const [bufA, bufB] = await Promise.all([
+      fs.readFile(tracePathFor(params.runId)),
+      fs.readFile(tracePathFor(params.otherRunId)),
+    ]);
+    const outcome = diffTraces(bufA, bufB);
+    const data = DiffRunsResponse.parse({
+      runAId: params.runId,
+      runBId: params.otherRunId,
+      identical: outcome.identical,
+      firstDivergenceTick: outcome.firstDivergenceTick ?? null,
+      entries: outcome.entries,
+    });
+    res.json(data);
   },
 );
 
@@ -227,7 +335,7 @@ router.get("/pacengine/engine-info", async (_req, res) => {
   const data = GetEngineInfoResponse.parse({
     binaryAvailable: status.binaryAvailable,
     binaryPath: status.binaryPath,
-    engineVersion: "0.0.4",
+    engineVersion: "0.0.5",
     pacdataVersion: "1.0.0",
     paccoreVersion: "3.0.0",
   });
@@ -257,6 +365,25 @@ function computeDiff(
     if (av !== bv) out.push({ index: i, runA: av, runB: bv });
   }
   return out;
+}
+
+function toRunResultPayload(a: EngineRunArtifacts) {
+  return {
+    durationMs: a.durationMs,
+    eventLineCount: a.eventLineCount,
+    traceBytes: a.traceBytes,
+    traceSha256: a.traceSha256,
+    eventLogSha256: a.eventLogSha256,
+    eventLines: a.eventLines,
+  };
+}
+
+function clampInt(v: number, lo: number, hi: number): number {
+  const n = Math.floor(v);
+  if (Number.isNaN(n)) return lo;
+  if (n < lo) return lo;
+  if (n > hi) return hi;
+  return n;
 }
 
 function handleEngineError(res: Response, err: unknown): void {

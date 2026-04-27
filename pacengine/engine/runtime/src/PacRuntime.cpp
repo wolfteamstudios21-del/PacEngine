@@ -3,6 +3,7 @@
 #include "ConflictSim.hpp"
 #include "EventLog.hpp"
 #include "IDatabase.hpp"
+#include "MovementSystem.hpp"
 #include "PacDataLoader.hpp"
 #include "Scheduler.hpp"
 #include "Trace.hpp"
@@ -38,18 +39,22 @@ void PacRuntime::run() {
     World world(data);
 
     // Optional human-readable per-run log. Disabled when path is empty,
-    // in which case ConflictSim writes nothing (and trace bytes stay
-    // identical across runs that omit the log).
+    // in which case ConflictSim writes nothing through it (and the
+    // EventLog file stays absent — trace v2 still records events
+    // independently in each frame).
     EventLog events(config_.event_log_path);
 
-    // The scheduler owns every system. ConflictSim is the first one;
-    // future systems (movement, GM eval, etc.) are added here in their
-    // intended execution order.
+    Trace trace(config_.trace_path);
+
+    // The scheduler owns every system. Order matters for determinism:
+    //   1) ConflictSim — emits human-readable events about agents.
+    //   2) MovementSystem — mutates PositionComponent.
+    // Both run *before* trace.record_tick captures the frame, so the
+    // event log lines and the position values reflect the same tick.
     Scheduler scheduler;
     scheduler.add_system(std::make_unique<ConflictSim>(
-        world, data.world.conflict_sim, &events));
-
-    Trace trace(config_.trace_path);
+        world, data.world.conflict_sim, &events, &trace));
+    scheduler.add_system(std::make_unique<MovementSystem>());
 
     bool running = true;
     while (running) {

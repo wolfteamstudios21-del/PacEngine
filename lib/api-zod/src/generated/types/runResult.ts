@@ -8,6 +8,8 @@
 import type { RunArtifacts } from "./runArtifacts";
 
 export interface RunResult {
+  /** Identifier of the persisted run; usable with /pacengine/runs/{runId}/frames */
+  runId: string;
   projectId: string;
   ticks: number;
   run: RunArtifacts;

@@ -36,9 +36,11 @@ and test pipeline.
 - **Build system**: CMake ≥ 3.20
 - **System dependency**: `cmake` (Nix)
 - **Layout**: `pacdata/` (contract), `engine/runtime`, `engine/conflict_sim`,
-  `engine/trace`, `engine/runtime/db`, `engine/runtime/worker`,
+  `engine/trace` (Trace v2 writer + reader + diff, format spec in
+  `TraceFormat.hpp`), `engine/systems/movement` (deterministic
+  PositionComponent updater), `engine/runtime/db`, `engine/runtime/worker`,
   `game/` (sample host), `tests/` (determinism baseline), `examples/`,
-  `docs/architecture.md`.
+  `docs/architecture.md`, `docs/execution-plan.md` (M1–M5 roadmap).
 
 Commands:
 
@@ -59,10 +61,27 @@ trace artifacts, and exposes a built-in template registry.
 
 - API surface: see `lib/api-spec/openapi.yaml` (`/pacengine/projects`, `/pacengine/projects/import`,
   `/pacengine/projects/:id/runs`, `/pacengine/projects/:id/determinism-check`,
-  `/pacengine/templates`, `/pacengine/templates/:id/instantiate`, `/pacengine/stats`,
-  `/pacengine/engine-info`).
-- Backend modules: `artifacts/api-server/src/lib/{pacengine-paths,pacdata-parser,projects-fs,engine-runner,templates}.ts`
+  `/pacengine/runs/:runId`, `/pacengine/runs/:runId/frames`,
+  `/pacengine/runs/:runId/diff/:otherRunId`, `/pacengine/templates`,
+  `/pacengine/templates/:id/instantiate`, `/pacengine/stats`, `/pacengine/engine-info`).
+- Backend modules: `artifacts/api-server/src/lib/{pacengine-paths,pacdata-parser,projects-fs,engine-runner,templates,trace-reader,trace-diff}.ts`
   and routes in `artifacts/api-server/src/routes/pacengine.ts`.
-- Engine runner spawns `pacengine_game` with `--trace` / `--event-log`, hashes the
-  captured artifacts (SHA-256), and computes a tick-by-tick event-log diff for the
-  determinism-check endpoint.
+- Engine runner spawns `pacengine_game` with `--trace` / `--event-log`, persists
+  trace + events under `pacengine/.editor-runs/<runId>.{trace,events.log,json}`,
+  hashes the captured artifacts (SHA-256), and computes a tick-by-tick event-log
+  diff for the determinism-check endpoint.
+- Trace v2: framed little-endian binary format (magic `PACT`, 16-byte header)
+  with per-tick frames carrying entity components (PacId, EntityType,
+  PositionComponent) and event lines. The TS reader in
+  `artifacts/api-server/src/lib/trace-reader.ts` mirrors `TraceReader.cpp` byte
+  for byte; `trace-diff.ts` mirrors `TraceDiff.cpp`.
+- Editor (`artifacts/pacengine-editor/src/pages/editor.tsx`) renders a UE5-style
+  4-pane layout: outliner, real-position viewport with movement trail,
+  details/entity-inspector, and a bottom drawer with Timeline (scrubber + play /
+  step / reset), Console, and Determinism (with diff viewer) tabs. Frames are
+  fetched in 100-frame windows via `useGetRunFrames`.
+
+The shared `@workspace/api-zod` package exports zod schemas at the package root
+and TypeScript types under the `./types/*` subpath (e.g.
+`@workspace/api-zod/types/traceFrame`) to avoid name collisions between the
+runtime zod values and the generated interfaces.

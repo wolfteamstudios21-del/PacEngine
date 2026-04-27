@@ -20,15 +20,19 @@ import type {
   DeterminismCheckResult,
   EngineInfo,
   ErrorResponse,
+  GetRunFramesParams,
   HealthStatus,
   ImportProjectRequest,
   ImportedProject,
   InstantiateTemplateRequest,
   ProjectDetail,
   ProjectListResponse,
+  RunFramesResponse,
+  RunMetadata,
   RunRequest,
   RunResult,
   TemplateListResponse,
+  TraceDiffResponse,
   WorkspaceStats,
 } from "./api.schemas";
 
@@ -840,6 +844,282 @@ export function useGetEngineInfo<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetEngineInfoQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Fetch metadata for a previously executed run
+ */
+export const getGetRunUrl = (runId: string) => {
+  return `/api/pacengine/runs/${runId}`;
+};
+
+export const getRun = async (
+  runId: string,
+  options?: RequestInit,
+): Promise<RunMetadata> => {
+  return customFetch<RunMetadata>(getGetRunUrl(runId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRunQueryKey = (runId: string) => {
+  return [`/api/pacengine/runs/${runId}`] as const;
+};
+
+export const getGetRunQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRun>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  runId: string,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getRun>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRunQueryKey(runId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRun>>> = ({
+    signal,
+  }) => getRun(runId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!runId,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getRun>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetRunQueryResult = NonNullable<Awaited<ReturnType<typeof getRun>>>;
+export type GetRunQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Fetch metadata for a previously executed run
+ */
+
+export function useGetRun<
+  TData = Awaited<ReturnType<typeof getRun>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  runId: string,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getRun>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRunQueryOptions(runId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Fetch a window of trace v2 frames for a run
+ */
+export const getGetRunFramesUrl = (
+  runId: string,
+  params?: GetRunFramesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/pacengine/runs/${runId}/frames?${stringifiedParams}`
+    : `/api/pacengine/runs/${runId}/frames`;
+};
+
+export const getRunFrames = async (
+  runId: string,
+  params?: GetRunFramesParams,
+  options?: RequestInit,
+): Promise<RunFramesResponse> => {
+  return customFetch<RunFramesResponse>(getGetRunFramesUrl(runId, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRunFramesQueryKey = (
+  runId: string,
+  params?: GetRunFramesParams,
+) => {
+  return [
+    `/api/pacengine/runs/${runId}/frames`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetRunFramesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRunFrames>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  runId: string,
+  params?: GetRunFramesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRunFrames>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetRunFramesQueryKey(runId, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRunFrames>>> = ({
+    signal,
+  }) => getRunFrames(runId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!runId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRunFrames>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRunFramesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRunFrames>>
+>;
+export type GetRunFramesQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Fetch a window of trace v2 frames for a run
+ */
+
+export function useGetRunFrames<
+  TData = Awaited<ReturnType<typeof getRunFrames>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  runId: string,
+  params?: GetRunFramesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRunFrames>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRunFramesQueryOptions(runId, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Diff two persisted runs frame-by-frame (trace v2 trace_diff)
+ */
+export const getDiffRunsUrl = (runId: string, otherRunId: string) => {
+  return `/api/pacengine/runs/${runId}/diff/${otherRunId}`;
+};
+
+export const diffRuns = async (
+  runId: string,
+  otherRunId: string,
+  options?: RequestInit,
+): Promise<TraceDiffResponse> => {
+  return customFetch<TraceDiffResponse>(getDiffRunsUrl(runId, otherRunId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getDiffRunsQueryKey = (runId: string, otherRunId: string) => {
+  return [`/api/pacengine/runs/${runId}/diff/${otherRunId}`] as const;
+};
+
+export const getDiffRunsQueryOptions = <
+  TData = Awaited<ReturnType<typeof diffRuns>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  runId: string,
+  otherRunId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof diffRuns>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getDiffRunsQueryKey(runId, otherRunId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof diffRuns>>> = ({
+    signal,
+  }) => diffRuns(runId, otherRunId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(runId && otherRunId),
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof diffRuns>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type DiffRunsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof diffRuns>>
+>;
+export type DiffRunsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Diff two persisted runs frame-by-frame (trace v2 trace_diff)
+ */
+
+export function useDiffRuns<
+  TData = Awaited<ReturnType<typeof diffRuns>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  runId: string,
+  otherRunId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof diffRuns>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDiffRunsQueryOptions(runId, otherRunId, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

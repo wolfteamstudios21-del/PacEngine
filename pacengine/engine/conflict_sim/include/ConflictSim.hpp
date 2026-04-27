@@ -9,6 +9,7 @@
 namespace pac {
 
 class EventLog;
+class Trace;
 class World;
 
 // Native ConflictSim module. It is part of the engine — not a plugin —
@@ -19,17 +20,22 @@ class World;
 // directly. That keeps the scheduler the single source of ordering
 // truth, even for built-in modules.
 //
-// As of v0.0.4 ConflictSim performs a deterministic per-tick "movement"
-// step over every entity tagged with EntityTypeComponent{"agent"}, and
-// emits one human-readable line per moved agent into an EventLog when
-// one is provided. The lines are the operator-visible proof that the
+// As of v0.0.4 ConflictSim performs a deterministic per-tick "tick" log
+// over every entity tagged with EntityTypeComponent{"agent"}, and emits
+// one human-readable line per agent into an EventLog when one is
+// provided. The lines are the operator-visible proof that the
 // loader → world → runtime → scheduler → conflict-sim chain is wired
 // correctly end-to-end.
+//
+// As of v0.0.5 ConflictSim *also* pushes those event lines into the
+// trace v2 stream so the editor can show per-tick events alongside the
+// scrubber without needing the side-channel EventLog file.
 class ConflictSim final : public ISystem {
 public:
     ConflictSim(World& world,
                 const ConflictSimConfig& cfg,
-                EventLog* events = nullptr);
+                EventLog* events = nullptr,
+                Trace*    trace  = nullptr);
 
     bool                     enabled() const noexcept { return enabled_; }
     const ConflictSimConfig& config()  const noexcept { return config_;  }
@@ -42,6 +48,7 @@ private:
     bool              enabled_;
     ConflictSimConfig config_;
     EventLog*         events_; // not owned; may be null
+    Trace*            trace_;  // not owned; may be null
 };
 
 } // namespace pac

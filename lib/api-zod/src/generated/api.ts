@@ -135,6 +135,11 @@ export const RunProjectBody = zod.object({
 });
 
 export const RunProjectResponse = zod.object({
+  runId: zod
+    .string()
+    .describe(
+      "Identifier of the persisted run; usable with \/pacengine\/runs\/{runId}\/frames",
+    ),
   projectId: zod.string(),
   ticks: zod.number(),
   run: zod.object({
@@ -165,6 +170,8 @@ export const DeterminismCheckBody = zod.object({
 export const DeterminismCheckResponse = zod.object({
   projectId: zod.string(),
   ticks: zod.number(),
+  runAId: zod.string(),
+  runBId: zod.string(),
   runA: zod.object({
     durationMs: zod.number(),
     eventLines: zod.array(zod.string()),
@@ -285,4 +292,94 @@ export const GetEngineInfoResponse = zod.object({
     .describe("From pacengine version constant or roadmap milestone."),
   pacdataVersion: zod.string(),
   paccoreVersion: zod.string(),
+});
+
+/**
+ * @summary Fetch metadata for a previously executed run
+ */
+export const GetRunParams = zod.object({
+  runId: zod.coerce.string(),
+});
+
+export const GetRunResponse = zod.object({
+  runId: zod.string(),
+  projectId: zod.string(),
+  ticks: zod.number(),
+  traceVersion: zod.number().describe("1 = legacy, 2 = trace v2 framed format"),
+  traceBytes: zod.number(),
+  traceSha256: zod.string(),
+  eventLogSha256: zod.string().optional(),
+  completedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Fetch a window of trace v2 frames for a run
+ */
+export const GetRunFramesParams = zod.object({
+  runId: zod.coerce.string(),
+});
+
+export const getRunFramesQueryFromMin = 0;
+
+export const getRunFramesQueryToMin = 0;
+
+export const GetRunFramesQueryParams = zod.object({
+  from: zod.coerce.number().min(getRunFramesQueryFromMin).optional(),
+  to: zod.coerce.number().min(getRunFramesQueryToMin).optional(),
+});
+
+export const GetRunFramesResponse = zod.object({
+  runId: zod.string(),
+  from: zod.number(),
+  to: zod.number(),
+  totalFrames: zod.number(),
+  frames: zod.array(
+    zod.object({
+      tick: zod.number(),
+      entities: zod.array(
+        zod.object({
+          index: zod.number().describe("Slot index of EntityId"),
+          generation: zod.number(),
+          pacId: zod.string().optional(),
+          type: zod.string().optional(),
+          position: zod
+            .object({
+              x: zod.number(),
+              y: zod.number(),
+              z: zod.number(),
+            })
+            .optional(),
+        }),
+      ),
+      events: zod.array(zod.string()),
+    }),
+  ),
+});
+
+/**
+ * @summary Diff two persisted runs frame-by-frame (trace v2 trace_diff)
+ */
+export const DiffRunsParams = zod.object({
+  runId: zod.coerce.string(),
+  otherRunId: zod.coerce.string(),
+});
+
+export const DiffRunsResponse = zod.object({
+  runAId: zod.string(),
+  runBId: zod.string(),
+  identical: zod.boolean(),
+  firstDivergenceTick: zod.number().nullish(),
+  entries: zod.array(
+    zod.object({
+      tick: zod.number(),
+      kind: zod.enum([
+        "entity_added",
+        "entity_removed",
+        "entity_changed",
+        "event_diff",
+        "frame_size_diff",
+      ]),
+      detail: zod.string(),
+    }),
+  ),
 });

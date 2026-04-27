@@ -236,6 +236,28 @@ PacData parse_pacdata(const std::string& text) {
                 v != std::string::npos) {
                 ed.type = parse_value_as_string(text, v);
             }
+            // Optional position block: { "x": .., "y": .., "z": .. }
+            if (const Span pos = find_block(text, "position",
+                                            obj.open, obj.close, '{');
+                pos.valid()) {
+                EntityPosition p;
+                if (const std::size_t vx = find_key_value(
+                        text, "x", pos.open, pos.close);
+                    vx != std::string::npos) {
+                    p.x = std::stod(parse_value_as_string(text, vx));
+                }
+                if (const std::size_t vy = find_key_value(
+                        text, "y", pos.open, pos.close);
+                    vy != std::string::npos) {
+                    p.y = std::stod(parse_value_as_string(text, vy));
+                }
+                if (const std::size_t vz = find_key_value(
+                        text, "z", pos.open, pos.close);
+                    vz != std::string::npos) {
+                    p.z = std::stod(parse_value_as_string(text, vz));
+                }
+                ed.position = p;
+            }
             data.world.entities.push_back(std::move(ed));
         }
     }

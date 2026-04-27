@@ -1,10 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, Link } from "wouter";
 import { 
   useGetProject, 
   useRunProject, 
   useDeterminismCheck,
-  getGetProjectQueryKey
+  getGetProjectQueryKey,
+  useGetRunFrames,
+  useDiffRuns,
+  getGetRunFramesQueryKey,
+  getDiffRunsQueryKey,
+  EntityFrame, 
+  TraceFrame, 
+  EntityDetail,
+  TraceDiffResponse
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
@@ -14,8 +22,36 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Play, Activity, Settings, ArrowLeft, Terminal, Box, ChevronRight, LayoutGrid, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { 
+  Play, 
+  Pause, 
+  SkipBack, 
+  ChevronLeft, 
+  ChevronRight, 
+  Activity, 
+  Settings, 
+  ArrowLeft, 
+  Terminal, 
+  Box, 
+  LayoutGrid, 
+  CheckCircle2, 
+  XCircle, 
+  AlertTriangle,
+  History,
+  Layers,
+  Search,
+  RefreshCw
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription
+} from "@/components/ui/dialog";
 
 export default function Editor() {
   const { projectId } = useParams();
@@ -25,8 +61,15 @@ export default function Editor() {
   const [ticks, setTicks] = useState("100");
   const [activeTab, setActiveTab] = useState("console");
   
+  // New state for v0.0.5 features
+  const [lastRunId, setLastRunId] = useState<string | null>(null);
+  const [currentTick, setCurrentTick] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [selectedEntityIndex, setSelectedEntityIndex] = useState<number | null>(null);
+  const [showDiffDialog, setShowDiffDialog] = useState(false);
+  
   const { data: project, isLoading } = useGetProject(projectId || "", {
-    query: { enabled: !!projectId, queryKey: getGetProjectQueryKey(projectId || "") }
+    query: { enabled: !!projectId, queryKey: getGetProjectQueryKey(projectId || "") as unknown as readonly unknown[] }
   });
   
   const runMutation = useRunProject();
@@ -34,6 +77,86 @@ export default function Editor() {
   
   const [lastRun, setLastRun] = useState<any>(null);
   const [lastCheck, setLastCheck] = useState<any>(null);
+
+  // Fetch frames for the current run
+  const framesWindowSize = 100;
+  const currentWindowStart = Math.max(0, Math.floor(currentTick / framesWindowSize) * framesWindowSize);
+  
+  const { data: framesData } = useGetRunFrames(lastRunId || "", {
+    from: currentWindowStart,
+    to: currentWindowStart + framesWindowSize + 10, // Buffer
+  }, {
+    query: { 
+      enabled: !!lastRunId,
+      queryKey: lastRunId ? getGetRunFramesQueryKey(lastRunId, { from: currentWindowStart, to: currentWindowStart + framesWindowSize + 10 }) as unknown as readonly unknown[] : []
+    }
+  });
+
+  const currentFrame = useMemo(() => {
+    if (!framesData?.frames) return null;
+    return (framesData.frames as TraceFrame[]).find((f: TraceFrame) => f.tick === currentTick) || framesData.frames[0];
+  }, [framesData, currentTick]);
+
+  // Trail: fetch a small window backwards
+  const { data: trailData } = useGetRunFrames(lastRunId || "", {
+    from: Math.max(0, currentTick - 8),
+    to: currentTick,
+  }, {
+    query: {
+      enabled: !!lastRunId && currentTick > 0,
+      queryKey: lastRunId ? getGetRunFramesQueryKey(lastRunId, { from: Math.max(0, currentTick - 8), to: currentTick }) as unknown as readonly unknown[] : []
+    }
+  });
+
+  // Diff runs for determinism
+  const { data: diffData } = useDiffRuns(lastCheck?.runAId || "", lastCheck?.runBId || "", {
+    query: { 
+      enabled: !!lastCheck?.runAId && !!lastCheck?.runBId,
+      queryKey: (lastCheck?.runAId && lastCheck?.runBId) ? getDiffRunsQueryKey(lastCheck.runAId, lastCheck.runBId) as unknown as readonly unknown[] : []
+    }
+  });
+
+  // Playback timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying && lastRunId) {
+      interval = setInterval(() => {
+        setCurrentTick(prev => {
+          const total = framesData?.totalFrames || 0;
+          if (prev >= total - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 250); // ~4 ticks per second
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, lastRunId, framesData?.totalFrames]);
+
+  // NOTE: every hook MUST be declared above the conditional early
+  // return below. Adding new hooks after the `if (isLoading) return`
+  // block causes "Rendered more hooks than during the previous render"
+  // because the loading branch renders fewer hooks than the loaded one.
+  const selectedEntity = useMemo(() => {
+    if (selectedEntityIndex === null) return null;
+    if (currentFrame?.entities) {
+      return (currentFrame.entities as EntityFrame[]).find(
+        (e: EntityFrame) => e.index === selectedEntityIndex,
+      );
+    }
+    if (!project?.entities) return null;
+    const ent = project.entities[selectedEntityIndex] as
+      | EntityDetail
+      | undefined;
+    if (!ent) return null;
+    return {
+      index: selectedEntityIndex,
+      generation: 0,
+      pacId: ent.id,
+      type: ent.type,
+    } as EntityFrame;
+  }, [selectedEntityIndex, currentFrame, project?.entities]);
 
   if (isLoading || !project) {
     return <div className="h-screen bg-background flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Loading Project Shell...</div></div>;
@@ -44,15 +167,18 @@ export default function Editor() {
     if (isNaN(numTicks) || numTicks <= 0) return;
     
     setLastCheck(null);
-    setActiveTab("console");
     
     runMutation.mutate({ projectId: projectId!, data: { ticks: numTicks } }, {
       onSuccess: (res) => {
         setLastRun(res);
+        setLastRunId(res.runId);
+        setCurrentTick(0);
+        setActiveTab("timeline");
         toast({ title: "Run Complete", description: `Executed ${res.ticks} ticks in ${res.run.durationMs}ms` });
       },
-      onError: (err) => {
-        toast({ title: "Run Failed", description: err.error, variant: "destructive" });
+      onError: (err: any) => {
+        const errorMsg = (err as { error?: string })?.error || "Unknown error";
+        toast({ title: "Run Failed", description: errorMsg, variant: "destructive" });
       }
     });
   };
@@ -62,6 +188,7 @@ export default function Editor() {
     if (isNaN(numTicks) || numTicks <= 0) return;
     
     setLastRun(null);
+    setLastRunId(null);
     setActiveTab("determinism");
     
     checkMutation.mutate({ projectId: projectId!, data: { ticks: numTicks } }, {
@@ -73,11 +200,15 @@ export default function Editor() {
           toast({ title: "Determinism Failed", description: "Mismatch detected between runs.", variant: "destructive" });
         }
       },
-      onError: (err) => {
-        toast({ title: "Check Failed", description: err.error, variant: "destructive" });
+      onError: (err: any) => {
+        const errorMsg = (err as { error?: string })?.error || "Unknown error";
+        toast({ title: "Check Failed", description: errorMsg, variant: "destructive" });
       }
     });
   };
+
+  const worldBounds = { min: -5, max: 5 };
+  const projectEntities = project.entities;
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-sans overflow-hidden">
@@ -125,8 +256,15 @@ export default function Editor() {
                     <ChevronRight className="h-3 w-3" /> World
                   </div>
                   <div className="pl-4 space-y-1">
-                    {project.entities.map(e => (
-                      <div key={e.id} className="flex items-center gap-2 text-xs p-1 rounded hover:bg-muted cursor-default text-muted-foreground">
+                    {projectEntities.map((e, i) => (
+                      <div 
+                        key={e.id} 
+                        onClick={() => setSelectedEntityIndex(i)}
+                        className={cn(
+                          "flex items-center gap-2 text-xs p-1 rounded hover:bg-muted cursor-default text-muted-foreground",
+                          selectedEntityIndex === i && "bg-primary/20 text-primary"
+                        )}
+                      >
                         <Box className="h-3 w-3" /> {e.id} <span className="opacity-50">({e.type})</span>
                       </div>
                     ))}
@@ -140,7 +278,13 @@ export default function Editor() {
             {/* Viewport */}
             <ResizablePanel defaultSize={60} className="bg-background flex flex-col relative overflow-hidden">
               <div className="absolute top-0 w-full h-8 bg-gradient-to-b from-black/50 to-transparent z-10 flex items-center px-4 pointer-events-none">
-                <span className="text-[10px] font-mono text-white/50 flex items-center gap-2"><LayoutGrid className="h-3 w-3"/> Orthographic Viewport</span>
+                {lastRunId ? (
+                  <Badge variant="secondary" className="text-[10px] font-mono bg-blue-500/20 text-blue-400 border-blue-500/30 flex items-center gap-2">
+                    <History className="h-3 w-3"/> Replay @ tick {currentTick}
+                  </Badge>
+                ) : (
+                  <span className="text-[10px] font-mono text-white/50 flex items-center gap-2"><LayoutGrid className="h-3 w-3"/> Orthographic Viewport</span>
+                )}
               </div>
               
               {/* Pseudo-Viewport Canvas */}
@@ -149,19 +293,64 @@ export default function Editor() {
                 backgroundSize: '40px 40px',
                 backgroundPosition: 'center center'
               }}>
-                {project.entities.map((e, i) => {
-                  // deterministic random scatter
-                  const seed = i * 137.5;
-                  const left = 20 + (Math.sin(seed) * 30 + 30);
-                  const top = 20 + (Math.cos(seed) * 30 + 30);
+                {/* Trail rendering */}
+                {trailData?.frames?.map((frame: any) => (
+                  frame.tick < currentTick && frame.entities.map((ef: any) => {
+                    if (!ef.position) return null;
+                    const left = ((ef.position.x - worldBounds.min) / (worldBounds.max - worldBounds.min)) * 100;
+                    const top = ((ef.position.z - worldBounds.min) / (worldBounds.max - worldBounds.min)) * 100;
+                    const opacity = 0.1 + (frame.tick - (currentTick - 8)) / 10;
+                    return (
+                      <div 
+                        key={`${frame.tick}-${ef.index}`}
+                        className="absolute w-1 h-1 rounded-full bg-primary"
+                        style={{ 
+                          left: `${Math.max(0, Math.min(100, left))}%`, 
+                          top: `${Math.max(0, Math.min(100, top))}%`,
+                          opacity: opacity,
+                          transform: 'translate(-50%, -50%)'
+                        }}
+                      />
+                    );
+                  })
+                ))}
+
+                {/* Entity markers */}
+                {projectEntities.map((e, i) => {
+                  const frameEntity = (currentFrame?.entities as EntityFrame[] | undefined)?.find((fe: EntityFrame) => fe.index === i);
+                  let left, top;
+
+                  if (frameEntity?.position) {
+                    left = ((frameEntity.position.x - worldBounds.min) / (worldBounds.max - worldBounds.min)) * 100;
+                    top = ((frameEntity.position.z - worldBounds.min) / (worldBounds.max - worldBounds.min)) * 100;
+                  } else {
+                    // deterministic random scatter fallback
+                    const seed = i * 137.5;
+                    left = 20 + (Math.sin(seed) * 30 + 30);
+                    top = 20 + (Math.cos(seed) * 30 + 30);
+                  }
+
                   const isAgent = e.type === 'agent';
+                  const isSelected = selectedEntityIndex === i;
+
                   return (
                     <div 
                       key={e.id}
-                      className="absolute p-2 rounded border border-border shadow-md bg-card/80 backdrop-blur text-xs font-mono transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-2"
-                      style={{ left: `${left}%`, top: `${top}%` }}
+                      onClick={() => setSelectedEntityIndex(i)}
+                      className={cn(
+                        "absolute p-2 rounded border border-border shadow-md bg-card/80 backdrop-blur text-[10px] font-mono transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 cursor-pointer transition-all duration-200",
+                        isSelected && "ring-2 ring-primary border-primary z-20"
+                      )}
+                      style={{ 
+                        left: `${Math.max(0, Math.min(100, left))}%`, 
+                        top: `${Math.max(0, Math.min(100, top))}%` 
+                      }}
                     >
-                      <div className={`w-2 h-2 rounded-full ${isAgent ? 'bg-blue-500' : 'bg-orange-500'}`} />
+                      <div className={cn(
+                        "w-2 h-2 rounded-full",
+                        isAgent ? "bg-blue-500" : "bg-orange-500",
+                        isSelected && "animate-pulse"
+                      )} />
                       {e.id}
                     </div>
                   );
@@ -174,37 +363,102 @@ export default function Editor() {
             {/* Details Panel */}
             <ResizablePanel defaultSize={20} minSize={15} className="border-l border-border bg-card flex flex-col">
               <div className="h-8 bg-muted/30 border-b border-border flex items-center px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
-                Details
+                {selectedEntityIndex !== null ? "Entity Inspector" : "Details"}
               </div>
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-sm font-medium mb-2 border-b border-border pb-1">Project Info</h3>
-                    <div className="grid grid-cols-[100px_1fr] gap-y-2 text-xs">
-                      <div className="text-muted-foreground">ID</div><div className="font-mono">{project.summary.id}</div>
-                      <div className="text-muted-foreground">World Name</div><div>{project.summary.worldName}</div>
-                      <div className="text-muted-foreground">File Size</div><div>{project.summary.fileSizeBytes} B</div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-sm font-medium mb-2 border-b border-border pb-1">Conflict Sim</h3>
-                    <div className="text-xs flex items-center justify-between">
-                      <span className="text-muted-foreground">Enabled</span>
-                      <Badge variant={project.conflictSim.enabled ? "default" : "secondary"} className="text-[10px]">
-                        {project.conflictSim.enabled ? "True" : "False"}
-                      </Badge>
-                    </div>
-                    {project.conflictSim.enabled && (
-                      <div className="mt-2 space-y-1">
-                        <div className="text-[10px] text-muted-foreground uppercase">Scenarios</div>
-                        {project.conflictSim.scenarios.map(s => (
-                          <div key={s.id} className="text-xs bg-background border border-border p-1 rounded">{s.id}</div>
-                        ))}
+              <ScrollArea className="flex-1">
+                {selectedEntityIndex !== null ? (
+                  <div className="p-4 space-y-6 animate-in fade-in slide-in-from-right-2">
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] p-0 text-muted-foreground hover:text-foreground" onClick={() => setSelectedEntityIndex(null)}>
+                      <ArrowLeft className="h-3 w-3 mr-1" /> Back to Project Info
+                    </Button>
+
+                    <div>
+                      <h3 className="text-sm font-medium mb-3 border-b border-border pb-1 flex items-center gap-2">
+                        <Box className="h-4 w-4" /> {selectedEntity?.pacId || projectEntities[selectedEntityIndex].id}
+                      </h3>
+                      <div className="grid grid-cols-[100px_1fr] gap-y-2 text-xs">
+                        <div className="text-muted-foreground">Slot Index</div><div className="font-mono">{selectedEntity?.index ?? selectedEntityIndex}</div>
+                        <div className="text-muted-foreground">Generation</div><div className="font-mono">{selectedEntity?.generation ?? 0}</div>
+                        <div className="text-muted-foreground">Type</div><Badge variant="outline" className="w-fit text-[10px] h-4 font-mono">{selectedEntity?.type || projectEntities[selectedEntityIndex].type}</Badge>
+                        {selectedEntity?.position && (
+                          <>
+                            <div className="text-muted-foreground">Position X</div><div className="font-mono text-blue-400">{selectedEntity.position.x.toFixed(3)}</div>
+                            <div className="text-muted-foreground">Position Y</div><div className="font-mono text-green-400">{selectedEntity.position.y.toFixed(3)}</div>
+                            <div className="text-muted-foreground">Position Z</div><div className="font-mono text-purple-400">{selectedEntity.position.z.toFixed(3)}</div>
+                          </>
+                        )}
                       </div>
-                    )}
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-medium mb-3 border-b border-border pb-1">Components</h3>
+                      <div className="space-y-2">
+                        {/* Placeholder for real component data if available in frame */}
+                        <div className="p-2 rounded bg-muted/30 border border-border/50">
+                          <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center justify-between">
+                            Transform
+                            <Settings className="h-3 w-3" />
+                          </div>
+                          <div className="mt-1 grid grid-cols-3 gap-1">
+                            <div className="bg-black/40 p-1 rounded text-center">
+                              <div className="text-[8px] opacity-50">X</div>
+                              <div className="text-[10px] font-mono">{selectedEntity?.position?.x.toFixed(2) || "0.00"}</div>
+                            </div>
+                            <div className="bg-black/40 p-1 rounded text-center">
+                              <div className="text-[8px] opacity-50">Y</div>
+                              <div className="text-[10px] font-mono">{selectedEntity?.position?.y.toFixed(2) || "0.00"}</div>
+                            </div>
+                            <div className="bg-black/40 p-1 rounded text-center">
+                              <div className="text-[8px] opacity-50">Z</div>
+                              <div className="text-[10px] font-mono">{selectedEntity?.position?.z.toFixed(2) || "0.00"}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {projectEntities[selectedEntityIndex].type === 'agent' && (
+                          <div className="p-2 rounded bg-muted/30 border border-border/50">
+                            <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center justify-between">
+                              AgentState
+                              <Activity className="h-3 w-3" />
+                            </div>
+                            <div className="mt-1 text-[10px] text-green-400 font-mono italic">
+                              Active: true
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-4 space-y-6">
+                    <div>
+                      <h3 className="text-sm font-medium mb-2 border-b border-border pb-1">Project Info</h3>
+                      <div className="grid grid-cols-[100px_1fr] gap-y-2 text-xs">
+                        <div className="text-muted-foreground">ID</div><div className="font-mono">{project.summary.id}</div>
+                        <div className="text-muted-foreground">World Name</div><div>{project.summary.worldName}</div>
+                        <div className="text-muted-foreground">File Size</div><div>{project.summary.fileSizeBytes} B</div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-sm font-medium mb-2 border-b border-border pb-1">Conflict Sim</h3>
+                      <div className="text-xs flex items-center justify-between">
+                        <span className="text-muted-foreground">Enabled</span>
+                        <Badge variant={project.conflictSim.enabled ? "default" : "secondary"} className="text-[10px]">
+                          {project.conflictSim.enabled ? "True" : "False"}
+                        </Badge>
+                      </div>
+                      {project.conflictSim.enabled && (
+                        <div className="mt-2 space-y-1">
+                          <div className="text-[10px] text-muted-foreground uppercase">Scenarios</div>
+                          {project.conflictSim.scenarios.map(s => (
+                            <div key={s.id} className="text-xs bg-background border border-border p-1 rounded">{s.id}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </ScrollArea>
             </ResizablePanel>
           </ResizablePanelGroup>
@@ -217,6 +471,9 @@ export default function Editor() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col h-full">
             <div className="h-9 bg-muted/20 border-b border-border flex items-center px-2 shrink-0">
               <TabsList className="h-7 bg-transparent">
+                <TabsTrigger value="timeline" className="text-xs data-[state=active]:bg-background border border-transparent data-[state=active]:border-border rounded-none h-7 flex items-center gap-2">
+                  <History className="h-3 w-3" /> Timeline
+                </TabsTrigger>
                 <TabsTrigger value="console" className="text-xs data-[state=active]:bg-background border border-transparent data-[state=active]:border-border rounded-none h-7 flex items-center gap-2">
                   <Terminal className="h-3 w-3" /> Console
                 </TabsTrigger>
@@ -227,9 +484,98 @@ export default function Editor() {
             </div>
             
             <div className="flex-1 overflow-hidden relative bg-[#0c0c0c]">
+              <TabsContent value="timeline" className="m-0 h-full p-0 border-none data-[state=active]:flex flex-col">
+                {lastRunId ? (
+                  <div className="flex flex-col h-full">
+                    <div className="shrink-0 p-3 bg-black/40 border-b border-border flex flex-col gap-3">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentTick(0)}>
+                            <SkipBack className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentTick(prev => Math.max(0, prev - 1))}>
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button variant="default" size="icon" className="h-10 w-10 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/50" onClick={() => setIsPlaying(!isPlaying)}>
+                            {isPlaying ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current ml-1" />}
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentTick(prev => Math.min((framesData?.totalFrames || 1) - 1, prev + 1))}>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        
+                        <div className="flex-1 flex flex-col gap-1">
+                          <div className="flex items-center justify-between px-1">
+                            <span className="text-[10px] font-mono text-muted-foreground">TICK: <span className="text-foreground">{currentTick}</span></span>
+                            <span className="text-[10px] font-mono text-muted-foreground">TOTAL: <span className="text-foreground">{framesData?.totalFrames || 0}</span></span>
+                          </div>
+                          <Slider 
+                            value={[currentTick]} 
+                            max={(framesData?.totalFrames || 1) - 1} 
+                            step={1}
+                            onValueChange={([val]) => setCurrentTick(val)}
+                            className="w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 flex overflow-hidden">
+                      <div className="flex-1 flex flex-col border-r border-border/30">
+                        <div className="h-6 px-3 bg-muted/20 border-b border-border/30 flex items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                          Frame Events
+                        </div>
+                        <ScrollArea className="flex-1 p-2">
+                          {(currentFrame?.events && currentFrame.events.length > 0) ? (
+                            <div className="space-y-1">
+                              {currentFrame.events.map((ev: string, idx: number) => (
+                                <div key={idx} className="text-xs font-mono py-1 px-2 rounded bg-white/5 border-l-2 border-primary/50 text-gray-300">
+                                  {ev}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="h-full flex items-center justify-center text-muted-foreground font-mono text-[10px] italic">
+                              No events at this tick
+                            </div>
+                          )}
+                        </ScrollArea>
+                      </div>
+                      <div className="w-64 flex flex-col bg-black/20">
+                        <div className="h-6 px-3 bg-muted/20 border-b border-border/30 flex items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                          Quick Inspector
+                        </div>
+                        <div className="p-3 space-y-3">
+                          <div className="text-[10px] font-mono text-muted-foreground">
+                            ACTIVE ENTITIES: <span className="text-foreground">{currentFrame?.entities?.length || 0}</span>
+                          </div>
+                          <div className="space-y-1">
+                            {currentFrame?.entities?.slice(0, 10).map((ef: any) => (
+                              <div key={ef.index} className="flex items-center justify-between text-[10px] font-mono p-1 rounded hover:bg-white/5 cursor-pointer" onClick={() => setSelectedEntityIndex(ef.index)}>
+                                <span className="text-muted-foreground truncate max-w-[100px]">{ef.pacId || `Entity #${ef.index}`}</span>
+                                <span className="text-primary opacity-70">[{ef.position?.x.toFixed(1)}, {ef.position?.z.toFixed(1)}]</span>
+                              </div>
+                            ))}
+                            {(currentFrame?.entities && currentFrame.entities.length > 10) && (
+                              <div className="text-[10px] text-muted-foreground text-center italic">+{currentFrame.entities.length - 10} more</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground font-mono text-xs opacity-50 flex-col gap-4">
+                    <History className="h-12 w-12 opacity-20" />
+                    <span>Run simulation to initialize timeline trace.</span>
+                  </div>
+                )}
+              </TabsContent>
+
               <TabsContent value="console" className="m-0 h-full p-0 border-none data-[state=active]:flex flex-col">
                 {(runMutation.isPending || checkMutation.isPending) && (
                   <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center text-primary text-xs font-mono">
+                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                     Executing Simulation...
                   </div>
                 )}
@@ -241,7 +587,6 @@ export default function Editor() {
                       <span>Events: <span className="text-foreground">{lastRun.run.eventLineCount}</span></span>
                       <span>Trace Size: <span className="text-foreground">{lastRun.run.traceBytes}B</span></span>
                       <span className="ml-auto text-[10px] opacity-50 truncate max-w-[200px]" title={`Event SHA256: ${lastRun.run.eventLogSha256}`}>Ev: {lastRun.run.eventLogSha256.substring(0,8)}...</span>
-                      <span className="text-[10px] opacity-50 truncate max-w-[200px]" title={`Trace SHA256: ${lastRun.run.traceSha256}`}>Tr: {lastRun.run.traceSha256.substring(0,8)}...</span>
                     </div>
                     <ScrollArea className="flex-1 p-4 font-mono text-xs">
                       {lastRun.run.eventLines.map((line: string, i: number) => (
@@ -263,7 +608,10 @@ export default function Editor() {
               <TabsContent value="determinism" className="m-0 h-full p-0 border-none data-[state=active]:flex flex-col">
                 {lastCheck ? (
                   <div className="flex flex-col h-full">
-                    <div className={`shrink-0 p-3 border-b ${lastCheck.eventsMatch && lastCheck.traceMatch ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'} flex items-center justify-between`}>
+                    <div className={cn(
+                      "shrink-0 p-3 border-b flex items-center justify-between",
+                      lastCheck.eventsMatch && lastCheck.traceMatch ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'
+                    )}>
                       <div className="flex items-center gap-3">
                         {lastCheck.eventsMatch && lastCheck.traceMatch ? (
                           <><CheckCircle2 className="h-5 w-5 text-green-500" /> <span className="font-semibold text-green-500">Determinism Confirmed</span></>
@@ -271,9 +619,19 @@ export default function Editor() {
                           <><XCircle className="h-5 w-5 text-red-500" /> <span className="font-semibold text-red-500">Divergence Detected</span></>
                         )}
                       </div>
-                      <div className="flex gap-4 text-xs font-mono">
-                        <span className={lastCheck.eventsMatch ? "text-green-400" : "text-red-400"}>Events: {lastCheck.eventsMatch ? "MATCH" : "DIFF"}</span>
-                        <span className={lastCheck.traceMatch ? "text-green-400" : "text-red-400"}>Trace: {lastCheck.traceMatch ? "MATCH" : "DIFF"}</span>
+                      <div className="flex gap-4 items-center">
+                        <div className="flex gap-4 text-xs font-mono">
+                          <span className={lastCheck.eventsMatch ? "text-green-400" : "text-red-400"}>Events: {lastCheck.eventsMatch ? "MATCH" : "DIFF"}</span>
+                          <span className={lastCheck.traceMatch ? "text-green-400" : "text-red-400"}>Trace: {lastCheck.traceMatch ? "MATCH" : "DIFF"}</span>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-7 text-[10px] gap-1 border-primary/30 hover:bg-primary/10" 
+                          onClick={() => setShowDiffDialog(true)}
+                        >
+                          <Search className="h-3 w-3" /> Diff Trace
+                        </Button>
                       </div>
                     </div>
                     
@@ -300,9 +658,36 @@ export default function Editor() {
                             <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto" />
                             <div className="text-green-400 font-medium">Runs are bit-exactly identical</div>
                             <div className="text-muted-foreground text-[10px]">
-                              Run A SHA: {lastCheck.runA.traceSha256.substring(0,16)}...<br/>
-                              Run B SHA: {lastCheck.runB.traceSha256.substring(0,16)}...
+                              Run A ID: {lastCheck.runAId.substring(0,8)}...<br/>
+                              Run B ID: {lastCheck.runBId.substring(0,8)}...
                             </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Trace Diff Results section */}
+                      {diffData && (
+                        <div className="mt-8 border-t border-border pt-4">
+                          <div className="text-sm font-semibold mb-2 flex items-center gap-2">
+                            <Layers className="h-4 w-4" /> Trace Diff Result
+                            <Badge variant={diffData.identical ? "default" : "destructive"} className={cn("text-[10px]", diffData.identical && "bg-green-500 hover:bg-green-600")}>
+                              {diffData.identical ? "IDENTICAL" : "DIVERGED"}
+                            </Badge>
+                          </div>
+                          {diffData.firstDivergenceTick !== null && (
+                            <div className="text-xs text-red-400 mb-2 font-mono">
+                              First divergence at tick: {diffData.firstDivergenceTick}
+                            </div>
+                          )}
+                          <div className="space-y-1">
+                            {diffData.entries.slice(0, 20).map((entry: any, i: number) => (
+                              <div key={i} className="text-[10px] font-mono p-1 rounded bg-muted/20 border-l border-border flex gap-4">
+                                <span className="text-muted-foreground w-12">T{entry.tick}</span>
+                                <Badge variant="outline" className="text-[8px] h-3 px-1">{entry.kind}</Badge>
+                                <span className="text-gray-300 truncate">{entry.detail}</span>
+                              </div>
+                            ))}
+                            {diffData.entries.length > 20 && <div className="text-[10px] text-muted-foreground italic pl-4">... {diffData.entries.length - 20} more entries</div>}
                           </div>
                         </div>
                       )}
@@ -319,10 +704,72 @@ export default function Editor() {
         </ResizablePanel>
       </ResizablePanelGroup>
       
+      {/* Trace Diff Dialog */}
+      <Dialog open={showDiffDialog} onOpenChange={setShowDiffDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-primary" /> Trace v2 Diff Analysis
+            </DialogTitle>
+            <DialogDescription>
+              Comparing frame-by-frame entity state and events between Run A and Run B.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 mt-4 rounded-md border border-border bg-black/50 p-4">
+            {diffData ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 rounded bg-muted/30 border border-border">
+                    <div className="text-[10px] uppercase text-muted-foreground font-bold mb-1">Status</div>
+                    <div className={cn("text-lg font-bold", diffData.identical ? "text-green-500" : "text-red-500")}>
+                      {diffData.identical ? "PERFECT MATCH" : "DIVERGENCE FOUND"}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded bg-muted/30 border border-border">
+                    <div className="text-[10px] uppercase text-muted-foreground font-bold mb-1">Divergence Tick</div>
+                    <div className="text-lg font-mono font-bold">
+                      {diffData.firstDivergenceTick !== null ? diffData.firstDivergenceTick : "N/A"}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-xs font-semibold mb-2 uppercase text-muted-foreground">Diff Entries ({diffData.entries.length})</div>
+                  <div className="space-y-1">
+                    {diffData.entries.map((entry: any, i: number) => (
+                      <div key={i} className="text-xs font-mono p-2 rounded bg-muted/20 border border-border/50 flex items-start gap-4">
+                        <span className="text-muted-foreground w-16 shrink-0">Tick {entry.tick}</span>
+                        <div className="flex flex-col gap-1 flex-1 min-w-0">
+                          <Badge variant="outline" className="w-fit text-[10px] h-4 px-1 bg-primary/5">{entry.kind}</Badge>
+                          <span className="text-gray-300 break-words">{entry.detail}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {diffData.entries.length === 0 && (
+                      <div className="p-8 text-center text-muted-foreground italic text-xs">
+                        No differences found in trace data.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-muted-foreground italic animate-pulse">
+                Fetching diff data...
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
       {/* Footer */}
       <footer className="h-6 bg-card border-t border-border flex items-center px-4 justify-between text-[10px] text-muted-foreground shrink-0 font-mono">
         <div>Project: {project.summary.filename}</div>
-        <div>Memory: {(project.summary.fileSizeBytes / 1024).toFixed(2)} KB</div>
+        <div className="flex gap-4">
+          {lastRunId && <span>Run: <span className="text-foreground">{lastRunId.substring(0,8)}</span></span>}
+          <span>Memory: {(project.summary.fileSizeBytes / 1024).toFixed(2)} KB</span>
+        </div>
       </footer>
     </div>
   );

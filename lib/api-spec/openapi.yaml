@@ -235,6 +235,98 @@ paths:
               schema:
                 $ref: "#/components/schemas/EngineInfo"
 
+  /pacengine/runs/{runId}:
+    get:
+      operationId: getRun
+      tags: [pacengine]
+      summary: Fetch metadata for a previously executed run
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunMetadata"
+        "404":
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pacengine/runs/{runId}/frames:
+    get:
+      operationId: getRunFrames
+      tags: [pacengine]
+      summary: Fetch a window of trace v2 frames for a run
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunFramesResponse"
+        "404":
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pacengine/runs/{runId}/diff/{otherRunId}:
+    get:
+      operationId: diffRuns
+      tags: [pacengine]
+      summary: Diff two persisted runs frame-by-frame (trace v2 trace_diff)
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: otherRunId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TraceDiffResponse"
+        "404":
+          description: One or both runs not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -457,6 +549,9 @@ components:
     RunResult:
       type: object
       properties:
+        runId:
+          type: string
+          description: Identifier of the persisted run; usable with /pacengine/runs/{runId}/frames
         projectId:
           type: string
         ticks:
@@ -469,7 +564,7 @@ components:
         completedAt:
           type: string
           format: date-time
-      required: [projectId, ticks, run, startedAt, completedAt]
+      required: [runId, projectId, ticks, run, startedAt, completedAt]
 
     DeterminismDiffLine:
       type: object
@@ -489,6 +584,10 @@ components:
           type: string
         ticks:
           type: integer
+        runAId:
+          type: string
+        runBId:
+          type: string
         runA:
           $ref: "#/components/schemas/RunArtifacts"
         runB:
@@ -510,6 +609,8 @@ components:
       required:
         - projectId
         - ticks
+        - runAId
+        - runBId
         - runA
         - runB
         - eventsMatch
@@ -517,6 +618,128 @@ components:
         - diffLines
         - startedAt
         - completedAt
+
+    RunMetadata:
+      type: object
+      properties:
+        runId:
+          type: string
+        projectId:
+          type: string
+        ticks:
+          type: integer
+        traceVersion:
+          type: integer
+          description: 1 = legacy, 2 = trace v2 framed format
+        traceBytes:
+          type: integer
+        traceSha256:
+          type: string
+        eventLogSha256:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+      required:
+        - runId
+        - projectId
+        - ticks
+        - traceVersion
+        - traceBytes
+        - traceSha256
+        - completedAt
+
+    PositionValue:
+      type: object
+      properties:
+        x:
+          type: number
+          format: double
+        y:
+          type: number
+          format: double
+        z:
+          type: number
+          format: double
+      required: [x, y, z]
+
+    EntityFrame:
+      type: object
+      properties:
+        index:
+          type: integer
+          description: Slot index of EntityId
+        generation:
+          type: integer
+        pacId:
+          type: string
+        type:
+          type: string
+        position:
+          $ref: "#/components/schemas/PositionValue"
+      required: [index, generation]
+
+    TraceFrame:
+      type: object
+      properties:
+        tick:
+          type: integer
+        entities:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityFrame"
+        events:
+          type: array
+          items:
+            type: string
+      required: [tick, entities, events]
+
+    RunFramesResponse:
+      type: object
+      properties:
+        runId:
+          type: string
+        from:
+          type: integer
+        to:
+          type: integer
+        totalFrames:
+          type: integer
+        frames:
+          type: array
+          items:
+            $ref: "#/components/schemas/TraceFrame"
+      required: [runId, from, to, totalFrames, frames]
+
+    TraceDiffEntry:
+      type: object
+      properties:
+        tick:
+          type: integer
+        kind:
+          type: string
+          enum: [entity_added, entity_removed, entity_changed, event_diff, frame_size_diff]
+        detail:
+          type: string
+      required: [tick, kind, detail]
+
+    TraceDiffResponse:
+      type: object
+      properties:
+        runAId:
+          type: string
+        runBId:
+          type: string
+        identical:
+          type: boolean
+        firstDivergenceTick:
+          type: integer
+          nullable: true
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/TraceDiffEntry"
+      required: [runAId, runBId, identical, entries]
 
     VersionBucket:
       type: object

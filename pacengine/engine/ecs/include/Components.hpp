@@ -19,4 +19,17 @@ struct EntityTypeComponent {
     std::string type;
 };
 
+// World-space position. Determinism rules:
+//   * x/y/z are doubles, never floats — float NaN/round-off varies
+//     across platforms.
+//   * Updates only happen inside a registered ISystem (typically
+//     MovementSystem). No external mutations during a tick.
+//   * Default position is computed deterministically from the entity's
+//     pacdata id when PacData does not specify one (see World.cpp).
+struct PositionComponent {
+    double x = 0.0;
+    double y = 0.0;
+    double z = 0.0;
+};
+
 } // namespace pac

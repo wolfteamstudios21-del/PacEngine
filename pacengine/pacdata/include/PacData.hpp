@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -26,10 +27,20 @@ struct ShardDef {
     // later: bounds, partitioning info, replication policy
 };
 
+struct EntityPosition {
+    double x = 0.0;
+    double y = 0.0;
+    double z = 0.0;
+};
+
 struct EntityDef {
     std::string id;
     std::string type;   // optional, e.g. "agent". Empty == unspecified.
-    // later: component bag, archetype reference
+    // Optional spawn position. When unset, the World seeds a deterministic
+    // default derived from the pacdata id so the visualization is stable
+    // across runs even for hand-authored PacData that omits coordinates.
+    std::optional<EntityPosition> position;
+    // later: full component bag, archetype reference
 };
 
 struct GMDef {

@@ -2,7 +2,39 @@
 
 #include "Components.hpp"
 
+#include <cstdint>
+
 namespace pac {
+
+namespace {
+
+// FNV-1a 64-bit hash over a string. Used purely as a deterministic seed
+// for default entity positions when PacData omits coordinates. Same
+// algorithm runs in TS-side editor code so the visual placement matches
+// even before the engine ships positions through trace v2.
+std::uint64_t fnv1a64(const std::string& s) {
+    std::uint64_t h = 0xcbf29ce484222325ULL;
+    for (unsigned char c : s) {
+        h ^= c;
+        h *= 0x100000001b3ULL;
+    }
+    return h;
+}
+
+PositionComponent default_position_for(const std::string& pac_id) {
+    // Spread entities on a 10x10 grid centred on the origin. Stable
+    // across runs / platforms because FNV-1a is.
+    const std::uint64_t h = fnv1a64(pac_id);
+    const double gx = static_cast<double>((h        & 0xFFu)) / 255.0;
+    const double gz = static_cast<double>(((h >> 8) & 0xFFu)) / 255.0;
+    return PositionComponent{
+        (gx - 0.5) * 10.0,
+        0.0,
+        (gz - 0.5) * 10.0,
+    };
+}
+
+} // namespace
 
 World::World(const PacData& data)
     : name_(data.world.name) {
@@ -16,6 +48,18 @@ World::World(const PacData& data)
             add_component<EntityTypeComponent>(
                 e, EntityTypeComponent{entity_def.type});
         }
+        // Position: prefer the PacData-supplied value; otherwise fall
+        // back to a deterministic default so the editor viewport always
+        // has something to render.
+        PositionComponent p;
+        if (entity_def.position.has_value()) {
+            p.x = entity_def.position->x;
+            p.y = entity_def.position->y;
+            p.z = entity_def.position->z;
+        } else {
+            p = default_position_for(entity_def.id);
+        }
+        add_component<PositionComponent>(e, p);
     }
 }
 

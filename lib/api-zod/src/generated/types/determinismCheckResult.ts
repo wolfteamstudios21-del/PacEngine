@@ -11,6 +11,8 @@ import type { RunArtifacts } from "./runArtifacts";
 export interface DeterminismCheckResult {
   projectId: string;
   ticks: number;
+  runAId: string;
+  runBId: string;
   runA: RunArtifacts;
   runB: RunArtifacts;
   eventsMatch: boolean;

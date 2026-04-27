@@ -109,6 +109,8 @@ export interface RunArtifacts {
 }
 
 export interface RunResult {
+  /** Identifier of the persisted run; usable with /pacengine/runs/{runId}/frames */
+  runId: string;
   projectId: string;
   ticks: number;
   run: RunArtifacts;
@@ -125,6 +127,8 @@ export interface DeterminismDiffLine {
 export interface DeterminismCheckResult {
   projectId: string;
   ticks: number;
+  runAId: string;
+  runBId: string;
   runA: RunArtifacts;
   runB: RunArtifacts;
   eventsMatch: boolean;
@@ -132,6 +136,72 @@ export interface DeterminismCheckResult {
   diffLines: DeterminismDiffLine[];
   startedAt: string;
   completedAt: string;
+}
+
+export interface RunMetadata {
+  runId: string;
+  projectId: string;
+  ticks: number;
+  /** 1 = legacy, 2 = trace v2 framed format */
+  traceVersion: number;
+  traceBytes: number;
+  traceSha256: string;
+  eventLogSha256?: string;
+  completedAt: string;
+}
+
+export interface PositionValue {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface EntityFrame {
+  /** Slot index of EntityId */
+  index: number;
+  generation: number;
+  pacId?: string;
+  type?: string;
+  position?: PositionValue;
+}
+
+export interface TraceFrame {
+  tick: number;
+  entities: EntityFrame[];
+  events: string[];
+}
+
+export interface RunFramesResponse {
+  runId: string;
+  from: number;
+  to: number;
+  totalFrames: number;
+  frames: TraceFrame[];
+}
+
+export type TraceDiffEntryKind =
+  (typeof TraceDiffEntryKind)[keyof typeof TraceDiffEntryKind];
+
+export const TraceDiffEntryKind = {
+  entity_added: "entity_added",
+  entity_removed: "entity_removed",
+  entity_changed: "entity_changed",
+  event_diff: "event_diff",
+  frame_size_diff: "frame_size_diff",
+} as const;
+
+export interface TraceDiffEntry {
+  tick: number;
+  kind: TraceDiffEntryKind;
+  detail: string;
+}
+
+export interface TraceDiffResponse {
+  runAId: string;
+  runBId: string;
+  identical: boolean;
+  firstDivergenceTick?: number | null;
+  entries: TraceDiffEntry[];
 }
 
 export interface VersionBucket {
@@ -158,3 +228,14 @@ export interface EngineInfo {
   pacdataVersion: string;
   paccoreVersion: string;
 }
+
+export type GetRunFramesParams = {
+  /**
+   * @minimum 0
+   */
+  from?: number;
+  /**
+   * @minimum 0
+   */
+  to?: number;
+};
