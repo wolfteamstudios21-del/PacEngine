@@ -91,6 +91,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /pacengine/projects/import-pacexport:
+    post:
+      operationId: importPacExport
+      tags: [pacengine]
+      summary: Import a .pacexport package (world.pacdata.json + optional visual_manifest.json)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportPacExportRequest"
+      responses:
+        "200":
+          description: Imported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportedProject"
+        "400":
+          description: Invalid package
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /pacengine/projects/{projectId}/runs:
     post:
       operationId: runProject
@@ -443,6 +468,9 @@ components:
           $ref: "#/components/schemas/ConflictSimDetail"
         rawJson:
           type: string
+        visualManifest:
+          $ref: "#/components/schemas/VisualManifest"
+          description: Present only when a visual_manifest.json sidecar exists for this project
       required: [summary, entities, conflictSim, rawJson]
 
     Template:
@@ -487,6 +515,160 @@ components:
             $ref: "#/components/schemas/Template"
       required: [templates]
 
+    # ── Visual Manifest sub-schemas ────────────────────────────────────────
+
+    VisualEnvironment:
+      type: object
+      description: Atmospheric and sky settings for the scene.
+      properties:
+        skyModel:
+          type: string
+          description: "physical_sky | hdri | procedural"
+        sunDirection:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 3
+          maxItems: 3
+        sunIntensity:
+          type: number
+          format: float
+        atmosphericDensity:
+          type: number
+          format: float
+        fogDensity:
+          type: number
+          format: float
+        fogColor:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 3
+          maxItems: 3
+
+    VisualGI:
+      type: object
+      description: Global illumination settings.
+      properties:
+        giType:
+          type: string
+          description: "voxel_probe_hybrid | probe_grid | sdf | none"
+        probeDensity:
+          type: string
+          description: "low | medium | high"
+        voxelSize:
+          type: number
+          format: float
+
+    VisualPostProcessing:
+      type: object
+      description: Camera post-processing stack.
+      properties:
+        tonemap:
+          type: string
+          description: "aces | filmic | linear"
+        bloomIntensity:
+          type: number
+          format: float
+        exposure:
+          type: number
+          format: float
+
+    VisualEntityRender:
+      type: object
+      description: Per-entity rendering configuration.
+      properties:
+        asset:
+          type: string
+          description: Relative path to glTF asset file
+        animationState:
+          type: string
+          description: Default animation clip name (e.g. "idle", "walk")
+        lodPolicy:
+          type: string
+          description: "auto | lod0 | lod1 | lod2"
+        castShadows:
+          type: boolean
+
+    VisualEntityOverride:
+      type: object
+      description: Visual override for a single simulation entity.
+      properties:
+        id:
+          type: string
+          description: Entity id matching PacData entity id
+        render:
+          $ref: "#/components/schemas/VisualEntityRender"
+      required: [id]
+
+    VisualStaticMesh:
+      type: object
+      description: Non-simulated decorative mesh in the scene.
+      properties:
+        id:
+          type: string
+        asset:
+          type: string
+          description: Relative path to glTF asset file
+        materialIntent:
+          type: string
+          description: "Hint to the renderer (e.g. rock_rough, grass, concrete)"
+
+    VisualLight:
+      type: object
+      description: A light placed in the scene.
+      properties:
+        type:
+          type: string
+          enum: [directional, point, spot]
+        intensity:
+          type: number
+          format: float
+        color:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 3
+          maxItems: 3
+
+    VisualManifest:
+      type: object
+      description: >
+        Optional companion document to a PacData file that carries visual /
+        rendering properties. Persisted as <projectId>.visual_manifest.json
+        alongside the .pacdata.json sidecar. Not required for headless runs.
+      properties:
+        pacdataVersion:
+          type: string
+          description: PacData format version this manifest was authored for
+        visualVersion:
+          type: string
+          description: visual_manifest schema version (currently "1.0.0")
+        environment:
+          $ref: "#/components/schemas/VisualEnvironment"
+        globalIllumination:
+          $ref: "#/components/schemas/VisualGI"
+        postProcessing:
+          $ref: "#/components/schemas/VisualPostProcessing"
+        entities:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisualEntityOverride"
+          description: Per-entity visual overrides keyed by entity id
+        staticMeshes:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisualStaticMesh"
+        lights:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisualLight"
+
+    # ── Import request schemas ──────────────────────────────────────────────
+
     ImportProjectRequest:
       type: object
       properties:
@@ -497,6 +679,25 @@ components:
           type: string
           description: Raw PacData document text
       required: [name, rawJson]
+
+    ImportPacExportRequest:
+      type: object
+      description: >
+        Imports a .pacexport package as a new project. worldPacdataJson is the
+        raw world.pacdata.json text. visualManifestJson is the optional
+        visual_manifest.json text. If omitted the project is created without
+        visual properties.
+      properties:
+        name:
+          type: string
+          description: Desired project name (sanitized to a-z0-9-_)
+        worldPacdataJson:
+          type: string
+          description: Raw text of world.pacdata.json from the package
+        visualManifestJson:
+          type: string
+          description: Optional raw text of visual_manifest.json
+      required: [name, worldPacdataJson]
 
     ImportedProject:
       type: object

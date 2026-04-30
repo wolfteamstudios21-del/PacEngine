@@ -52,11 +52,128 @@ export interface ConflictSimDetail {
   scenarios: ScenarioDetail[];
 }
 
+/**
+ * Atmospheric and sky settings for the scene.
+ */
+export interface VisualEnvironment {
+  /** physical_sky | hdri | procedural */
+  skyModel?: string;
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  sunDirection?: number[];
+  sunIntensity?: number;
+  atmosphericDensity?: number;
+  fogDensity?: number;
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  fogColor?: number[];
+}
+
+/**
+ * Global illumination settings.
+ */
+export interface VisualGI {
+  /** voxel_probe_hybrid | probe_grid | sdf | none */
+  giType?: string;
+  /** low | medium | high */
+  probeDensity?: string;
+  voxelSize?: number;
+}
+
+/**
+ * Camera post-processing stack.
+ */
+export interface VisualPostProcessing {
+  /** aces | filmic | linear */
+  tonemap?: string;
+  bloomIntensity?: number;
+  exposure?: number;
+}
+
+/**
+ * Per-entity rendering configuration.
+ */
+export interface VisualEntityRender {
+  /** Relative path to glTF asset file */
+  asset?: string;
+  /** Default animation clip name (e.g. "idle", "walk") */
+  animationState?: string;
+  /** auto | lod0 | lod1 | lod2 */
+  lodPolicy?: string;
+  castShadows?: boolean;
+}
+
+/**
+ * Visual override for a single simulation entity.
+ */
+export interface VisualEntityOverride {
+  /** Entity id matching PacData entity id */
+  id: string;
+  render?: VisualEntityRender;
+}
+
+/**
+ * Non-simulated decorative mesh in the scene.
+ */
+export interface VisualStaticMesh {
+  id?: string;
+  /** Relative path to glTF asset file */
+  asset?: string;
+  /** Hint to the renderer (e.g. rock_rough, grass, concrete) */
+  materialIntent?: string;
+}
+
+export type VisualLightType =
+  (typeof VisualLightType)[keyof typeof VisualLightType];
+
+export const VisualLightType = {
+  directional: "directional",
+  point: "point",
+  spot: "spot",
+} as const;
+
+/**
+ * A light placed in the scene.
+ */
+export interface VisualLight {
+  type?: VisualLightType;
+  intensity?: number;
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  color?: number[];
+}
+
+/**
+ * Optional companion document to a PacData file that carries visual / rendering properties. Persisted as <projectId>.visual_manifest.json alongside the .pacdata.json sidecar. Not required for headless runs.
+
+ */
+export interface VisualManifest {
+  /** PacData format version this manifest was authored for */
+  pacdataVersion?: string;
+  /** visual_manifest schema version (currently "1.0.0") */
+  visualVersion?: string;
+  environment?: VisualEnvironment;
+  globalIllumination?: VisualGI;
+  postProcessing?: VisualPostProcessing;
+  /** Per-entity visual overrides keyed by entity id */
+  entities?: VisualEntityOverride[];
+  staticMeshes?: VisualStaticMesh[];
+  lights?: VisualLight[];
+}
+
 export interface ProjectDetail {
   summary: ProjectSummary;
   entities: EntityDetail[];
   conflictSim: ConflictSimDetail;
   rawJson: string;
+  /** Present only when a visual_manifest.json sidecar exists for this project */
+  visualManifest?: VisualManifest;
 }
 
 export interface Template {
@@ -81,6 +198,19 @@ export interface ImportProjectRequest {
   name: string;
   /** Raw PacData document text */
   rawJson: string;
+}
+
+/**
+ * Imports a .pacexport package as a new project. worldPacdataJson is the raw world.pacdata.json text. visualManifestJson is the optional visual_manifest.json text. If omitted the project is created without visual properties.
+
+ */
+export interface ImportPacExportRequest {
+  /** Desired project name (sanitized to a-z0-9-_) */
+  name: string;
+  /** Raw text of world.pacdata.json from the package */
+  worldPacdataJson: string;
+  /** Optional raw text of visual_manifest.json */
+  visualManifestJson?: string;
 }
 
 export interface ImportedProject {

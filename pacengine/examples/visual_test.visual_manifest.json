@@ -1,0 +1,44 @@
+{
+  "visualVersion": "1.0.0",
+  "environment": {
+    "skyModel": "physical_sky",
+    "sunIntensity": 1.2,
+    "fogDensity": 0.02,
+    "fogColor": [
+      0.7,
+      0.8,
+      0.9
+    ]
+  },
+  "globalIllumination": {
+    "giType": "voxel_probe_hybrid",
+    "probeDensity": "medium",
+    "voxelSize": 0.5
+  },
+  "postProcessing": {
+    "tonemap": "aces",
+    "bloomIntensity": 0.3,
+    "exposure": 1
+  },
+  "entities": [
+    {
+      "id": "hero",
+      "render": {
+        "asset": "assets/models/hero.gltf",
+        "animationState": "idle",
+        "castShadows": true
+      }
+    }
+  ],
+  "lights": [
+    {
+      "type": "directional",
+      "intensity": 1.5,
+      "color": [
+        1,
+        0.95,
+        0.8
+      ]
+    }
+  ]
+}

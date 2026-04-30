@@ -52,6 +52,15 @@ export const GetProjectParams = zod.object({
   projectId: zod.coerce.string(),
 });
 
+export const getProjectResponseVisualManifestEnvironmentSunDirectionMin = 3;
+export const getProjectResponseVisualManifestEnvironmentSunDirectionMax = 3;
+
+export const getProjectResponseVisualManifestEnvironmentFogColorMin = 3;
+export const getProjectResponseVisualManifestEnvironmentFogColorMax = 3;
+
+export const getProjectResponseVisualManifestLightsItemColorMin = 3;
+export const getProjectResponseVisualManifestLightsItemColorMax = 3;
+
 export const GetProjectResponse = zod.object({
   summary: zod.object({
     id: zod.string().describe("Filename-derived id, used in URLs"),
@@ -87,6 +96,126 @@ export const GetProjectResponse = zod.object({
     ),
   }),
   rawJson: zod.string(),
+  visualManifest: zod
+    .object({
+      pacdataVersion: zod
+        .string()
+        .optional()
+        .describe("PacData format version this manifest was authored for"),
+      visualVersion: zod
+        .string()
+        .optional()
+        .describe('visual_manifest schema version (currently \"1.0.0\")'),
+      environment: zod
+        .object({
+          skyModel: zod
+            .string()
+            .optional()
+            .describe("physical_sky | hdri | procedural"),
+          sunDirection: zod
+            .array(zod.number())
+            .min(getProjectResponseVisualManifestEnvironmentSunDirectionMin)
+            .max(getProjectResponseVisualManifestEnvironmentSunDirectionMax)
+            .optional(),
+          sunIntensity: zod.number().optional(),
+          atmosphericDensity: zod.number().optional(),
+          fogDensity: zod.number().optional(),
+          fogColor: zod
+            .array(zod.number())
+            .min(getProjectResponseVisualManifestEnvironmentFogColorMin)
+            .max(getProjectResponseVisualManifestEnvironmentFogColorMax)
+            .optional(),
+        })
+        .optional()
+        .describe("Atmospheric and sky settings for the scene."),
+      globalIllumination: zod
+        .object({
+          giType: zod
+            .string()
+            .optional()
+            .describe("voxel_probe_hybrid | probe_grid | sdf | none"),
+          probeDensity: zod.string().optional().describe("low | medium | high"),
+          voxelSize: zod.number().optional(),
+        })
+        .optional()
+        .describe("Global illumination settings."),
+      postProcessing: zod
+        .object({
+          tonemap: zod.string().optional().describe("aces | filmic | linear"),
+          bloomIntensity: zod.number().optional(),
+          exposure: zod.number().optional(),
+        })
+        .optional()
+        .describe("Camera post-processing stack."),
+      entities: zod
+        .array(
+          zod
+            .object({
+              id: zod.string().describe("Entity id matching PacData entity id"),
+              render: zod
+                .object({
+                  asset: zod
+                    .string()
+                    .optional()
+                    .describe("Relative path to glTF asset file"),
+                  animationState: zod
+                    .string()
+                    .optional()
+                    .describe(
+                      'Default animation clip name (e.g. \"idle\", \"walk\")',
+                    ),
+                  lodPolicy: zod
+                    .string()
+                    .optional()
+                    .describe("auto | lod0 | lod1 | lod2"),
+                  castShadows: zod.boolean().optional(),
+                })
+                .optional()
+                .describe("Per-entity rendering configuration."),
+            })
+            .describe("Visual override for a single simulation entity."),
+        )
+        .optional()
+        .describe("Per-entity visual overrides keyed by entity id"),
+      staticMeshes: zod
+        .array(
+          zod
+            .object({
+              id: zod.string().optional(),
+              asset: zod
+                .string()
+                .optional()
+                .describe("Relative path to glTF asset file"),
+              materialIntent: zod
+                .string()
+                .optional()
+                .describe(
+                  "Hint to the renderer (e.g. rock_rough, grass, concrete)",
+                ),
+            })
+            .describe("Non-simulated decorative mesh in the scene."),
+        )
+        .optional(),
+      lights: zod
+        .array(
+          zod
+            .object({
+              type: zod.enum(["directional", "point", "spot"]).optional(),
+              intensity: zod.number().optional(),
+              color: zod
+                .array(zod.number())
+                .min(getProjectResponseVisualManifestLightsItemColorMin)
+                .max(getProjectResponseVisualManifestLightsItemColorMax)
+                .optional(),
+            })
+            .describe("A light placed in the scene."),
+        )
+        .optional(),
+    })
+    .optional()
+    .describe(
+      "Present only when a visual_manifest.json sidecar exists for this project",
+    ),
 });
 
 /**
@@ -100,6 +229,46 @@ export const ImportProjectBody = zod.object({
 });
 
 export const ImportProjectResponse = zod.object({
+  project: zod.object({
+    id: zod.string().describe("Filename-derived id, used in URLs"),
+    name: zod.string().describe("Human-readable filename without extension"),
+    filename: zod.string(),
+    worldName: zod.string(),
+    pacdataVersion: zod.string(),
+    paccoreVersion: zod.string(),
+    entityCount: zod.number(),
+    agentCount: zod.number().describe('Count of entities with type \"agent\"'),
+    conflictSimEnabled: zod.boolean(),
+    scenarioCount: zod.number(),
+    fileSizeBytes: zod.number(),
+    modifiedAt: zod.coerce.date(),
+    accentColor: zod
+      .string()
+      .describe(
+        "Deterministic accent color derived from project id (HSL string)",
+      ),
+  }),
+});
+
+/**
+ * @summary Import a .pacexport package (world.pacdata.json + optional visual_manifest.json)
+ */
+export const ImportPacExportBody = zod
+  .object({
+    name: zod.string().describe("Desired project name (sanitized to a-z0-9-_)"),
+    worldPacdataJson: zod
+      .string()
+      .describe("Raw text of world.pacdata.json from the package"),
+    visualManifestJson: zod
+      .string()
+      .optional()
+      .describe("Optional raw text of visual_manifest.json"),
+  })
+  .describe(
+    "Imports a .pacexport package as a new project. worldPacdataJson is the raw world.pacdata.json text. visualManifestJson is the optional visual_manifest.json text. If omitted the project is created without visual properties.\n",
+  );
+
+export const ImportPacExportResponse = zod.object({
   project: zod.object({
     id: zod.string().describe("Filename-derived id, used in URLs"),
     name: zod.string().describe("Human-readable filename without extension"),

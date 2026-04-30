@@ -22,6 +22,7 @@ import type {
   ErrorResponse,
   GetRunFramesParams,
   HealthStatus,
+  ImportPacExportRequest,
   ImportProjectRequest,
   ImportedProject,
   InstantiateTemplateRequest,
@@ -368,6 +369,92 @@ export const useImportProject = <
   TContext
 > => {
   return useMutation(getImportProjectMutationOptions(options));
+};
+
+/**
+ * @summary Import a .pacexport package (world.pacdata.json + optional visual_manifest.json)
+ */
+export const getImportPacExportUrl = () => {
+  return `/api/pacengine/projects/import-pacexport`;
+};
+
+export const importPacExport = async (
+  importPacExportRequest: ImportPacExportRequest,
+  options?: RequestInit,
+): Promise<ImportedProject> => {
+  return customFetch<ImportedProject>(getImportPacExportUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(importPacExportRequest),
+  });
+};
+
+export const getImportPacExportMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importPacExport>>,
+    TError,
+    { data: BodyType<ImportPacExportRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importPacExport>>,
+  TError,
+  { data: BodyType<ImportPacExportRequest> },
+  TContext
+> => {
+  const mutationKey = ["importPacExport"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importPacExport>>,
+    { data: BodyType<ImportPacExportRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importPacExport(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportPacExportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importPacExport>>
+>;
+export type ImportPacExportMutationBody = BodyType<ImportPacExportRequest>;
+export type ImportPacExportMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Import a .pacexport package (world.pacdata.json + optional visual_manifest.json)
+ */
+export const useImportPacExport = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importPacExport>>,
+    TError,
+    { data: BodyType<ImportPacExportRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importPacExport>>,
+  TError,
+  { data: BodyType<ImportPacExportRequest> },
+  TContext
+> => {
+  return useMutation(getImportPacExportMutationOptions(options));
 };
 
 /**

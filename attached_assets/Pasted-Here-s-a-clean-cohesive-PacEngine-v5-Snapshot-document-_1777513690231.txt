@@ -1,0 +1,172 @@
+Here's a clean, cohesive **PacEngine v5 Snapshot** document incorporating your latest thinking, with the tiered priority system integrated, an expanded Deterministic Debug + Replay section, and a refined C++ / TypeScript rendering architecture that respects the priorities.
+
+---
+
+### PacEngine v5 Snapshot  
+**“Simulation-First Engine for Deterministic Living Worlds”**
+
+**Core Philosophy**  
+PacEngine is not trying to be Unreal Engine 5.  
+It is built for **simulation**, **tactical AI**, **living worlds**, **modding**, and **deterministic behavior** — optimized for indie-friendly workflows and Wolf Team Studios’ specific needs.
+
+We build **lean, intent-driven equivalents** that are:
+- Deterministic where it matters
+- Lightweight and maintainable (solo-dev friendly)
+- Easy for newcomers and modders
+- Focused on fast iteration and the “last 20%” polish after PacAi exports
+
+---
+
+### Long-Term Evolution
+
+**v1–v2**: Usable Engine  
+PacAi pipeline works reliably. Walkable worlds with professional atmospheric visuals. Usable editor. Solid enough for shipping Year 1 games without regretting not using UE5.
+
+**v3–v4**: Stable & Polished  
+Mature tools, improved workflows, better visuals, and production readiness for WTS titles.
+
+**v5+**: Real Differentiation  
+Deep simulation advantages, scalable systems, and optional path toward external adoption.
+
+---
+
+### Priority Tiers (Strict Ordering)
+
+**Tier 1 – Core Identity** (Protect ruthlessly)  
+- Determinism & Reproducibility  
+- Simulation core (PacRuntime, ECS, Scheduler, ConflictSim, Workers)  
+- Debug / Replay / Trace system  
+
+**Tier 2 – User Experience** (Critical for Year 1 viability)  
+- PacAi → PacEngine import pipeline (`visual_manifest` support)  
+- Lean atmospheric rendering  
+- Editor usability (hierarchy, prefabs, inspector, PacCore debugger integration)  
+
+**Tier 3 – Expansion Systems** (Build only after Tier 1 & 2 are solid)  
+- Global Illumination (lean voxel/probe hybrid)  
+- Particle / FX system  
+- Geometry streaming & LOD (mesh clustering)  
+- Advanced Character / Animation pipeline  
+
+---
+
+### 🔴 Tier 1 Expansion: Deterministic Debug + Replay (v5 Flagship Feature)
+
+This is where PacEngine can significantly outperform every major engine. We already have binary traces and basic replay. In v5 we elevate this into a **first-class, visual debugging experience**.
+
+**Key Features to Add in v5:**
+
+1. **Timeline Scrubber (Rendering-Aware)**
+   - Visual timeline showing simulation ticks
+   - Scrub forward/backward while the 3D viewport updates in real time
+   - Frame-by-frame or tick-by-tick stepping with interpolation for smooth viewing
+
+2. **Visual Diff Overlays**
+   - Load two traces (Run A vs Run B)
+   - Side-by-side or overlay view with color-coded differences:
+     - Entity position/rotation changes (ghosting or heatmaps)
+     - ConflictSim events (combat, morale shifts, faction decisions)
+     - Component state deltas
+     - Highlighted “divergence points”
+
+3. **“Why Did This Happen?” Inspector**
+   - Click on any entity, event, or state change
+   - Trace backward through:
+     - Behavior graphs
+     - PacCore logic
+     - GM decisions
+     - PacAi generation steps (if metadata available)
+   - Show decision tree or rule evaluations that led to the outcome
+
+4. **GM / AI Decision Visualization**
+   - Visual overlay showing faction intent, threat assessment, or tactical reasoning at key moments
+   - ConflictSim heatmaps (morale, influence, line-of-sight)
+   - Agent goal / plan debugging (planned actions vs actual execution)
+
+5. **Replay Bookmarks & Annotations**
+   - Allow developers to drop bookmarks with notes during replay
+   - Export annotated replays for team review or bug reporting
+
+**UI Ideas:**
+- Dedicated **Debug Perspective** tab in PacEditor
+- Split-screen: Left = Simulation Data (inspector + graphs), Right = 3D Viewport
+- Timeline at bottom with tick markers and major events flagged
+- Hover tooltips showing “Tick 1423: Agent #87 decided to attack due to low morale + nearby enemy”
+- “Ghost Mode” – show previous run as semi-transparent overlay on current run
+
+This system turns PacEngine into a powerful **simulation laboratory**, not just a game engine.
+
+---
+
+### Refined Rendering Layer Architecture (Aligned with Tiers)
+
+**Design Principle**: Simulation is Truth. Rendering is Presentation.
+
+#### High-Level Layers
+```
+PacEngine
+├── Tier 1: Simulation Core (C++/TS – Deterministic)
+│   └── PacRuntime, ECS, Scheduler, ConflictSim, Trace System
+│
+├── Tier 2: Rendering & Import Layer (C++ heavy)
+│   ├── Render Backend (Vulkan primary)
+│   ├── Asset & Resource Manager (glTF focused)
+│   ├── Render Scene (lightweight mirror of simulation state)
+│   └── Atmospheric Rendering Stack
+│
+├── Tier 2: Editor & Tools (TypeScript + bindings)
+│   └── PacEditor + Debug overlays
+│
+├── Tier 3: Expansion Modules (pluggable)
+│   └── GI, Particles, Advanced Animation, etc.
+```
+
+#### Detailed C++ / TypeScript Integration
+
+**C++ Rendering Backend (Performance & Control)**
+- Primary backend: **Vulkan** (best balance of performance, explicit control, and future multi-platform support)
+- Core renderer uses a **Frame Graph** / Render Graph architecture for flexibility and easy optimization
+- Minimalist scene representation optimized for simulation data flow:
+  - Render Proxy Components (position, rotation, scale, animation state, material overrides)
+  - Dirty-flag system so only changed entities are updated each frame
+- Features in Tier 2 scope:
+  - Forward+ / Clustered rendering
+  - PBR Metallic-Roughness materials
+  - Cascaded Shadow Maps + basic contact shadows
+  - Volumetric fog + atmospheric scattering + physical sky
+  - Basic GPU skinning + animation blending
+  - Lightweight node-based shader graph (data-driven JSON + hot reload)
+
+**TypeScript Layer Responsibilities**
+- High-level orchestration and editor logic
+- PacAi import pipeline (`world.pacdata.json` + `visual_manifest.json`)
+- Editor UI, property inspectors, and debug visualization
+- Binding layer via **Node-API (N-API)** or **WebAssembly** for calling C++ renderer
+- Clean facade API:
+  ```ts
+  const renderer = PacRenderer.create();
+  await renderer.importPacAiExport("myworld.pacexport");
+  renderer.updateSimulationState(worldState);   // Called every frame or tick
+  renderer.renderFrame(camera);
+  ```
+
+**Data Flow (Tier 1 → Tier 2)**
+1. Simulation tick completes → minimal delta state is generated
+2. Delta is passed to renderer via efficient buffer/copy
+3. Renderer updates only changed render proxies
+4. Frame is rendered with atmospheric effects applied
+
+**Solo-Dev Advantages**:
+- Rendering can be completely disabled for pure simulation / PacAi testing
+- Tier 1 remains untouched when working on visuals
+- Hot reload supported for shaders and material overrides
+- Easy to profile C++ rendering independently
+
+---
+
+Would you like me to also generate:
+- The full `visual_manifest.json` schema?
+- A suggested 12-month milestone roadmap aligned with these tiers?
+- Sample code snippets for the C++/TS binding layer?
+
+Let me know what to tackle next. This v5 snapshot now feels focused, prioritized, and realistic for a solo developer.

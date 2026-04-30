@@ -6,6 +6,7 @@ import {
   GetProjectResponse,
   ImportProjectBody,
   ImportProjectResponse,
+  ImportPacExportBody,
   RunProjectParams,
   RunProjectBody,
   RunProjectResponse,
@@ -26,6 +27,7 @@ import {
   DiffRunsParams,
   DiffRunsResponse,
 } from "@workspace/api-zod";
+import { parseVisualManifest, VisualManifestParseError } from "../lib/visual-manifest";
 import {
   loadAllProjects,
   loadProjectById,
@@ -71,6 +73,7 @@ router.get(
       entities: project.doc.entities,
       conflictSim: project.doc.conflictSim,
       rawJson: project.rawJson,
+      ...(project.visualManifest ? { visualManifest: project.visualManifest } : {}),
     });
     res.json(data);
   },
@@ -90,6 +93,47 @@ router.post("/pacengine/projects/import", async (req: Request, res: Response) =>
     res.status(400).json({ error: "Invalid PacData document", details: detail });
   }
 });
+
+router.post(
+  "/pacengine/projects/import-pacexport",
+  async (req: Request, res: Response) => {
+    const body = ImportPacExportBody.parse(req.body);
+    const id = sanitizeProjectId(body.name);
+
+    let visualManifest = null;
+    if (body.visualManifestJson) {
+      try {
+        visualManifest = parseVisualManifest(body.visualManifestJson);
+      } catch (err) {
+        const detail =
+          err instanceof VisualManifestParseError
+            ? `${err.message}: ${err.detail}`
+            : String(err);
+        res
+          .status(400)
+          .json({ error: "Invalid visual_manifest.json", details: detail });
+        return;
+      }
+    }
+
+    try {
+      const project = await writeProjectFile(
+        id,
+        body.worldPacdataJson,
+        visualManifest,
+      );
+      const data = ImportProjectResponse.parse({
+        project: toProjectSummary(project),
+      });
+      res.json(data);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      res
+        .status(400)
+        .json({ error: "Invalid world.pacdata.json", details: detail });
+    }
+  },
+);
 
 router.post(
   "/pacengine/projects/:projectId/runs",

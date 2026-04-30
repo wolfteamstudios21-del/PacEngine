@@ -7,12 +7,14 @@ import {
   getGetProjectQueryKey,
   useGetRunFrames,
   useDiffRuns,
+  useImportPacExport,
   getGetRunFramesQueryKey,
   getDiffRunsQueryKey,
   EntityFrame, 
   TraceFrame, 
   EntityDetail,
-  TraceDiffResponse
+  TraceDiffResponse,
+  VisualManifest,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
@@ -41,7 +43,12 @@ import {
   History,
   Layers,
   Search,
-  RefreshCw
+  RefreshCw,
+  Upload,
+  Sun,
+  Lightbulb,
+  Sparkles,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -50,8 +57,10 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogDescription
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function Editor() {
   const { projectId } = useParams();
@@ -74,9 +83,16 @@ export default function Editor() {
   
   const runMutation = useRunProject();
   const checkMutation = useDeterminismCheck();
+  const importPacExportMutation = useImportPacExport();
   
   const [lastRun, setLastRun] = useState<any>(null);
   const [lastCheck, setLastCheck] = useState<any>(null);
+
+  // Import .pacexport dialog state
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importName, setImportName] = useState("");
+  const [importPacdataJson, setImportPacdataJson] = useState("");
+  const [importVisualJson, setImportVisualJson] = useState("");
 
   // Fetch frames for the current run
   const framesWindowSize = 100;
@@ -207,6 +223,30 @@ export default function Editor() {
     });
   };
 
+  const handleImportPacExport = () => {
+    if (!importName.trim() || !importPacdataJson.trim()) return;
+    importPacExportMutation.mutate({
+      data: {
+        name: importName.trim(),
+        worldPacdataJson: importPacdataJson.trim(),
+        ...(importVisualJson.trim() ? { visualManifestJson: importVisualJson.trim() } : {}),
+      },
+    }, {
+      onSuccess: (res) => {
+        toast({ title: "Package Imported", description: `Created project "${res.project.id}"` });
+        setShowImportDialog(false);
+        setImportName("");
+        setImportPacdataJson("");
+        setImportVisualJson("");
+        queryClient.invalidateQueries({ queryKey: ["listProjects"] });
+      },
+      onError: (err: any) => {
+        const errorMsg = (err as { error?: string })?.error || "Import failed";
+        toast({ title: "Import Failed", description: errorMsg, variant: "destructive" });
+      }
+    });
+  };
+
   const worldBounds = { min: -5, max: 5 };
   const projectEntities = project.entities;
 
@@ -238,8 +278,72 @@ export default function Editor() {
           <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 hover:text-blue-400 hover:bg-blue-400/10" onClick={handleDeterminismCheck} disabled={runMutation.isPending || checkMutation.isPending}>
             <Activity className="h-3 w-3" /> Determinism Check
           </Button>
+          <div className="w-px h-4 bg-border mx-1" />
+          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 hover:text-purple-400 hover:bg-purple-400/10" onClick={() => setShowImportDialog(true)}>
+            <Upload className="h-3 w-3" /> Import .pacexport
+          </Button>
         </div>
       </header>
+
+      {/* Import .pacexport Dialog */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="max-w-2xl bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-4 w-4 text-purple-400" /> Import .pacexport Package
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Paste the contents of <code className="font-mono bg-muted px-1 rounded">world.pacdata.json</code> and, optionally, <code className="font-mono bg-muted px-1 rounded">visual_manifest.json</code> from your .pacexport folder.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="import-name" className="text-xs">Project Name</Label>
+              <Input
+                id="import-name"
+                placeholder="my_imported_world"
+                value={importName}
+                onChange={e => setImportName(e.target.value)}
+                className="h-8 text-xs font-mono"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="import-pacdata" className="text-xs">world.pacdata.json <span className="text-red-400">*</span></Label>
+              <Textarea
+                id="import-pacdata"
+                placeholder='{"pacdata_version": "1.0.0", "world": {...}}'
+                value={importPacdataJson}
+                onChange={e => setImportPacdataJson(e.target.value)}
+                className="h-36 text-xs font-mono resize-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="import-visual" className="text-xs">
+                visual_manifest.json <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Textarea
+                id="import-visual"
+                placeholder='{"visualVersion": "1.0.0", "environment": {"skyModel": "physical_sky", ...}}'
+                value={importVisualJson}
+                onChange={e => setImportVisualJson(e.target.value)}
+                className="h-28 text-xs font-mono resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" className="text-xs" onClick={() => setShowImportDialog(false)}>Cancel</Button>
+            <Button
+              size="sm"
+              className="text-xs gap-1 bg-purple-600 hover:bg-purple-700"
+              onClick={handleImportPacExport}
+              disabled={!importName.trim() || !importPacdataJson.trim() || importPacExportMutation.isPending}
+            >
+              <Upload className="h-3 w-3" />
+              {importPacExportMutation.isPending ? "Importing..." : "Import Package"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Main Workspace */}
       <ResizablePanelGroup direction="vertical" className="flex-1">
@@ -457,6 +561,20 @@ export default function Editor() {
                         </div>
                       )}
                     </div>
+
+                    {/* Visual Properties — only shown when a visual_manifest.json sidecar exists */}
+                    {(project as any).visualManifest ? (
+                      <VisualPropertiesPanel manifest={(project as any).visualManifest as VisualManifest} />
+                    ) : (
+                      <div>
+                        <h3 className="text-sm font-medium mb-2 border-b border-border pb-1 flex items-center gap-2">
+                          <Sparkles className="h-3.5 w-3.5 text-muted-foreground" /> Visual Properties
+                        </h3>
+                        <p className="text-[10px] text-muted-foreground leading-relaxed">
+                          No visual_manifest.json found. Use <span className="font-mono text-purple-400">Import .pacexport</span> to attach scene visuals (sky, GI, post-processing, entity meshes) to this project.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </ScrollArea>
@@ -771,6 +889,134 @@ export default function Editor() {
           <span>Memory: {(project.summary.fileSizeBytes / 1024).toFixed(2)} KB</span>
         </div>
       </footer>
+    </div>
+  );
+}
+
+// ─── Visual Properties Panel ────────────────────────────────────────────────
+
+function VisualPropertiesPanel({ manifest }: { manifest: VisualManifest }) {
+  const env = manifest.environment;
+  const gi = manifest.globalIllumination;
+  const pp = manifest.postProcessing;
+  const entityOverrides = manifest.entities ?? [];
+  const staticMeshes = manifest.staticMeshes ?? [];
+  const lights = manifest.lights ?? [];
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-medium border-b border-border pb-1 flex items-center gap-2">
+        <Sparkles className="h-3.5 w-3.5 text-purple-400" /> Visual Properties
+        {manifest.visualVersion && (
+          <Badge variant="outline" className="text-[9px] h-4 ml-auto font-mono">v{manifest.visualVersion}</Badge>
+        )}
+      </h3>
+
+      {/* Environment */}
+      {env && (
+        <div className="p-2 rounded bg-muted/30 border border-border/50">
+          <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1 mb-2">
+            <Sun className="h-3 w-3 text-yellow-400" /> Environment
+          </div>
+          <div className="grid grid-cols-[90px_1fr] gap-y-1 text-[11px]">
+            {env.skyModel && <><div className="text-muted-foreground">Sky Model</div><div className="font-mono">{env.skyModel}</div></>}
+            {env.sunIntensity !== undefined && <><div className="text-muted-foreground">Sun Intensity</div><div className="font-mono text-yellow-300">{env.sunIntensity}</div></>}
+            {env.fogDensity !== undefined && <><div className="text-muted-foreground">Fog Density</div><div className="font-mono text-blue-300">{env.fogDensity}</div></>}
+            {env.atmosphericDensity !== undefined && <><div className="text-muted-foreground">Atm. Density</div><div className="font-mono">{env.atmosphericDensity}</div></>}
+            {env.sunDirection && <><div className="text-muted-foreground">Sun Dir.</div><div className="font-mono text-[10px]">[{env.sunDirection.map(v => v.toFixed(2)).join(", ")}]</div></>}
+            {env.fogColor && (
+              <>
+                <div className="text-muted-foreground">Fog Color</div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-sm border border-border/50" style={{ background: `rgb(${env.fogColor.map(v => Math.round(v * 255)).join(",")})` }} />
+                  <span className="font-mono text-[10px]">[{env.fogColor.map(v => v.toFixed(2)).join(", ")}]</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Global Illumination */}
+      {gi && (
+        <div className="p-2 rounded bg-muted/30 border border-border/50">
+          <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1 mb-2">
+            <Lightbulb className="h-3 w-3 text-green-400" /> Global Illumination
+          </div>
+          <div className="grid grid-cols-[90px_1fr] gap-y-1 text-[11px]">
+            {gi.giType && <><div className="text-muted-foreground">GI Type</div><div className="font-mono">{gi.giType}</div></>}
+            {gi.probeDensity && <><div className="text-muted-foreground">Probe Density</div><div className="font-mono">{gi.probeDensity}</div></>}
+            {gi.voxelSize !== undefined && <><div className="text-muted-foreground">Voxel Size</div><div className="font-mono">{gi.voxelSize}</div></>}
+          </div>
+        </div>
+      )}
+
+      {/* Post-processing */}
+      {pp && (
+        <div className="p-2 rounded bg-muted/30 border border-border/50">
+          <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1 mb-2">
+            <Sparkles className="h-3 w-3 text-cyan-400" /> Post-processing
+          </div>
+          <div className="grid grid-cols-[90px_1fr] gap-y-1 text-[11px]">
+            {pp.tonemap && <><div className="text-muted-foreground">Tonemap</div><div className="font-mono">{pp.tonemap}</div></>}
+            {pp.bloomIntensity !== undefined && <><div className="text-muted-foreground">Bloom</div><div className="font-mono text-pink-300">{pp.bloomIntensity}</div></>}
+            {pp.exposure !== undefined && <><div className="text-muted-foreground">Exposure</div><div className="font-mono">{pp.exposure}</div></>}
+          </div>
+        </div>
+      )}
+
+      {/* Lights summary */}
+      {lights.length > 0 && (
+        <div className="p-2 rounded bg-muted/30 border border-border/50">
+          <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1 mb-2">
+            <Sun className="h-3 w-3 text-orange-400" /> Lights ({lights.length})
+          </div>
+          <div className="space-y-1">
+            {lights.map((l, i) => (
+              <div key={i} className="flex items-center gap-2 text-[11px]">
+                {l.color && <div className="w-3 h-3 rounded-sm border border-border/50 shrink-0" style={{ background: `rgb(${l.color.map(v => Math.round(v * 255)).join(",")})` }} />}
+                <span className="text-muted-foreground capitalize">{l.type ?? "light"}</span>
+                {l.intensity !== undefined && <span className="font-mono ml-auto">{l.intensity}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Entity overrides summary */}
+      {entityOverrides.length > 0 && (
+        <div className="p-2 rounded bg-muted/30 border border-border/50">
+          <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1 mb-2">
+            <Box className="h-3 w-3 text-blue-400" /> Entity Overrides ({entityOverrides.length})
+          </div>
+          <div className="space-y-1">
+            {entityOverrides.map((e, i) => (
+              <div key={i} className="text-[11px] flex items-center gap-2">
+                <span className="font-mono text-primary">{e.id}</span>
+                {e.render?.asset && <span className="text-muted-foreground truncate text-[9px]">{e.render.asset}</span>}
+                {e.render?.animationState && <Badge variant="secondary" className="text-[9px] h-3 px-1">{e.render.animationState}</Badge>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Static meshes summary */}
+      {staticMeshes.length > 0 && (
+        <div className="p-2 rounded bg-muted/30 border border-border/50">
+          <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1 mb-2">
+            <ImageIcon className="h-3 w-3 text-gray-400" /> Static Meshes ({staticMeshes.length})
+          </div>
+          <div className="space-y-1">
+            {staticMeshes.map((m, i) => (
+              <div key={i} className="text-[11px] flex items-center gap-2">
+                <span className="font-mono text-muted-foreground">{m.id ?? `mesh_${i}`}</span>
+                {m.materialIntent && <Badge variant="outline" className="text-[9px] h-3 px-1">{m.materialIntent}</Badge>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

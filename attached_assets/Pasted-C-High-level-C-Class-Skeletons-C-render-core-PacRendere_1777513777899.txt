@@ -1,0 +1,197 @@
+C. High-level C++ Class Skeletons
+C++// render/core/PacRenderer.h
+#pragma once
+#include <memory>
+#include <string>
+#include <vector>
+
+class RenderScene;
+class RenderProxy;
+struct PacDataWorld;           // Forward declare your simulation world
+struct VisualManifest;         // We'll define this next
+
+class PacRenderer {
+public:
+    PacRenderer();
+    ~PacRenderer();
+
+    // Main initialization
+    bool Initialize(void* windowHandle, uint32_t width, uint32_t height);
+    void Shutdown();
+
+    // Core rendering loop
+    void BeginFrame();
+    void Render();
+    void EndFrame();
+
+    // PacAi Import Pipeline
+    bool ImportPacAiExport(const std::string& exportPath);
+
+    // Simulation integration
+    void UpdateSimulationState(const PacDataWorld& worldState);  // Called after each sim tick or at fixed rate
+    void SetCamera(const glm::vec3& position, const glm::vec3& target, float fov = 60.0f);
+
+    // Editor controls
+    void Resize(uint32_t width, uint32_t height);
+    void ToggleDebugOverlay(bool enabled);
+
+private:
+    std::unique_ptr<RenderScene> m_scene;
+    // Backend-specific members (Vulkan objects) will be in Impl or separate class
+};
+
+// render/core/RenderScene.h
+#pragma once
+#include <vector>
+#include <unordered_map>
+
+class RenderProxy;
+class Material;
+
+class RenderScene {
+public:
+    RenderProxy* CreateProxy(uint64_t entityId);
+    void RemoveProxy(uint64_t entityId);
+    void UpdateProxyTransform(uint64_t entityId, const glm::mat4& transform);
+
+    void AddLight(const LightData& light);
+    void SetEnvironment(const EnvironmentData& env);   // sky, fog, sun direction
+
+    void Update(float deltaTime);
+    void Render();   // Called by PacRenderer
+
+private:
+    std::unordered_map<uint64_t, std::unique_ptr<RenderProxy>> m_proxies;
+    std::vector<std::unique_ptr<Material>> m_materials;
+    EnvironmentData m_environment;
+};
+
+// render/core/RenderProxy.h
+#pragma once
+#include <glm/glm.hpp>
+
+class Mesh;
+class Material;
+
+class RenderProxy {
+public:
+    uint64_t entityId = 0;
+    glm::mat4 transform = glm::mat4(1.0f);
+    
+    Mesh* mesh = nullptr;
+    Material* material = nullptr;
+    
+    bool visible = true;
+    bool castShadows = true;
+
+    // Animation support (future)
+    // float animationTime = 0.0f;
+    // AnimationClip* currentAnimation = nullptr;
+};
+
+// render/core/Material.h
+#pragma once
+#include <string>
+#include <glm/glm.hpp>
+
+class Texture;
+
+struct MaterialProperties {
+    glm::vec4 baseColorFactor = glm::vec4(1.0f);
+    float metallicFactor = 0.0f;
+    float roughnessFactor = 0.8f;
+    float normalScale = 1.0f;
+    
+    // Future extensions: emissive, occlusion, clearcoat, etc.
+};
+
+class Material {
+public:
+    std::string name;
+    MaterialProperties properties;
+
+    Texture* baseColorTexture = nullptr;
+    Texture* metallicRoughnessTexture = nullptr;
+    Texture* normalTexture = nullptr;
+
+    // Shader variant or material ID for pipeline selection
+    uint32_t shaderVariant = 0;
+};
+These classes are intentionally minimal and focused for M2.5 MVP. They prioritize:
+
+Fast simulation → render sync
+Easy glTF import
+Clean atmospheric defaults
+
+
+D. Proposed Full File Structure + TS Integration Points
+Bashpacengine/
+├── render/
+│   ├── CMakeLists.txt
+│   ├── core/
+│   │   ├── PacRenderer.h
+│   │   ├── PacRenderer.cpp
+│   │   ├── RenderScene.h
+│   │   ├── RenderScene.cpp
+│   │   ├── RenderProxy.h
+│   │   ├── RenderProxy.cpp
+│   │   ├── Material.h
+│   │   └── Material.cpp
+│   ├── assets/
+│   │   ├── GltfLoader.h
+│   │   ├── GltfLoader.cpp
+│   │   ├── TextureManager.h
+│   │   └── TextureManager.cpp
+│   ├── backend/                  # Vulkan specific
+│   │   ├── VulkanRenderer.h
+│   │   ├── VulkanRenderer.cpp
+│   │   ├── VulkanContext.h
+│   │   └── VulkanPipelineCache.h
+│   └── effects/
+│       ├── SkySystem.h
+│       ├── FogSystem.h
+│       └── PostProcess.h
+│
+├── editor/                       # Your existing TypeScript side
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Viewport2D.tsx          # Your current orthographic grid
+│   │   │   └── Viewport3D.tsx          # ← NEW
+│   │   ├── stores/
+│   │   │   └── rendererStore.ts
+│   │   └── hooks/
+│   │       └── usePacRenderer.ts
+│   └── types/
+│       └── render.types.ts
+│
+├── pacdata/
+│   └── schemas/
+│       └── visual_manifest.json     # We'll define this next
+│
+└── bindings/                        # C++ ↔ TypeScript bridge
+    ├── PacRendererBindings.cpp      # Node-API / N-API
+    └── index.ts                     # TS wrapper
+Key Integration Points with Your Existing TS Editor
+
+New TS Wrapper (bindings/PacRenderer.ts)
+
+TypeScriptexport class PacRenderer {
+  async initialize(canvas: HTMLCanvasElement | OffscreenCanvas): Promise<boolean>;
+  async importPacAiExport(path: string): Promise<boolean>;
+  updateSimulationState(worldDelta: any): void;
+  setCamera(pos: Vec3, target: Vec3): void;
+  render(): void;
+  toggleView(mode: '2D' | '3D'): void;
+}
+
+Editor Changes
+Add a toggle button in the top bar: 2D Debug ↔ 3D Atmospheric
+When in 3D mode, replace the current orthographic canvas with the new 3D viewport
+Send simulation deltas from your existing timeline/replay system to the renderer
+Use the same Outliner + Entity Inspector (just show additional render properties when in 3D mode)
+
+Data Flow
+Simulation tick finishes → minimal delta (entity transforms, active agents, etc.)
+Delta sent to PacRenderer::UpdateSimulationState()
+Renderer updates only dirty RenderProxy objects
+Frame rendered with atmospheric effects applied

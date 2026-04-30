@@ -6,6 +6,11 @@ import {
   deterministicAccentColor,
   type PacDataDocument,
 } from "./pacdata-parser";
+import {
+  loadVisualManifest,
+  writeVisualManifest,
+  type VisualManifest,
+} from "./visual-manifest";
 
 export interface LoadedProject {
   id: string;
@@ -16,6 +21,7 @@ export interface LoadedProject {
   rawJson: string;
   doc: PacDataDocument;
   accentColor: string;
+  visualManifest: VisualManifest | null;
 }
 
 const SUFFIX = ".pacdata.json";
@@ -58,6 +64,7 @@ export async function loadProjectById(id: string): Promise<LoadedProject | null>
   }
   const rawJson = await fs.readFile(filePath, "utf8");
   const doc = parsePacData(rawJson);
+  const visualManifest = await loadVisualManifest(id);
   return {
     id,
     filename,
@@ -67,6 +74,7 @@ export async function loadProjectById(id: string): Promise<LoadedProject | null>
     rawJson,
     doc,
     accentColor: deterministicAccentColor(id),
+    visualManifest,
   };
 }
 
@@ -88,6 +96,7 @@ export async function loadAllProjects(): Promise<LoadedProject[]> {
 export async function writeProjectFile(
   id: string,
   rawJson: string,
+  visualManifest?: VisualManifest | null,
 ): Promise<LoadedProject> {
   await ensureExamplesDir();
   const filename = filenameFromProjectId(id);
@@ -95,6 +104,9 @@ export async function writeProjectFile(
   // Validate before writing so we never persist bad PacData.
   parsePacData(rawJson);
   await fs.writeFile(filePath, rawJson, "utf8");
+  if (visualManifest) {
+    await writeVisualManifest(id, visualManifest);
+  }
   const project = await loadProjectById(id);
   if (!project) {
     throw new Error("Project disappeared after write");

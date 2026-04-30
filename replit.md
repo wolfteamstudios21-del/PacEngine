@@ -81,7 +81,51 @@ trace artifacts, and exposes a built-in template registry.
   step / reset), Console, and Determinism (with diff viewer) tabs. Frames are
   fetched in 100-frame windows via `useGetRunFrames`.
 
-The shared `@workspace/api-zod` package exports zod schemas at the package root
-and TypeScript types under the `./types/*` subpath (e.g.
-`@workspace/api-zod/types/traceFrame`) to avoid name collisions between the
-runtime zod values and the generated interfaces.
+The shared `@workspace/api-zod` package exports Zod schemas at the package root
+(only — the types re-export was stripped in `patch-index.mjs` run during codegen
+to avoid TS2308 name collisions) and TypeScript interfaces under the
+`./types/*` subpath (e.g. `@workspace/api-zod/types/traceFrame`).
+
+## .pacexport Import Format
+
+A `.pacexport` package consists of two files stored side-by-side in
+`pacengine/examples/`:
+
+| File | Description |
+|------|-------------|
+| `<id>.pacdata.json` | Core simulation (entities, ECS, ConflictSim) |
+| `<id>.visual_manifest.json` | Optional visual sidecar (environment, GI, post-processing, entity/mesh overrides) |
+
+**Import endpoint**: `POST /api/pacengine/projects/import-pacexport`
+- Body: `{ name, worldPacdataJson, visualManifestJson? }`
+- Validates both JSON blobs before writing
+- `GET /api/pacengine/projects/:id` returns `visualManifest` if the sidecar exists
+
+**visual_manifest.json schema** (v1.0.0) — all fields optional:
+```jsonc
+{
+  "visualVersion": "1.0.0",
+  "environment": {
+    "skyModel": "physical_sky",   // physical_sky | hdri | procedural
+    "sunDirection": [0.5, 0.8, 0.3],
+    "sunIntensity": 1.2,
+    "atmosphericDensity": 1.0,
+    "fogDensity": 0.02,
+    "fogColor": [0.7, 0.8, 0.9]
+  },
+  "globalIllumination": {
+    "giType": "voxel_probe_hybrid", // voxel_probe_hybrid | probe_grid | sdf | none
+    "probeDensity": "medium",
+    "voxelSize": 0.5
+  },
+  "postProcessing": { "tonemap": "aces", "bloomIntensity": 0.3, "exposure": 1.0 },
+  "entities": [{ "id": "hero", "render": { "asset": "assets/models/hero.gltf", "animationState": "idle", "castShadows": true } }],
+  "staticMeshes": [{ "id": "terrain", "asset": "assets/models/terrain.gltf", "materialIntent": "rock_rough" }],
+  "lights": [{ "type": "directional", "intensity": 1.5, "color": [1.0, 0.95, 0.8] }]
+}
+```
+
+The editor Details panel shows a **Visual Properties** section (Environment,
+Global Illumination, Post-processing, Entity Overrides, Static Meshes, Lights)
+when a sidecar exists. A **Import .pacexport** button in the editor toolbar
+opens a paste-in dialog for both JSON files.

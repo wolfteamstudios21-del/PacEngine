@@ -1,0 +1,74 @@
+We're kicking off M2.5 — Tier 2 Foundation:
+3D Rendering MVP + PacAi Visual Import Pipeline
+This milestone will give you:
+
+A switchable viewport (keep your excellent 2D orthographic debug grid + add a new 3D Atmospheric View)
+glTF 2.0 loading with basic PBR materials
+Basic lighting + fog + sky (professional atmospheric look out of the box)
+visual_manifest.json support so PacAi exports render nicely immediately
+Clean integration with your existing editor (Outliner, Inspector, Timeline, etc.)
+
+Step 1: High-Level Architecture for M2.5 (Solo-Dev Friendly)
+We'll keep the strict separation:
+
+Simulation Core (Tier 1) — unchanged, remains the source of truth.
+Render Layer — new C++ module that consumes simulation state deltas.
+Editor (TS) — orchestrates everything and provides the UI.
+
+Proposed Structure (add to your repo):
+textpacengine/
+├── render/                     # New folder
+│   ├── backend/                # Vulkan-specific
+│   ├── core/                   # RenderScene, RenderProxy, Material, etc.
+│   ├── assets/                 # glTF loader, texture manager
+│   ├── effects/                # Fog, sky, post-processing
+│   └── renderer.h / renderer.cpp
+├── editor/                     # TypeScript side
+│   └── components/
+│       └── Viewport3D.tsx      # New 3D canvas / WebGPU or native bridge
+└── pacdata/
+    └── visual_manifest.json    # Schema we'll define
+Binding Strategy: Use Node-API (N-API) or WebAssembly to expose the C++ renderer to TypeScript. Start simple with a PacRenderer class that the editor can call.
+Step 2: Tech Choices (2026 Recommendations)
+glTF Loader:
+
+Primary recommendation: fastgltf (modern C++17, very fast, SIMD-accelerated, good usability).
+Fallback / simpler option: tinygltf (header-only, battle-tested, used in Sascha Willems' Vulkan glTF-PBR example).
+
+Rendering Backend:
+
+Vulkan (via Vulkan-HPP for cleaner C++ API).
+Start with Forward+ or simple clustered forward renderer — easier to maintain as a solo dev than full deferred.
+Reference implementations:
+Sascha Willems' Vulkan-glTF-PBR — excellent starting point for glTF + PBR.
+vkguide.dev modern Vulkan tutorials (updated for 2026).
+
+
+Atmospherics (MVP):
+
+Directional light + simple IBL (image-based lighting) using a HDR sky cubemap.
+Basic volumetric fog or height-based fog.
+Physical sky model (simple procedural or pre-baked).
+
+Step 3: Immediate Action Plan (Next 1–2 Weeks)
+Let's break M2.5 into small, achievable tasks:
+Phase 2.5.1 — Foundation
+
+Set up Vulkan context + swapchain + basic triangle / colored mesh in C++ (prove the pipeline works with your existing build system).
+Integrate chosen glTF loader (fastgltf preferred for speed).
+Create RenderScene and RenderProxy classes that can receive transforms from simulation entities.
+
+Phase 2.5.2 — Visual Import
+
+Define the visual_manifest.json schema (I can provide a full draft).
+Implement PacRenderer::ImportPacAiExport(path) that:
+Loads core PacData
+Loads visual_manifest + glTF assets
+Creates render proxies with default PBR materials
+Applies environment settings (sun direction, fog, sky)
+
+
+Phase 2.5.3 — Editor Integration
+
+Add a toggle in the editor: “2D Debug View” ↔ “3D Atmospheric View”
+Expose renderer via bindings so the TS editor can send camera, simulation deltas, and receive rendered frames.

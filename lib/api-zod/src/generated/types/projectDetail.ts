@@ -8,10 +8,13 @@
 import type { ConflictSimDetail } from "./conflictSimDetail";
 import type { EntityDetail } from "./entityDetail";
 import type { ProjectSummary } from "./projectSummary";
+import type { VisualManifest } from "./visualManifest";
 
 export interface ProjectDetail {
   summary: ProjectSummary;
   entities: EntityDetail[];
   conflictSim: ConflictSimDetail;
   rawJson: string;
+  /** Present only when a visual_manifest.json sidecar exists for this project */
+  visualManifest?: VisualManifest;
 }
