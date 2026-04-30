@@ -1,0 +1,3 @@
+/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/CMakeFiles/fastgltf-populate.dir
+/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/CMakeFiles/edit_cache.dir
+/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/CMakeFiles/rebuild_cache.dir

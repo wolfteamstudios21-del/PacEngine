@@ -85,6 +85,51 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 .PHONY : rebuild_cache/fast
 
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+.PHONY : list_install_components/fast
+
+# Special rule for the target install
+install: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -P cmake_install.cmake
+.PHONY : install
+
+# Special rule for the target install
+install/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -P cmake_install.cmake
+.PHONY : install/fast
+
+# Special rule for the target install/local
+install/local: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local
+
+# Special rule for the target install/local
+install/local/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local/fast
+
+# Special rule for the target install/strip
+install/strip: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip
+
+# Special rule for the target install/strip
+install/strip/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip/fast
+
 # The main all target
 all: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/workspace/pacengine/build_render/CMakeFiles /home/runner/workspace/pacengine/build_render//CMakeFiles/progress.marks
@@ -143,6 +188,19 @@ pacengine_runtime/fast:
 .PHONY : pacengine_runtime/fast
 
 #=============================================================================
+# Target rules for targets named pacengine_shaders
+
+# Build rule for target.
+pacengine_shaders: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pacengine_shaders
+.PHONY : pacengine_shaders
+
+# fast build rule for target.
+pacengine_shaders/fast:
+	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_shaders.dir/build.make render/CMakeFiles/pacengine_shaders.dir/build
+.PHONY : pacengine_shaders/fast
+
+#=============================================================================
 # Target rules for targets named pacengine_render
 
 # Build rule for target.
@@ -155,6 +213,32 @@ pacengine_render/fast:
 	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/build
 .PHONY : pacengine_render/fast
 
+#=============================================================================
+# Target rules for targets named render_smoke
+
+# Build rule for target.
+render_smoke: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 render_smoke
+.PHONY : render_smoke
+
+# fast build rule for target.
+render_smoke/fast:
+	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/render_smoke.dir/build.make render/CMakeFiles/render_smoke.dir/build
+.PHONY : render_smoke/fast
+
+#=============================================================================
+# Target rules for targets named fastgltf
+
+# Build rule for target.
+fastgltf: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 fastgltf
+.PHONY : fastgltf
+
+# fast build rule for target.
+fastgltf/fast:
+	$(MAKE) $(MAKESILENT) -f _deps/fastgltf-build/CMakeFiles/fastgltf.dir/build.make _deps/fastgltf-build/CMakeFiles/fastgltf.dir/build
+.PHONY : fastgltf/fast
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -162,10 +246,17 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
+	@echo "... install"
+	@echo "... install/local"
+	@echo "... install/strip"
+	@echo "... list_install_components"
 	@echo "... rebuild_cache"
+	@echo "... pacengine_shaders"
+	@echo "... fastgltf"
 	@echo "... pacdata"
 	@echo "... pacengine_render"
 	@echo "... pacengine_runtime"
+	@echo "... render_smoke"
 .PHONY : help
 
 

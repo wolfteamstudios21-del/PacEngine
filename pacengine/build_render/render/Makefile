@@ -85,6 +85,51 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 .PHONY : rebuild_cache/fast
 
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+.PHONY : list_install_components/fast
+
+# Special rule for the target install
+install: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -P cmake_install.cmake
+.PHONY : install
+
+# Special rule for the target install
+install/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -P cmake_install.cmake
+.PHONY : install/fast
+
+# Special rule for the target install/local
+install/local: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local
+
+# Special rule for the target install/local
+install/local/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local/fast
+
+# Special rule for the target install/strip
+install/strip: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip
+
+# Special rule for the target install/strip
+install/strip/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip/fast
+
 # The main all target
 all: cmake_check_build_system
 	cd /home/runner/workspace/pacengine/build_render && $(CMAKE_COMMAND) -E cmake_progress_start /home/runner/workspace/pacengine/build_render/CMakeFiles /home/runner/workspace/pacengine/build_render/render//CMakeFiles/progress.marks
@@ -117,6 +162,20 @@ depend:
 .PHONY : depend
 
 # Convenience name for target.
+render/CMakeFiles/pacengine_shaders.dir/rule:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 render/CMakeFiles/pacengine_shaders.dir/rule
+.PHONY : render/CMakeFiles/pacengine_shaders.dir/rule
+
+# Convenience name for target.
+pacengine_shaders: render/CMakeFiles/pacengine_shaders.dir/rule
+.PHONY : pacengine_shaders
+
+# fast build rule for target.
+pacengine_shaders/fast:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_shaders.dir/build.make render/CMakeFiles/pacengine_shaders.dir/build
+.PHONY : pacengine_shaders/fast
+
+# Convenience name for target.
 render/CMakeFiles/pacengine_render.dir/rule:
 	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 render/CMakeFiles/pacengine_render.dir/rule
 .PHONY : render/CMakeFiles/pacengine_render.dir/rule
@@ -129,6 +188,20 @@ pacengine_render: render/CMakeFiles/pacengine_render.dir/rule
 pacengine_render/fast:
 	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/build
 .PHONY : pacengine_render/fast
+
+# Convenience name for target.
+render/CMakeFiles/render_smoke.dir/rule:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 render/CMakeFiles/render_smoke.dir/rule
+.PHONY : render/CMakeFiles/render_smoke.dir/rule
+
+# Convenience name for target.
+render_smoke: render/CMakeFiles/render_smoke.dir/rule
+.PHONY : render_smoke
+
+# fast build rule for target.
+render_smoke/fast:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/render_smoke.dir/build.make render/CMakeFiles/render_smoke.dir/build
+.PHONY : render_smoke/fast
 
 assets/GltfLoader.o: assets/GltfLoader.cpp.o
 .PHONY : assets/GltfLoader.o
@@ -370,6 +443,30 @@ importer/PacWorldImporter.cpp.s:
 	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/importer/PacWorldImporter.cpp.s
 .PHONY : importer/PacWorldImporter.cpp.s
 
+tests/render_smoke.o: tests/render_smoke.cpp.o
+.PHONY : tests/render_smoke.o
+
+# target to build an object file
+tests/render_smoke.cpp.o:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/render_smoke.dir/build.make render/CMakeFiles/render_smoke.dir/tests/render_smoke.cpp.o
+.PHONY : tests/render_smoke.cpp.o
+
+tests/render_smoke.i: tests/render_smoke.cpp.i
+.PHONY : tests/render_smoke.i
+
+# target to preprocess a source file
+tests/render_smoke.cpp.i:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/render_smoke.dir/build.make render/CMakeFiles/render_smoke.dir/tests/render_smoke.cpp.i
+.PHONY : tests/render_smoke.cpp.i
+
+tests/render_smoke.s: tests/render_smoke.cpp.s
+.PHONY : tests/render_smoke.s
+
+# target to generate assembly for a file
+tests/render_smoke.cpp.s:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/render_smoke.dir/build.make render/CMakeFiles/render_smoke.dir/tests/render_smoke.cpp.s
+.PHONY : tests/render_smoke.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -377,8 +474,14 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
+	@echo "... install"
+	@echo "... install/local"
+	@echo "... install/strip"
+	@echo "... list_install_components"
 	@echo "... rebuild_cache"
+	@echo "... pacengine_shaders"
 	@echo "... pacengine_render"
+	@echo "... render_smoke"
 	@echo "... assets/GltfLoader.o"
 	@echo "... assets/GltfLoader.i"
 	@echo "... assets/GltfLoader.s"
@@ -409,6 +512,9 @@ help:
 	@echo "... importer/PacWorldImporter.o"
 	@echo "... importer/PacWorldImporter.i"
 	@echo "... importer/PacWorldImporter.s"
+	@echo "... tests/render_smoke.o"
+	@echo "... tests/render_smoke.i"
+	@echo "... tests/render_smoke.s"
 .PHONY : help
 
 

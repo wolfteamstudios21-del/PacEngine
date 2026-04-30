@@ -87,6 +87,25 @@ clean: render/clean
 .PHONY : clean
 
 #=============================================================================
+# Directory level rules for directory _deps/fastgltf-build
+
+# Recursive "all" directory target.
+_deps/fastgltf-build/all: _deps/fastgltf-build/CMakeFiles/fastgltf.dir/all
+.PHONY : _deps/fastgltf-build/all
+
+# Recursive "codegen" directory target.
+_deps/fastgltf-build/codegen: _deps/fastgltf-build/CMakeFiles/fastgltf.dir/codegen
+.PHONY : _deps/fastgltf-build/codegen
+
+# Recursive "preinstall" directory target.
+_deps/fastgltf-build/preinstall:
+.PHONY : _deps/fastgltf-build/preinstall
+
+# Recursive "clean" directory target.
+_deps/fastgltf-build/clean: _deps/fastgltf-build/CMakeFiles/fastgltf.dir/clean
+.PHONY : _deps/fastgltf-build/clean
+
+#=============================================================================
 # Directory level rules for directory engine
 
 # Recursive "all" directory target.
@@ -129,18 +148,25 @@ pacdata/clean: pacdata/CMakeFiles/pacdata.dir/clean
 
 # Recursive "all" directory target.
 render/all: render/CMakeFiles/pacengine_render.dir/all
+render/all: render/CMakeFiles/render_smoke.dir/all
+render/all: _deps/fastgltf-build/all
 .PHONY : render/all
 
 # Recursive "codegen" directory target.
 render/codegen: render/CMakeFiles/pacengine_render.dir/codegen
+render/codegen: render/CMakeFiles/render_smoke.dir/codegen
+render/codegen: _deps/fastgltf-build/codegen
 .PHONY : render/codegen
 
 # Recursive "preinstall" directory target.
-render/preinstall:
+render/preinstall: _deps/fastgltf-build/preinstall
 .PHONY : render/preinstall
 
 # Recursive "clean" directory target.
+render/clean: render/CMakeFiles/pacengine_shaders.dir/clean
 render/clean: render/CMakeFiles/pacengine_render.dir/clean
+render/clean: render/CMakeFiles/render_smoke.dir/clean
+render/clean: _deps/fastgltf-build/clean
 .PHONY : render/clean
 
 #=============================================================================
@@ -150,7 +176,7 @@ render/clean: render/CMakeFiles/pacengine_render.dir/clean
 pacdata/CMakeFiles/pacdata.dir/all:
 	$(MAKE) $(MAKESILENT) -f pacdata/CMakeFiles/pacdata.dir/build.make pacdata/CMakeFiles/pacdata.dir/depend
 	$(MAKE) $(MAKESILENT) -f pacdata/CMakeFiles/pacdata.dir/build.make pacdata/CMakeFiles/pacdata.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=1,2,3 "Built target pacdata"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=5,6,7 "Built target pacdata"
 .PHONY : pacdata/CMakeFiles/pacdata.dir/all
 
 # Build rule for subdir invocation for target.
@@ -167,7 +193,7 @@ pacdata: pacdata/CMakeFiles/pacdata.dir/rule
 # codegen rule for target.
 pacdata/CMakeFiles/pacdata.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f pacdata/CMakeFiles/pacdata.dir/build.make pacdata/CMakeFiles/pacdata.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=1,2,3 "Finished codegen for target pacdata"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=5,6,7 "Finished codegen for target pacdata"
 .PHONY : pacdata/CMakeFiles/pacdata.dir/codegen
 
 # clean rule for target.
@@ -182,7 +208,7 @@ pacdata/CMakeFiles/pacdata.dir/clean:
 engine/CMakeFiles/pacengine_runtime.dir/all: pacdata/CMakeFiles/pacdata.dir/all
 	$(MAKE) $(MAKESILENT) -f engine/CMakeFiles/pacengine_runtime.dir/build.make engine/CMakeFiles/pacengine_runtime.dir/depend
 	$(MAKE) $(MAKESILENT) -f engine/CMakeFiles/pacengine_runtime.dir/build.make engine/CMakeFiles/pacengine_runtime.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=15,16,17,18,19,20,21,22,23,24,25,26 "Built target pacengine_runtime"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=19,20,21,22,23,24,25,26,27,28,29,30 "Built target pacengine_runtime"
 .PHONY : engine/CMakeFiles/pacengine_runtime.dir/all
 
 # Build rule for subdir invocation for target.
@@ -199,7 +225,7 @@ pacengine_runtime: engine/CMakeFiles/pacengine_runtime.dir/rule
 # codegen rule for target.
 engine/CMakeFiles/pacengine_runtime.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f engine/CMakeFiles/pacengine_runtime.dir/build.make engine/CMakeFiles/pacengine_runtime.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=15,16,17,18,19,20,21,22,23,24,25,26 "Finished codegen for target pacengine_runtime"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=19,20,21,22,23,24,25,26,27,28,29,30 "Finished codegen for target pacengine_runtime"
 .PHONY : engine/CMakeFiles/pacengine_runtime.dir/codegen
 
 # clean rule for target.
@@ -208,18 +234,51 @@ engine/CMakeFiles/pacengine_runtime.dir/clean:
 .PHONY : engine/CMakeFiles/pacengine_runtime.dir/clean
 
 #=============================================================================
+# Target rules for target render/CMakeFiles/pacengine_shaders.dir
+
+# All Build rule for target.
+render/CMakeFiles/pacengine_shaders.dir/all:
+	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_shaders.dir/build.make render/CMakeFiles/pacengine_shaders.dir/depend
+	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_shaders.dir/build.make render/CMakeFiles/pacengine_shaders.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num= "Built target pacengine_shaders"
+.PHONY : render/CMakeFiles/pacengine_shaders.dir/all
+
+# Build rule for subdir invocation for target.
+render/CMakeFiles/pacengine_shaders.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/workspace/pacengine/build_render/CMakeFiles 0
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 render/CMakeFiles/pacengine_shaders.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/workspace/pacengine/build_render/CMakeFiles 0
+.PHONY : render/CMakeFiles/pacengine_shaders.dir/rule
+
+# Convenience name for target.
+pacengine_shaders: render/CMakeFiles/pacengine_shaders.dir/rule
+.PHONY : pacengine_shaders
+
+# codegen rule for target.
+render/CMakeFiles/pacengine_shaders.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_shaders.dir/build.make render/CMakeFiles/pacengine_shaders.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num= "Finished codegen for target pacengine_shaders"
+.PHONY : render/CMakeFiles/pacengine_shaders.dir/codegen
+
+# clean rule for target.
+render/CMakeFiles/pacengine_shaders.dir/clean:
+	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_shaders.dir/build.make render/CMakeFiles/pacengine_shaders.dir/clean
+.PHONY : render/CMakeFiles/pacengine_shaders.dir/clean
+
+#=============================================================================
 # Target rules for target render/CMakeFiles/pacengine_render.dir
 
 # All Build rule for target.
-render/CMakeFiles/pacengine_render.dir/all:
+render/CMakeFiles/pacengine_render.dir/all: render/CMakeFiles/pacengine_shaders.dir/all
+render/CMakeFiles/pacengine_render.dir/all: _deps/fastgltf-build/CMakeFiles/fastgltf.dir/all
 	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/depend
 	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=4,5,6,7,8,9,10,11,12,13,14 "Built target pacengine_render"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=8,9,10,11,12,13,14,15,16,17,18 "Built target pacengine_render"
 .PHONY : render/CMakeFiles/pacengine_render.dir/all
 
 # Build rule for subdir invocation for target.
 render/CMakeFiles/pacengine_render.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/workspace/pacengine/build_render/CMakeFiles 11
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/workspace/pacengine/build_render/CMakeFiles 15
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 render/CMakeFiles/pacengine_render.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/workspace/pacengine/build_render/CMakeFiles 0
 .PHONY : render/CMakeFiles/pacengine_render.dir/rule
@@ -229,15 +288,80 @@ pacengine_render: render/CMakeFiles/pacengine_render.dir/rule
 .PHONY : pacengine_render
 
 # codegen rule for target.
-render/CMakeFiles/pacengine_render.dir/codegen:
+render/CMakeFiles/pacengine_render.dir/codegen: render/CMakeFiles/pacengine_shaders.dir/all
 	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=4,5,6,7,8,9,10,11,12,13,14 "Finished codegen for target pacengine_render"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=8,9,10,11,12,13,14,15,16,17,18 "Finished codegen for target pacengine_render"
 .PHONY : render/CMakeFiles/pacengine_render.dir/codegen
 
 # clean rule for target.
 render/CMakeFiles/pacengine_render.dir/clean:
 	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/clean
 .PHONY : render/CMakeFiles/pacengine_render.dir/clean
+
+#=============================================================================
+# Target rules for target render/CMakeFiles/render_smoke.dir
+
+# All Build rule for target.
+render/CMakeFiles/render_smoke.dir/all: render/CMakeFiles/pacengine_render.dir/all
+render/CMakeFiles/render_smoke.dir/all: _deps/fastgltf-build/CMakeFiles/fastgltf.dir/all
+	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/render_smoke.dir/build.make render/CMakeFiles/render_smoke.dir/depend
+	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/render_smoke.dir/build.make render/CMakeFiles/render_smoke.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=31,32 "Built target render_smoke"
+.PHONY : render/CMakeFiles/render_smoke.dir/all
+
+# Build rule for subdir invocation for target.
+render/CMakeFiles/render_smoke.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/workspace/pacengine/build_render/CMakeFiles 17
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 render/CMakeFiles/render_smoke.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/workspace/pacengine/build_render/CMakeFiles 0
+.PHONY : render/CMakeFiles/render_smoke.dir/rule
+
+# Convenience name for target.
+render_smoke: render/CMakeFiles/render_smoke.dir/rule
+.PHONY : render_smoke
+
+# codegen rule for target.
+render/CMakeFiles/render_smoke.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/render_smoke.dir/build.make render/CMakeFiles/render_smoke.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=31,32 "Finished codegen for target render_smoke"
+.PHONY : render/CMakeFiles/render_smoke.dir/codegen
+
+# clean rule for target.
+render/CMakeFiles/render_smoke.dir/clean:
+	$(MAKE) $(MAKESILENT) -f render/CMakeFiles/render_smoke.dir/build.make render/CMakeFiles/render_smoke.dir/clean
+.PHONY : render/CMakeFiles/render_smoke.dir/clean
+
+#=============================================================================
+# Target rules for target _deps/fastgltf-build/CMakeFiles/fastgltf.dir
+
+# All Build rule for target.
+_deps/fastgltf-build/CMakeFiles/fastgltf.dir/all:
+	$(MAKE) $(MAKESILENT) -f _deps/fastgltf-build/CMakeFiles/fastgltf.dir/build.make _deps/fastgltf-build/CMakeFiles/fastgltf.dir/depend
+	$(MAKE) $(MAKESILENT) -f _deps/fastgltf-build/CMakeFiles/fastgltf.dir/build.make _deps/fastgltf-build/CMakeFiles/fastgltf.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=1,2,3,4 "Built target fastgltf"
+.PHONY : _deps/fastgltf-build/CMakeFiles/fastgltf.dir/all
+
+# Build rule for subdir invocation for target.
+_deps/fastgltf-build/CMakeFiles/fastgltf.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/workspace/pacengine/build_render/CMakeFiles 4
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 _deps/fastgltf-build/CMakeFiles/fastgltf.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/workspace/pacengine/build_render/CMakeFiles 0
+.PHONY : _deps/fastgltf-build/CMakeFiles/fastgltf.dir/rule
+
+# Convenience name for target.
+fastgltf: _deps/fastgltf-build/CMakeFiles/fastgltf.dir/rule
+.PHONY : fastgltf
+
+# codegen rule for target.
+_deps/fastgltf-build/CMakeFiles/fastgltf.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f _deps/fastgltf-build/CMakeFiles/fastgltf.dir/build.make _deps/fastgltf-build/CMakeFiles/fastgltf.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=1,2,3,4 "Finished codegen for target fastgltf"
+.PHONY : _deps/fastgltf-build/CMakeFiles/fastgltf.dir/codegen
+
+# clean rule for target.
+_deps/fastgltf-build/CMakeFiles/fastgltf.dir/clean:
+	$(MAKE) $(MAKESILENT) -f _deps/fastgltf-build/CMakeFiles/fastgltf.dir/build.make _deps/fastgltf-build/CMakeFiles/fastgltf.dir/clean
+.PHONY : _deps/fastgltf-build/CMakeFiles/fastgltf.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.
