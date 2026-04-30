@@ -1,0 +1,198 @@
+Final Architecture (Clean Separation)
+
+PacWorldImporter → Responsible for loading PacAi export, parsing both world.pacdata.json and visual_manifest.json, and coordinating initialization.
+PacSimulation (existing) → Owns the deterministic simulation (entities, ConflictSim, behaviors, etc.).
+PacRenderer → Purely visual — only deals with rendering proxies, materials, lighting, fog, camera, etc.
+
+
+1. PacWorldImporter.h
+C++// render/importer/PacWorldImporter.h
+#pragma once
+#include <string>
+#include <memory>
+#include "PacDataWorld.h"
+#include "VisualManifest.h"
+
+class PacSimulation;    // Forward declare your simulation core
+class PacRenderer;
+
+class PacWorldImporter {
+public:
+    PacWorldImporter(PacSimulation* simulation, PacRenderer* renderer);
+
+    /**
+     * Main entry point: Import a full PacAi export folder
+     * Handles both simulation data and visual data
+     */
+    bool Import(const std::string& exportFolderPath);
+
+    // Individual loaders (useful for testing)
+    bool LoadPacData(const std::string& pacdataPath, PacDataWorld& outWorld);
+    bool LoadVisualManifest(const std::string& manifestPath, VisualManifest& outManifest);
+
+private:
+    PacSimulation* m_simulation = nullptr;
+    PacRenderer*   m_renderer = nullptr;
+
+    // Internal helpers
+    bool CreateAssetDirectories(const std::string& exportFolderPath);
+    bool CreatePlaceholderAssets(const std::string& exportFolderPath);
+    void ApplyVisualToSimulation(const VisualManifest& manifest, const PacDataWorld& world);
+};
+
+2. PacWorldImporter.cpp
+C++// render/importer/PacWorldImporter.cpp
+#include "PacWorldImporter.h"
+#include "PacDataLoader.h"
+#include "VisualManifestLoader.h"
+#include "PacRenderer.h"
+#include "../simulation/PacSimulation.h"   // Adjust path to your simulation core
+#include <filesystem>
+#include <iostream>
+
+namespace fs = std::filesystem;
+
+PacWorldImporter::PacWorldImporter(PacSimulation* simulation, PacRenderer* renderer)
+    : m_simulation(simulation), m_renderer(renderer) {}
+
+bool PacWorldImporter::Import(const std::string& exportFolderPath) {
+    if (!fs::exists(exportFolderPath)) {
+        std::cerr << "[PacWorldImporter] Export folder not found: " << exportFolderPath << std::endl;
+        return false;
+    }
+
+    std::cout << "[PacWorldImporter] Starting import from: " << exportFolderPath << std::endl;
+
+    // 1. Ensure asset directories exist
+    CreateAssetDirectories(exportFolderPath);
+    CreatePlaceholderAssets(exportFolderPath);
+
+    // 2. Load Visual Manifest (for rendering)
+    VisualManifest manifest;
+    std::string manifestPath = exportFolderPath + "/visual_manifest.json";
+    bool hasVisual = VisualManifestLoader::Load(manifestPath, manifest);
+
+    if (hasVisual && m_renderer) {
+        m_renderer->ApplyVisualManifest(manifest);
+    }
+
+    // 3. Load PacData world (for simulation)
+    PacDataWorld world;
+    std::string pacdataPath = exportFolderPath + "/world.pacdata.json";
+    bool hasPacData = PacDataLoader::Load(pacdataPath, world);
+
+    if (hasPacData && m_simulation) {
+        m_simulation->LoadWorld(world);        // This is where your simulation core takes over
+    } else if (!hasPacData) {
+        std::cerr << "[PacWorldImporter] Warning: Failed to load PacData world." << std::endl;
+    }
+
+    // 4. Bridge visual entities to simulation entities if needed
+    if (hasVisual && hasPacData) {
+        ApplyVisualToSimulation(manifest, world);
+    }
+
+    std::cout << "[PacWorldImporter] Import completed. "
+              << "PacData: " << (hasPacData ? "OK" : "Failed") << ", "
+              << "Visual: " << (hasVisual ? "OK" : "Failed") << std::endl;
+
+    return hasPacData || hasVisual;  // At least one should succeed
+}
+
+bool PacWorldImporter::CreateAssetDirectories(const std::string& exportFolderPath) {
+    fs::path assetsDir = fs::path(exportFolderPath) / "assets";
+    fs::path modelsDir = assetsDir / "models";
+    fs::path terrainDir = assetsDir / "models" / "terrain";
+
+    try {
+        fs::create_directories(modelsDir);
+        fs::create_directories(terrainDir);
+        return true;
+    } catch (...) {
+        std::cerr << "[PacWorldImporter] Failed to create asset directories." << std::endl;
+        return false;
+    }
+}
+
+bool PacWorldImporter::CreatePlaceholderAssets(const std::string& exportFolderPath) {
+    // You can move the placeholder logic here or keep it in renderer for now
+    // For cleanliness, we can call renderer helper if you prefer
+    return true;
+}
+
+void PacWorldImporter::ApplyVisualToSimulation(const VisualManifest& manifest, const PacDataWorld& world) {
+    // Optional: Sync visual preferences (e.g. which entities should be visible, material hints) 
+    // back into simulation components if needed
+    std::cout << "[PacWorldImporter] Applied visual metadata to simulation." << std::endl;
+}
+
+3. Adjusted PacRenderer — Now Purely Visual
+C++// render/core/PacRenderer.h
+#pragma once
+#include <string>
+#include <memory>
+#include <glm/glm.hpp>
+#include "VisualManifest.h"
+
+class RenderScene;
+
+class PacRenderer {
+public:
+    PacRenderer();
+    ~PacRenderer();
+
+    bool Initialize(void* windowHandle, uint32_t width, uint32_t height);
+    void Shutdown();
+
+    void BeginFrame();
+    void Render();
+    void EndFrame();
+    void Resize(uint32_t width, uint32_t height);
+
+    // === Purely Visual API (Updated) ===
+    void ApplyVisualManifest(const VisualManifest& manifest);
+    void UpdateSimulationState(const PacDataWorld& worldDelta);   // Only transforms, visibility, etc.
+
+    void SetCamera(const glm::vec3& pos, const glm::vec3& target, float fov = 60.0f);
+    void SetViewportMode(bool use3D);
+
+private:
+    std::unique_ptr<RenderScene> m_scene;
+    bool m_use3D = true;
+};
+C++// render/core/PacRenderer.cpp  (simplified & cleaned)
+#include "PacRenderer.h"
+#include "RenderScene.h"
+
+bool PacRenderer::ApplyVisualManifest(const VisualManifest& manifest) {
+    if (!m_scene) return false;
+
+    m_scene->SetEnvironment(manifest.environment);
+
+    // Load static environment
+    for (const auto& mesh : manifest.static_meshes) {
+        // Create proxy and load glTF later
+        auto* proxy = m_scene->CreateProxy(hashString(mesh.id));
+        if (proxy) {
+            // Apply transform, material intent, etc.
+        }
+    }
+
+    std::cout << "[PacRenderer] Applied visual manifest (environment + static meshes)." << std::endl;
+    return true;
+}
+
+void PacRenderer::UpdateSimulationState(const PacDataWorld& worldDelta) {
+    if (!m_scene) return;
+
+    for (const auto& ent : worldDelta.entities) {
+        m_scene->UpdateProxyTransform(ent.id, buildTransform(ent.transform));
+    }
+}
+
+Summary of Changes
+
+PacWorldImporter is now the single responsible class for importing a PacAi export.
+PacRenderer is now purely visual — no more PacData loading inside it.
+Clear ownership: Importer → Simulation + Renderer.
+Much easier to test and maintain.

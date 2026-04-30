@@ -12,6 +12,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/runner/workspace/pacengine/render/assets/TextureManager.cpp" "render/CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.o" "gcc" "render/CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.o.d"
   "/home/runner/workspace/pacengine/render/backend/VulkanContext.cpp" "render/CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o" "gcc" "render/CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o.d"
   "/home/runner/workspace/pacengine/render/core/Material.cpp" "render/CMakeFiles/pacengine_render.dir/core/Material.cpp.o" "gcc" "render/CMakeFiles/pacengine_render.dir/core/Material.cpp.o.d"
+  "/home/runner/workspace/pacengine/render/core/PacDataLoader.cpp" "render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o" "gcc" "render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o.d"
   "/home/runner/workspace/pacengine/render/core/PacRenderer.cpp" "render/CMakeFiles/pacengine_render.dir/core/PacRenderer.cpp.o" "gcc" "render/CMakeFiles/pacengine_render.dir/core/PacRenderer.cpp.o.d"
   "/home/runner/workspace/pacengine/render/core/RenderProxy.cpp" "render/CMakeFiles/pacengine_render.dir/core/RenderProxy.cpp.o" "gcc" "render/CMakeFiles/pacengine_render.dir/core/RenderProxy.cpp.o.d"
   "/home/runner/workspace/pacengine/render/core/RenderScene.cpp" "render/CMakeFiles/pacengine_render.dir/core/RenderScene.cpp.o" "gcc" "render/CMakeFiles/pacengine_render.dir/core/RenderScene.cpp.o.d"

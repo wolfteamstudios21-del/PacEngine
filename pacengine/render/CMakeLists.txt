@@ -28,6 +28,7 @@ set(RENDER_SOURCES
     core/RenderProxy.cpp
     core/Material.cpp
     core/VisualManifestLoader.cpp
+    core/PacDataLoader.cpp
     assets/GltfLoader.cpp
     assets/TextureManager.cpp
     backend/VulkanContext.cpp

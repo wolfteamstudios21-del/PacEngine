@@ -226,6 +226,30 @@ core/Material.cpp.s:
 	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/core/Material.cpp.s
 .PHONY : core/Material.cpp.s
 
+core/PacDataLoader.o: core/PacDataLoader.cpp.o
+.PHONY : core/PacDataLoader.o
+
+# target to build an object file
+core/PacDataLoader.cpp.o:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o
+.PHONY : core/PacDataLoader.cpp.o
+
+core/PacDataLoader.i: core/PacDataLoader.cpp.i
+.PHONY : core/PacDataLoader.i
+
+# target to preprocess a source file
+core/PacDataLoader.cpp.i:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.i
+.PHONY : core/PacDataLoader.cpp.i
+
+core/PacDataLoader.s: core/PacDataLoader.cpp.s
+.PHONY : core/PacDataLoader.s
+
+# target to generate assembly for a file
+core/PacDataLoader.cpp.s:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.s
+.PHONY : core/PacDataLoader.cpp.s
+
 core/PacRenderer.o: core/PacRenderer.cpp.o
 .PHONY : core/PacRenderer.o
 
@@ -343,6 +367,9 @@ help:
 	@echo "... core/Material.o"
 	@echo "... core/Material.i"
 	@echo "... core/Material.s"
+	@echo "... core/PacDataLoader.o"
+	@echo "... core/PacDataLoader.i"
+	@echo "... core/PacDataLoader.s"
 	@echo "... core/PacRenderer.o"
 	@echo "... core/PacRenderer.i"
 	@echo "... core/PacRenderer.s"

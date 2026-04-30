@@ -1,0 +1,618 @@
+You’re basically asking for the whole bridge now—nice. I’ll give you tight, implementation‑ready skeletons for each piece so you can drop them in and iterate.
+A. Full VisualManifestLoader implementation
+Assumes the VisualManifest/EnvironmentData structs you sketched earlier, extended a bit for lights + post.
+
+```cpp
+// render/pacdata/VisualManifest.h
+#pragma once
+#include <vector>
+#include <string>
+#include <unordered_map>
+#include <glm/glm.hpp>
+
+struct EnvironmentData {
+    std::string sky_type = "physical";
+    glm::vec3 sun_direction{0.5f, 0.8f, 0.3f};
+    float sun_intensity = 1.2f;
+    glm::vec3 sun_color{1.0f, 0.95f, 0.85f};
+    float ambient_intensity = 0.4f;
+
+    bool fog_enabled = true;
+    float fog_density = 0.015f;
+    glm::vec3 fog_color{0.7f, 0.8f, 0.9f};
+    float fog_height_falloff = 0.5f;
+};
+
+struct GlobalIlluminationData {
+    std::string gi_type = "probe_grid";
+    std::string probe_density = "medium";
+};
+
+struct RenderComponent {
+    std::string asset;
+    std::unordered_map<int, glm::vec4> materialOverrides;
+    bool cast_shadows = true;
+    bool receive_shadows = true;
+    bool visible = true;
+};
+
+struct StaticMeshData {
+    std::string id;
+    std::string asset;
+    glm::vec3 position{0.0f};
+    glm::quat rotation{1.0f, 0.0f, 0.0f, 0.0f};
+    glm::vec3 scale{1.0f};
+    std::string material_intent;
+};
+
+struct LightData {
+    std::string type; // directional, point, spot
+    glm::vec3 position{0.0f};
+    glm::vec3 direction{0.0f, -1.0f, 0.0f};
+    glm::vec3 color{1.0f};
+    float intensity = 1.0f;
+    float range = 10.0f;
+};
+
+struct PostProcessingData {
+    std::string tonemap = "aces";
+    float exposure = 1.0f;
+    float bloom_intensity = 0.25f;
+    float contrast = 1.0f;
+    float saturation = 1.0f;
+};
+
+struct VisualManifest {
+    std::string visual_version = "1.0.0";
+    std::string pacdata_version;
+
+    EnvironmentData environment;
+    GlobalIlluminationData global_illumination;
+
+    std::vector<std::pair<uint64_t, RenderComponent>> entities;
+    std::vector<StaticMeshData> static_meshes;
+    std::vector<LightData> lights;
+    PostProcessingData post_processing;
+};
+```
+
+```cpp
+// render/pacdata/VisualManifestLoader.h
+#pragma once
+#include "VisualManifest.h"
+#include <string>
+
+class VisualManifestLoader {
+public:
+    static bool Load(const std::string& filepath, VisualManifest& outManifest);
+    static bool LoadFromString(const std::string& jsonString, VisualManifest& outManifest);
+};
+```
+
+```cpp
+// render/pacdata/VisualManifestLoader.cpp
+#include "VisualManifestLoader.h"
+#include <nlohmann/json.hpp>
+#include <fstream>
+#include <iostream>
+
+using json = nlohmann::json;
+
+static glm::vec3 vec3FromArray(const json& arr, const glm::vec3& def) {
+    if (!arr.is_array() || arr.size() < 3) return def;
+    return glm::vec3(arr[0].get<float>(), arr[1].get<float>(), arr[2].get<float>());
+}
+
+bool VisualManifestLoader::Load(const std::string& filepath, VisualManifest& outManifest) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        std::cerr << "[VisualManifestLoader] Failed to open: " << filepath << std::endl;
+        return false;
+    }
+
+    json j;
+    file >> j;
+    return LoadFromString(j.dump(), outManifest);
+}
+
+bool VisualManifestLoader::LoadFromString(const std::string& jsonString, VisualManifest& outManifest) {
+    try {
+        json j = json::parse(jsonString);
+
+        outManifest.visual_version = j.value("visual_version", "1.0.0");
+        outManifest.pacdata_version = j.value("pacdata_version", "");
+
+        // Environment
+        if (j.contains("environment")) {
+            auto env = j["environment"];
+            outManifest.environment.sky_type = env.value("sky_type", "physical");
+            outManifest.environment.sun_direction =
+                vec3FromArray(env.value("sun_direction", json::array({0.5, 0.8, 0.3})),
+                              glm::vec3(0.5f, 0.8f, 0.3f));
+            outManifest.environment.sun_intensity = env.value("sun_intensity", 1.2f);
+            outManifest.environment.sun_color =
+                vec3FromArray(env.value("sun_color", json::array({1.0, 0.95, 0.85})),
+                              glm::vec3(1.0f, 0.95f, 0.85f));
+            outManifest.environment.ambient_intensity = env.value("ambient_intensity", 0.4f);
+            outManifest.environment.fog_enabled = env.value("fog_enabled", true);
+            outManifest.environment.fog_density = env.value("fog_density", 0.015f);
+            outManifest.environment.fog_color =
+                vec3FromArray(env.value("fog_color", json::array({0.7, 0.8, 0.9})),
+                              glm::vec3(0.7f, 0.8f, 0.9f));
+            outManifest.environment.fog_height_falloff = env.value("fog_height_falloff", 0.5f);
+        }
+
+        // GI
+        if (j.contains("global_illumination")) {
+            auto gi = j["global_illumination"];
+            outManifest.global_illumination.gi_type = gi.value("gi_type", "probe_grid");
+            outManifest.global_illumination.probe_density = gi.value("probe_density", "medium");
+        }
+
+        // Entities
+        outManifest.entities.clear();
+        if (j.contains("entities") && j["entities"].is_array()) {
+            for (const auto& e : j["entities"]) {
+                uint64_t id = e.value("id", 0);
+                RenderComponent rc;
+                if (e.contains("render")) {
+                    auto r = e["render"];
+                    rc.asset = r.value("asset", "");
+                    rc.cast_shadows = r.value("cast_shadows", true);
+                    rc.receive_shadows = r.value("receive_shadows", true);
+                    rc.visible = r.value("visible", true);
+
+                    if (r.contains("material_overrides") && r["material_overrides"].is_object()) {
+                        for (auto it = r["material_overrides"].begin(); it != r["material_overrides"].end(); ++it) {
+                            int slot = std::stoi(it.key());
+                            auto mo = it.value();
+                            if (mo.contains("baseColorFactor")) {
+                                auto arr = mo["baseColorFactor"];
+                                if (arr.is_array() && arr.size() >= 4) {
+                                    rc.materialOverrides[slot] = glm::vec4(
+                                        arr[0].get<float>(),
+                                        arr[1].get<float>(),
+                                        arr[2].get<float>(),
+                                        arr[3].get<float>()
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                outManifest.entities.emplace_back(id, rc);
+            }
+        }
+
+        // Static meshes
+        outManifest.static_meshes.clear();
+        if (j.contains("static_meshes") && j["static_meshes"].is_array()) {
+            for (const auto& sm : j["static_meshes"]) {
+                StaticMeshData d;
+                d.id = sm.value("id", "");
+                d.asset = sm.value("asset", "");
+                if (sm.contains("transform")) {
+                    auto t = sm["transform"];
+                    d.position = vec3FromArray(t.value("position", json::array({0,0,0})), glm::vec3(0.0f));
+                    auto sArr = t.value("scale", json::array({1,1,1}));
+                    d.scale = vec3FromArray(sArr, glm::vec3(1.0f));
+                    // rotation: assume quaternion [x,y,z,w] or [w,x,y,z] – you can refine later
+                }
+                d.material_intent = sm.value("material_intent", "");
+                outManifest.static_meshes.push_back(d);
+            }
+        }
+
+        // Lights
+        outManifest.lights.clear();
+        if (j.contains("lights") && j["lights"].is_array()) {
+            for (const auto& l : j["lights"]) {
+                LightData ld;
+                ld.type = l.value("type", "point");
+                ld.position = vec3FromArray(l.value("position", json::array({0,0,0})), glm::vec3(0.0f));
+                ld.direction = vec3FromArray(l.value("direction", json::array({0,-1,0})), glm::vec3(0.0f, -1.0f, 0.0f));
+                ld.color = vec3FromArray(l.value("color", json::array({1,1,1})), glm::vec3(1.0f));
+                ld.intensity = l.value("intensity", 1.0f);
+                ld.range = l.value("range", 10.0f);
+                outManifest.lights.push_back(ld);
+            }
+        }
+
+        // Post-processing
+        if (j.contains("post_processing")) {
+            auto pp = j["post_processing"];
+            outManifest.post_processing.tonemap = pp.value("tonemap", "aces");
+            outManifest.post_processing.exposure = pp.value("exposure", 1.0f);
+            outManifest.post_processing.bloom_intensity = pp.value("bloom_intensity", 0.25f);
+            outManifest.post_processing.contrast = pp.value("contrast", 1.0f);
+            outManifest.post_processing.saturation = pp.value("saturation", 1.0f);
+        }
+
+        std::cout << "[VisualManifestLoader] Loaded manifest successfully.\n";
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "[VisualManifestLoader] JSON parse error: " << e.what() << std::endl;
+        return false;
+    }
+}
+```
+
+B. world.pacdata.json loader for PacEngine
+Minimal but structured: load world, entities, components, behavior graphs. You can expand as PacData evolves.
+
+```cpp
+// render/pacdata/PacDataWorld.h
+#pragma once
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include <glm/glm.hpp>
+
+struct PacComponentTransform {
+    glm::vec3 position{0.0f};
+    glm::vec3 rotationEuler{0.0f};
+    glm::vec3 scale{1.0f};
+};
+
+struct PacEntity {
+    uint64_t id = 0;
+    std::string name;
+    std::unordered_map<std::string, std::string> tags;
+    PacComponentTransform transform;
+    // Future: more components (combat, AI, etc.)
+};
+
+struct BehaviorGraphNode {
+    std::string id;
+    std::string type;
+    std::unordered_map<std::string, std::string> params;
+};
+
+struct BehaviorGraph {
+    std::string id;
+    std::vector<BehaviorGraphNode> nodes;
+};
+
+struct PacDataWorld {
+    std::string name;
+    uint64_t seed = 0;
+    std::string description;
+
+    std::vector<PacEntity> entities;
+    std::vector<BehaviorGraph> behaviorGraphs;
+
+    // ConflictSim block, shards, GM logic, etc. can be added here
+};
+```
+
+```cpp
+// render/pacdata/PacDataLoader.h
+#pragma once
+#include "PacDataWorld.h"
+#include <string>
+
+class PacDataLoader {
+public:
+    static bool Load(const std::string& filepath, PacDataWorld& outWorld);
+};
+```
+
+```cpp
+// render/pacdata/PacDataLoader.cpp
+#include "PacDataLoader.h"
+#include <nlohmann/json.hpp>
+#include <fstream>
+#include <iostream>
+
+using json = nlohmann::json;
+
+bool PacDataLoader::Load(const std::string& filepath, PacDataWorld& outWorld) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        std::cerr << "[PacDataLoader] Failed to open: " << filepath << std::endl;
+        return false;
+    }
+
+    json j;
+    file >> j;
+
+    try {
+        auto world = j["world"];
+        outWorld.name = world.value("name", "");
+        outWorld.seed = world.value("seed", 0ull);
+        outWorld.description = world.value("description", "");
+
+        // Entities
+        outWorld.entities.clear();
+        if (world.contains("entities") && world["entities"].is_array()) {
+            for (const auto& e : world["entities"]) {
+                PacEntity ent;
+                ent.id = e.value("id", 0ull);
+                ent.name = e.value("name", "");
+
+                if (e.contains("tags") && e["tags"].is_object()) {
+                    for (auto it = e["tags"].begin(); it != e["tags"].end(); ++it) {
+                        ent.tags[it.key()] = it.value().get<std::string>();
+                    }
+                }
+
+                if (e.contains("transform")) {
+                    auto t = e["transform"];
+                    auto pos = t.value("position", json::array({0,0,0}));
+                    auto rot = t.value("rotation_euler", json::array({0,0,0}));
+                    auto scl = t.value("scale", json::array({1,1,1}));
+                    if (pos.is_array() && pos.size() >= 3) {
+                        ent.transform.position = glm::vec3(
+                            pos[0].get<float>(), pos[1].get<float>(), pos[2].get<float>());
+                    }
+                    if (rot.is_array() && rot.size() >= 3) {
+                        ent.transform.rotationEuler = glm::vec3(
+                            rot[0].get<float>(), rot[1].get<float>(), rot[2].get<float>());
+                    }
+                    if (scl.is_array() && scl.size() >= 3) {
+                        ent.transform.scale = glm::vec3(
+                            scl[0].get<float>(), scl[1].get<float>(), scl[2].get<float>());
+                    }
+                }
+
+                outWorld.entities.push_back(ent);
+            }
+        }
+
+        // Behavior graphs
+        outWorld.behaviorGraphs.clear();
+        if (world.contains("behavior_graphs") && world["behavior_graphs"].is_array()) {
+            for (const auto& bg : world["behavior_graphs"]) {
+                BehaviorGraph graph;
+                graph.id = bg.value("id", "");
+                if (bg.contains("nodes") && bg["nodes"].is_array()) {
+                    for (const auto& n : bg["nodes"]) {
+                        BehaviorGraphNode node;
+                        node.id = n.value("id", "");
+                        node.type = n.value("type", "");
+                        if (n.contains("params") && n["params"].is_object()) {
+                            for (auto it = n["params"].begin(); it != n["params"].end(); ++it) {
+                                node.params[it.key()] = it.value().dump();
+                            }
+                        }
+                        graph.nodes.push_back(node);
+                    }
+                }
+                outWorld.behaviorGraphs.push_back(graph);
+            }
+        }
+
+        std::cout << "[PacDataLoader] Loaded world: " << outWorld.name << std::endl;
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "[PacDataLoader] JSON parse error: " << e.what() << std::endl;
+        return false;
+    }
+}
+```
+
+C. ImportPacAiExport() pseudocode for M3 (with simulation init)
+High‑level flow, mixing what you already have with PacData:
+
+```cpp
+bool PacRenderer::ImportPacAiExport(const std::string& exportFolderPath) {
+    if (!fs::exists(exportFolderPath)) return false;
+
+    // 1. Ensure scene exists
+    if (!m_scene) {
+        m_scene = std::make_unique<RenderScene>();
+    }
+
+    // 2. Load visual manifest
+    VisualManifest manifest;
+    const std::string manifestPath = exportFolderPath + "/visual_manifest.json";
+    if (VisualManifestLoader::Load(manifestPath, manifest)) {
+        m_scene->SetEnvironment(manifest.environment);
+        // Optionally: m_scene->SetPostProcessing(manifest.post_processing);
+    }
+
+    // 3. Ensure assets + placeholders
+    fs::path assetsDir = fs::path(exportFolderPath) / "assets";
+    if (!fs::exists(assetsDir)) fs::create_directories(assetsDir);
+    CreatePlaceholderAssets(assetsDir);
+
+    // 4. Load PacData world
+    PacDataWorld world;
+    const std::string pacdataPath = exportFolderPath + "/world.pacdata.json";
+    if (!PacDataLoader::Load(pacdataPath, world)) {
+        std::cerr << "[PacRenderer] Failed to load PacData world.\n";
+        // You can still render visual-only scene if manifest loaded
+    }
+
+    // 5. Build simulation representation (M3)
+    //    - Here you'd pass PacDataWorld into your simulation core
+    //    - For now, just map transforms into RenderScene
+    for (const auto& ent : world.entities) {
+        RenderProxy* proxy = m_scene->CreateProxy(ent.id);
+        if (!proxy) continue;
+
+        // Build transform matrix from position/rotationEuler/scale
+        glm::mat4 T(1.0f);
+        T = glm::translate(T, ent.transform.position);
+        // Apply rotation (convert Euler to quat/mat)
+        // Apply scale
+        proxy->transform = T;
+    }
+
+    // 6. Load visual entities from manifest
+    LoadVisualEntities(manifest);                 // uses entityId + asset
+    LoadStaticMeshes(manifest, exportFolderPath); // environment
+
+    // 7. Hook behavior graphs into simulation (future)
+    //    - world.behaviorGraphs → your AI/behavior system
+    //    - conflict_sim block → ConflictSim runtime
+
+    std::cout << "[PacRenderer] Import + simulation init complete.\n";
+    return true;
+}
+```
+
+Later, M3 proper:
+
+* PacDataWorld goes into a SimulationWorld owned by a separate PacSimulation module.
+
+* PacRenderer only mirrors transforms/visibility from that simulation each frame.
+
+D. Placeholder glTF generator (actual geometry)
+Super minimal embedded glTF for a triangle/quad—good enough to see something.
+
+```cpp
+// render/assets/PlaceholderGltf.h
+#pragma once
+#include <string>
+
+namespace PlaceholderGltf {
+    inline std::string SimpleTriangle() {
+        // Very minimal glTF 2.0 with a single triangle in JSON form.
+        // This is not pretty, but it's valid enough for most loaders.
+        return R"({
+  "asset": { "version": "2.0" },
+  "scenes": [ { "nodes": [0] } ],
+  "nodes": [ { "mesh": 0 } ],
+  "meshes": [
+    {
+      "primitives": [
+        {
+          "attributes": { "POSITION": 0 },
+          "indices": 1
+        }
+      ]
+    }
+  ],
+  "buffers": [
+    { "uri": "data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAAAAAAAAPwAAAAAAAADwPwAAAAAAAADwPwAAAAAAAADwPw==", "byteLength": 72 }
+  ],
+  "bufferViews": [
+    { "buffer": 0, "byteOffset": 0, "byteLength": 36, "target": 34962 },
+    { "buffer": 0, "byteOffset": 36, "byteLength": 36, "target": 34963 }
+  ],
+  "accessors": [
+    { "bufferView": 0, "byteOffset": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0,0,0], "max": [1,1,0] },
+    { "bufferView": 1, "byteOffset": 0, "componentType": 5123, "count": 3, "type": "SCALAR" }
+  ]
+})";
+    }
+}
+```
+
+```cpp
+// in PacRenderer::CreatePlaceholderAssets
+#include "PlaceholderGltf.h"
+#include <fstream>
+
+void PacRenderer::CreatePlaceholderAssets(const fs::path& assetsDir) {
+    fs::path agentPath = assetsDir / "models" / "agent.gltf";
+    fs::create_directories(agentPath.parent_path());
+    if (!fs::exists(agentPath)) {
+        std::ofstream f(agentPath);
+        f << PlaceholderGltf::SimpleTriangle();
+        std::cout << "[PacRenderer] Created placeholder agent glTF: " << agentPath << std::endl;
+    }
+
+    fs::path groundPath = assetsDir / "models" / "terrain" / "arena.gltf";
+    fs::create_directories(groundPath.parent_path());
+    if (!fs::exists(groundPath)) {
+        std::ofstream f(groundPath);
+        f << PlaceholderGltf::SimpleTriangle();
+        std::cout << "[PacRenderer] Created placeholder arena glTF: " << groundPath << std::endl;
+    }
+}
+```
+
+You can swap SimpleTriangle() later for a quad or a slightly nicer primitive.
+E. PacEngine Editor integration
+High‑level flow on the TypeScript/editor side:
+
+1. User triggers “Generate & Export to PacEngine” in the UI.
+
+2. generateWithProjectSync() runs, returns pacEngineExportPath.
+
+3. Editor calls into the C++ binding: PacRenderer::ImportPacAiExport(exportPath).
+
+4. Editor switches viewport to 3D, centers camera, refreshes outliner.
+
+Rough TS‑side sketch:
+
+```ts
+// editor/pacengine-bridge.ts
+import { generateWithProjectSync } from '@/lib/sync/paccore-sync';
+import { callNativeImport } from '@/lib/native-bridge'; // Node-API binding
+
+export async function generateAndImportIntoPacEngine(projectId: string, input: any) {
+  const result = await generateWithProjectSync(projectId, input);
+
+  if (!result.success || !result.pacEngineExportPath) {
+    console.error('[Editor] PacEngine export failed.');
+    return;
+  }
+
+  const exportPath = result.pacEngineExportPath as string;
+
+  const ok = await callNativeImport(exportPath); // calls PacRenderer::ImportPacAiExport
+  if (!ok) {
+    console.error('[Editor] PacEngine import failed.');
+    return;
+  }
+
+  // Update editor state
+  // - switch viewport to 3D
+  // - refresh outliner from simulation/scene
+  // - maybe auto-position camera
+  window.dispatchEvent(new CustomEvent('pacengine:sceneImported', {
+    detail: { exportPath }
+  }));
+}
+```
+
+Node‑API binding side (C++ sketch):
+
+```cpp
+// bindings/pacengine_binding.cpp
+#include <napi.h>
+#include "render/core/PacRenderer.h"
+
+static std::unique_ptr<PacRenderer> g_renderer;
+
+Napi::Value ImportPacAiExportBinding(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (info.Length() < 1 || !info[0].IsString()) {
+        Napi::TypeError::New(env, "Expected export path string").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    std::string path = info[0].As<Napi::String>().Utf8Value();
+
+    if (!g_renderer) {
+        g_renderer = std::make_unique<PacRenderer>();
+        g_renderer->Initialize(/* window handle */, 1280, 720);
+    }
+
+    bool ok = g_renderer->ImportPacAiExport(path);
+    return Napi::Boolean::New(env, ok);
+}
+
+Napi::Object Init(Napi::Env env, Napi::Object exports) {
+    exports.Set("importPacAiExport", Napi::Function::New(env, ImportPacAiExportBinding));
+    return exports;
+}
+
+NODE_API_MODULE(pacengine_binding, Init)
+```
+
+Then in TS:
+
+```ts
+// lib/native-bridge.ts
+const binding = require('../build/Release/pacengine_binding.node');
+
+export async function callNativeImport(exportPath: string): Promise<boolean> {
+  return binding.importPacAiExport(exportPath);
+}
+```
+
+your opinion?

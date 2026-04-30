@@ -2,6 +2,7 @@
 #include "RenderScene.h"
 #include "RenderProxy.h"
 #include "VisualManifestLoader.h"
+#include "PacDataLoader.h"
 #include "../backend/VulkanContext.h"
 #include "../assets/GltfLoader.h"
 
@@ -147,9 +148,19 @@ bool PacRenderer::ImportPacAiExport(const std::string& exportFolderPath) {
         SetCamera(manifest.camera_default.position, manifest.camera_default.target);
     }
 
-    // 11. TODO (Phase 2.5.2): load world.pacdata.json via PacDataLoader
-    std::printf("[PacRenderer] PacData path: %s/world.pacdata.json\n",
-                exportFolderPath.c_str());
+    // 11. Load world.pacdata.json — soft-fail so visual import still works when
+    //     only a visual_manifest.json is present.
+    {
+        const std::string pacdataPath = exportFolderPath + "/world.pacdata.json";
+        PacDataWorld world;
+        if (PacDataLoader::Load(pacdataPath, world)) {
+            std::printf("[PacRenderer] PacData loaded — entities: %zu  shards: %zu\n",
+                        world.entities.size(), world.shards.size());
+            // Phase 2.5.2 — drive proxy transforms from world.entities here.
+        } else {
+            std::printf("[PacRenderer] No world.pacdata.json found — visual-only import\n");
+        }
+    }
 
     std::printf("[PacRenderer] Import complete — entities: %zu  static_meshes: %zu  lights: %zu\n",
                 manifest.entities.size(),

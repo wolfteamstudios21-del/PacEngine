@@ -7,6 +7,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o.d"
   "CMakeFiles/pacengine_render.dir/core/Material.cpp.o"
   "CMakeFiles/pacengine_render.dir/core/Material.cpp.o.d"
+  "CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o"
+  "CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o.d"
   "CMakeFiles/pacengine_render.dir/core/PacRenderer.cpp.o"
   "CMakeFiles/pacengine_render.dir/core/PacRenderer.cpp.o.d"
   "CMakeFiles/pacengine_render.dir/core/RenderProxy.cpp.o"

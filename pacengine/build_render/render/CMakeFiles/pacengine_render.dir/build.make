@@ -142,10 +142,24 @@ render/CMakeFiles/pacengine_render.dir/core/VisualManifestLoader.cpp.s: cmake_fo
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pacengine_render.dir/core/VisualManifestLoader.cpp.s"
 	cd /home/runner/workspace/pacengine/build_render/render && /nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/workspace/pacengine/render/core/VisualManifestLoader.cpp -o CMakeFiles/pacengine_render.dir/core/VisualManifestLoader.cpp.s
 
+render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o: render/CMakeFiles/pacengine_render.dir/flags.make
+render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o: /home/runner/workspace/pacengine/render/core/PacDataLoader.cpp
+render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o: render/CMakeFiles/pacengine_render.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o"
+	cd /home/runner/workspace/pacengine/build_render/render && /nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o -MF CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o.d -o CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o -c /home/runner/workspace/pacengine/render/core/PacDataLoader.cpp
+
+render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.i"
+	cd /home/runner/workspace/pacengine/build_render/render && /nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/workspace/pacengine/render/core/PacDataLoader.cpp > CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.i
+
+render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.s"
+	cd /home/runner/workspace/pacengine/build_render/render && /nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/workspace/pacengine/render/core/PacDataLoader.cpp -o CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.s
+
 render/CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.o: render/CMakeFiles/pacengine_render.dir/flags.make
 render/CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.o: /home/runner/workspace/pacengine/render/assets/GltfLoader.cpp
 render/CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.o: render/CMakeFiles/pacengine_render.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object render/CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object render/CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.o"
 	cd /home/runner/workspace/pacengine/build_render/render && /nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT render/CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.o -MF CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.o.d -o CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.o -c /home/runner/workspace/pacengine/render/assets/GltfLoader.cpp
 
 render/CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.i: cmake_force
@@ -159,7 +173,7 @@ render/CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.s: cmake_force
 render/CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.o: render/CMakeFiles/pacengine_render.dir/flags.make
 render/CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.o: /home/runner/workspace/pacengine/render/assets/TextureManager.cpp
 render/CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.o: render/CMakeFiles/pacengine_render.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object render/CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object render/CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.o"
 	cd /home/runner/workspace/pacengine/build_render/render && /nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT render/CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.o -MF CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.o.d -o CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.o -c /home/runner/workspace/pacengine/render/assets/TextureManager.cpp
 
 render/CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.i: cmake_force
@@ -173,7 +187,7 @@ render/CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.s: cmake_force
 render/CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o: render/CMakeFiles/pacengine_render.dir/flags.make
 render/CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o: /home/runner/workspace/pacengine/render/backend/VulkanContext.cpp
 render/CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o: render/CMakeFiles/pacengine_render.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object render/CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object render/CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o"
 	cd /home/runner/workspace/pacengine/build_render/render && /nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT render/CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o -MF CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o.d -o CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o -c /home/runner/workspace/pacengine/render/backend/VulkanContext.cpp
 
 render/CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.i: cmake_force
@@ -191,6 +205,7 @@ pacengine_render_OBJECTS = \
 "CMakeFiles/pacengine_render.dir/core/RenderProxy.cpp.o" \
 "CMakeFiles/pacengine_render.dir/core/Material.cpp.o" \
 "CMakeFiles/pacengine_render.dir/core/VisualManifestLoader.cpp.o" \
+"CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o" \
 "CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.o" \
 "CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.o" \
 "CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o"
@@ -203,12 +218,13 @@ render/libpacengine_render.a: render/CMakeFiles/pacengine_render.dir/core/Render
 render/libpacengine_render.a: render/CMakeFiles/pacengine_render.dir/core/RenderProxy.cpp.o
 render/libpacengine_render.a: render/CMakeFiles/pacengine_render.dir/core/Material.cpp.o
 render/libpacengine_render.a: render/CMakeFiles/pacengine_render.dir/core/VisualManifestLoader.cpp.o
+render/libpacengine_render.a: render/CMakeFiles/pacengine_render.dir/core/PacDataLoader.cpp.o
 render/libpacengine_render.a: render/CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.o
 render/libpacengine_render.a: render/CMakeFiles/pacengine_render.dir/assets/TextureManager.cpp.o
 render/libpacengine_render.a: render/CMakeFiles/pacengine_render.dir/backend/VulkanContext.cpp.o
 render/libpacengine_render.a: render/CMakeFiles/pacengine_render.dir/build.make
 render/libpacengine_render.a: render/CMakeFiles/pacengine_render.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Linking CXX static library libpacengine_render.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/runner/workspace/pacengine/build_render/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Linking CXX static library libpacengine_render.a"
 	cd /home/runner/workspace/pacengine/build_render/render && $(CMAKE_COMMAND) -P CMakeFiles/pacengine_render.dir/cmake_clean_target.cmake
 	cd /home/runner/workspace/pacengine/build_render/render && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/pacengine_render.dir/link.txt --verbose=$(VERBOSE)
 
