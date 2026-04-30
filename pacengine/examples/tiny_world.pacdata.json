@@ -1,29 +1,89 @@
 {
-  "pacdata_version": "1.0.0",
-  "paccore_version": "3.0.0",
+  "version": "1.0.0",
+  "format": "pacai_pacdata_v7",
+  "pacCoreVersion": "3.5",
+  "project": {
+    "id": "shooter_test_001",
+    "name": "PacEngine Shooter Test",
+    "syncKey": null
+  },
+
+  "seed": 112233,
 
   "world": {
-    "name": "tiny_agent_world",
+    "name": "Shooter_Test_Arena",
+    "biome": "urban_training_ground",
+    "size": { "x": 200, "y": 200 }
+  },
 
-    "entities": [
+  "conflictSim": {
+    "enabled": true,
+    "tick_rate": 20,
+
+    "factions": [
       {
-        "id": 1,
-        "type": "agent",
-        "components": {
-          "transform": {
-            "x": 0,
-            "y": 0,
-            "z": 0
-          },
-          "agent_state": {
-            "active": true
-          }
-        }
+        "id": "blue_team",
+        "name": "Blue Team",
+        "aggression": 0.5,
+        "territory": ["north_pad"]
+      },
+      {
+        "id": "red_team",
+        "name": "Red Team",
+        "aggression": 0.5,
+        "territory": ["south_pad"]
       }
     ],
 
-    "conflict_sim": {
-      "enabled": false
+    "activeConflicts": [],
+    "directorState": { "pacing": "medium" }
+  },
+
+  "entities": [
+    {
+      "id": "blue_01",
+      "type": "soldier",
+      "faction": "blue_team",
+      "position": { "x": 10, "y": 0, "z": 40 },
+      "rotation": { "x": 0, "y": 180, "z": 0 },
+      "stats": { "health": 100, "morale": 1.0 }
+    },
+    {
+      "id": "blue_02",
+      "type": "soldier",
+      "faction": "blue_team",
+      "position": { "x": -10, "y": 0, "z": 40 },
+      "rotation": { "x": 0, "y": 180, "z": 0 },
+      "stats": { "health": 100, "morale": 1.0 }
+    },
+
+    {
+      "id": "red_01",
+      "type": "soldier",
+      "faction": "red_team",
+      "position": { "x": 10, "y": 0, "z": -40 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "stats": { "health": 100, "morale": 1.0 }
+    },
+    {
+      "id": "red_02",
+      "type": "soldier",
+      "faction": "red_team",
+      "position": { "x": -10, "y": 0, "z": -40 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "stats": { "health": 100, "morale": 1.0 }
     }
+  ],
+
+  "motionAbstraction": {
+    "stance": "combat_ready",
+    "tempo": "fast",
+    "energy": "aggressive"
+  },
+
+  "metadata": {
+    "deterministic": true,
+    "created_at": "2026-04-29T03:00:00Z",
+    "assetsOnlyMode": false
   }
 }
