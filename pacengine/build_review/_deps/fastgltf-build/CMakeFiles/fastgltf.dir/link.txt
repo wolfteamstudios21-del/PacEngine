@@ -1,2 +1,0 @@
-/nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/ar qc libfastgltf.a CMakeFiles/fastgltf.dir/src/fastgltf.cpp.o CMakeFiles/fastgltf.dir/src/base64.cpp.o CMakeFiles/fastgltf.dir/deps/simdjson/simdjson.cpp.o
-/nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/ranlib libfastgltf.a
