@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { 
@@ -53,6 +53,8 @@ import {
   LogOut,
   User,
   ShieldCheck,
+  StepForward,
+  Clock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -66,6 +68,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { rendererBridge } from "@/lib/renderer-bridge";
 
 export default function Editor() {
   const { projectId } = useParams();
@@ -98,6 +101,51 @@ export default function Editor() {
 
   // Viewport mode toggle (2D orthographic ↔ 3D atmospheric)
   const [viewMode, setViewMode] = useState<"2D" | "3D">("2D");
+
+  // M3: Real-time simulation tick state
+  const [simPlaying,         setSimPlaying]         = useState(false);
+  const [simTickCount,       setSimTickCount]       = useState(0);
+  const [simElapsedSeconds,  setSimElapsedSeconds]  = useState(0);
+  const simIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const SIM_HZ = 20;
+  const SIM_DT = 1 / SIM_HZ;
+
+  const handleSimStep = useCallback(() => {
+    rendererBridge.simulationStep(SIM_DT)
+      .then((r) => { setSimTickCount(r.tickCount); setSimElapsedSeconds(r.elapsedSeconds); })
+      .catch(() => {});
+  }, []);
+
+  const handleSimPlay = useCallback(() => {
+    if (simIntervalRef.current) return;
+    rendererBridge.simulationStart(SIM_HZ).catch(() => {});
+    setSimPlaying(true);
+    simIntervalRef.current = setInterval(() => {
+      rendererBridge.simulationStep(SIM_DT)
+        .then((r) => { setSimTickCount(r.tickCount); setSimElapsedSeconds(r.elapsedSeconds); })
+        .catch(() => {});
+    }, 1000 / SIM_HZ);
+  }, []);
+
+  const handleSimPause = useCallback(() => {
+    if (simIntervalRef.current) {
+      clearInterval(simIntervalRef.current);
+      simIntervalRef.current = null;
+    }
+    rendererBridge.simulationStop().catch(() => {});
+    setSimPlaying(false);
+  }, []);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (simIntervalRef.current) {
+        clearInterval(simIntervalRef.current);
+        simIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   // Import .pacexport dialog state
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -292,6 +340,46 @@ export default function Editor() {
         </div>
         
         <div className="flex items-center gap-2 bg-background/50 p-1 rounded-md border border-border">
+          {/* M3 Real-time simulation controls */}
+          <div className="flex items-center gap-1 px-2 border-r border-border">
+            <span className="text-[10px] text-muted-foreground mr-1">Sim:</span>
+            {simPlaying ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-6 text-[10px] px-2 gap-1 bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30"
+                onClick={handleSimPause}
+                title="Pause simulation"
+              >
+                <Pause className="h-3 w-3" /> Pause
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 text-[10px] px-2 gap-1 hover:text-green-400 hover:bg-green-400/10"
+                onClick={handleSimPlay}
+                title="Play simulation at 20 Hz"
+              >
+                <Play className="h-3 w-3" /> Play
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-[10px] px-2 gap-1 hover:text-sky-400 hover:bg-sky-400/10"
+              onClick={handleSimStep}
+              title="Step one tick (50 ms)"
+            >
+              <StepForward className="h-3 w-3" /> Step
+            </Button>
+            <div className="flex items-center gap-1 ml-1 text-[10px] font-mono text-muted-foreground" title="Elapsed sim time / tick count">
+              <Clock className="h-2.5 w-2.5" />
+              <span>{simElapsedSeconds.toFixed(2)}s</span>
+              <span className="opacity-50">#{simTickCount}</span>
+            </div>
+          </div>
+
           <div className="flex items-center gap-2 px-2 border-r border-border">
             <Label htmlFor="ticks" className="text-xs text-muted-foreground">Ticks:</Label>
             <Input 

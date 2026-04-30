@@ -37,6 +37,23 @@ export interface RendererStatus {
   frameCount:  number;
 }
 
+export interface SimulationTickResult {
+  tickCount: number;
+  elapsedSeconds: number;
+  simLoaded: boolean;
+}
+
+export interface EntityPositionSnapshot {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface SimulationSnapshotResult extends SimulationTickResult {
+  entities: EntityPositionSnapshot[];
+}
+
 export const rendererBridge = {
   status():                  Promise<RendererStatus>      { return call("GET",    "/status"); },
   initialize(w: number, h: number)                        { return call<{ initialized: boolean; native: boolean }>("POST", "/initialize", { width: w, height: h }); },
@@ -49,5 +66,18 @@ export const rendererBridge = {
   },
   updateSimulationState(entityCount: number, tickIndex: number): Promise<void> {
     return call("POST", "/update-state", { entityCount, tickIndex });
+  },
+  // M3 tick bindings
+  simulationStart(hz?: number): Promise<{ running: boolean; hz?: number }> {
+    return call("POST", "/simulation/start", { hz });
+  },
+  simulationStop(): Promise<{ running: boolean }> {
+    return call("POST", "/simulation/stop", {});
+  },
+  simulationStep(dt?: number): Promise<SimulationTickResult> {
+    return call("POST", "/simulation/step", { dt });
+  },
+  simulationSnapshot(): Promise<SimulationSnapshotResult> {
+    return call("GET", "/simulation/snapshot");
   },
 } as const;

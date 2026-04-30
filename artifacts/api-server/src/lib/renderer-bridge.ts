@@ -32,6 +32,28 @@ interface ImportExportResult {
   staticMeshes: number;
 }
 
+interface SimulationTickResult {
+  tickCount: number;
+  elapsedSeconds: number;
+  simLoaded: boolean;
+}
+
+interface EntityPositionSnapshot {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface EntitySnapshotResult extends SimulationTickResult {
+  entities: EntityPositionSnapshot[];
+}
+
+interface TickControlResult {
+  running: boolean;
+  hz?: number;
+}
+
 interface NativeAddon {
   initialize(width: number, height: number): boolean;
   shutdown(): void;
@@ -45,6 +67,11 @@ interface NativeAddon {
   setCamera(params: { position: [number, number, number]; target: [number, number, number]; fov?: number }): void;
   getFrameCount(): number;
   isInitialized(): boolean;
+  // M3 tick bindings
+  startTick(hz?: number): TickControlResult;
+  stopTick(): TickControlResult;
+  stepTick(dt?: number): SimulationTickResult;
+  getEntitySnapshot(): EntitySnapshotResult;
 }
 
 const stubAddon: NativeAddon = {
@@ -60,6 +87,10 @@ const stubAddon: NativeAddon = {
   setCamera:              () => {},
   getFrameCount:          () => 0,
   isInitialized:          () => false,
+  startTick:              (hz) => ({ running: true, hz: hz ?? 20 }),
+  stopTick:               () => ({ running: false }),
+  stepTick:               () => ({ tickCount: 0, elapsedSeconds: 0, simLoaded: false }),
+  getEntitySnapshot:      () => ({ entities: [], tickCount: 0, elapsedSeconds: 0, simLoaded: false }),
 };
 
 let _isNative = false;
@@ -131,4 +162,22 @@ export function rendererStatus() {
     native:      _isNative,
     frameCount:  _addon.getFrameCount(),
   };
+}
+
+// ─── M3 Simulation tick ───────────────────────────────────────────────────────
+
+export function rendererStartTick(hz?: number) {
+  return _addon.startTick(hz);
+}
+
+export function rendererStopTick() {
+  return _addon.stopTick();
+}
+
+export function rendererSimulationStep(dt?: number) {
+  return _addon.stepTick(dt);
+}
+
+export function rendererGetEntitySnapshot() {
+  return _addon.getEntitySnapshot();
 }

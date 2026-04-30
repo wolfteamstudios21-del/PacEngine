@@ -21,6 +21,11 @@ const stub = {
   setCamera:              (_params) => {},
   getFrameCount:          ()        => 0,
   isInitialized:          ()        => false,
+  // M3 tick bindings
+  startTick:              (_hz)     => ({ running: true, hz: _hz ?? 20 }),
+  stopTick:               ()        => ({ running: false }),
+  stepTick:               (_dt)     => ({ tickCount: 0, elapsedSeconds: 0, simLoaded: false }),
+  getEntitySnapshot:      ()        => ({ entities: [], tickCount: 0, elapsedSeconds: 0, simLoaded: false }),
 };
 
 const addon    = native ?? stub;

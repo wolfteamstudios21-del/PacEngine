@@ -3,6 +3,7 @@
 #include "../core/PacDataLoader.h"
 #include "../core/VisualManifestLoader.h"
 #include "../core/PacRenderer.h"
+#include "../../simulation/PacSimulation.h"
 
 #include <cstdio>
 #include <filesystem>
@@ -50,8 +51,9 @@ bool PacWorldImporter::Import(const std::string& exportFolderPath) {
     if (hasPacData) {
         std::printf("[PacWorldImporter] PacData loaded — entities: %zu  shards: %zu\n",
                     world.entities.size(), world.shards.size());
-        // Phase M3: m_simulation->LoadWorld(world);
-        (void)m_simulation;
+        if (m_simulation) {
+            m_simulation->LoadWorld(world);
+        }
     } else {
         std::fprintf(stderr,
             "[PacWorldImporter] world.pacdata.json not found — visual-only import\n");

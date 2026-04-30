@@ -9,6 +9,20 @@ add_test(
     COMMAND test_determinism
 )
 
+# M3: PacSimulation determinism test (render-layer simulation, no PacRuntime deps)
+add_executable(test_simulation_determinism test_simulation_determinism.cpp
+    ../simulation/PacSimulation.cpp
+)
+target_include_directories(test_simulation_determinism
+    PRIVATE
+        ../render/core
+        ../simulation
+)
+add_test(
+    NAME    simulation_determinism
+    COMMAND test_simulation_determinism
+)
+
 add_executable(test_ecs test_ecs.cpp)
 target_link_libraries(test_ecs
     PRIVATE

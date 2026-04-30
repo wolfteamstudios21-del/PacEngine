@@ -1,8 +1,8 @@
 import { useRef, useCallback, useEffect, useState } from "react";
-import { rendererBridge, type ImportExportResult } from "../lib/renderer-bridge";
+import { rendererBridge, type ImportExportResult, type SimulationTickResult } from "../lib/renderer-bridge";
 
 export type ViewMode = "2D" | "3D";
-export type { ImportExportResult };
+export type { ImportExportResult, SimulationTickResult };
 
 export interface UsePacRendererOptions {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -15,16 +15,29 @@ export interface UsePacRendererResult {
   setCamera(pos: [number, number, number], target: [number, number, number], fov?: number): void;
   importExport(folderPath: string): Promise<ImportExportResult>;
   updateState(entityCount: number, tickIndex: number): void;
+  // M3 tick control
+  stepTick(dt?: number): Promise<SimulationTickResult>;
+  startTick(hz?: number): void;
+  stopTick(): void;
+  isTickRunning: boolean;
+  simTickCount: number;
+  simElapsedSeconds: number;
 }
 
 export function usePacRenderer({ canvasRef, enabled = true }: UsePacRendererOptions): UsePacRendererResult {
   const [isReady,  setIsReady]  = useState(false);
   const [isNative, setIsNative] = useState(false);
 
-  const rafRef      = useRef<number>(0);
-  const mountedRef  = useRef(true);
-  const lastFrameMs = useRef(0);
-  const lastPollMs  = useRef(0);
+  // M3 tick state
+  const [isTickRunning,      setIsTickRunning]      = useState(false);
+  const [simTickCount,       setSimTickCount]       = useState(0);
+  const [simElapsedSeconds,  setSimElapsedSeconds]  = useState(0);
+
+  const rafRef        = useRef<number>(0);
+  const mountedRef    = useRef(true);
+  const lastFrameMs   = useRef(0);
+  const lastPollMs    = useRef(0);
+  const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -104,5 +117,62 @@ export function usePacRenderer({ canvasRef, enabled = true }: UsePacRendererOpti
     rendererBridge.updateSimulationState(entityCount, tickIndex).catch(() => {});
   }, []);
 
-  return { isReady, isNative, setCamera, importExport, updateState };
+  // M3 tick control
+  const stepTick = useCallback((dt?: number): Promise<SimulationTickResult> => {
+    return rendererBridge.simulationStep(dt).then((result) => {
+      if (mountedRef.current) {
+        setSimTickCount(result.tickCount);
+        setSimElapsedSeconds(result.elapsedSeconds);
+      }
+      return result;
+    });
+  }, []);
+
+  const startTick = useCallback((hz = 20) => {
+    if (tickIntervalRef.current) return;
+    const dt = 1 / hz;
+    setIsTickRunning(true);
+    tickIntervalRef.current = setInterval(() => {
+      rendererBridge.simulationStep(dt)
+        .then((result) => {
+          if (mountedRef.current) {
+            setSimTickCount(result.tickCount);
+            setSimElapsedSeconds(result.elapsedSeconds);
+          }
+        })
+        .catch(() => {});
+    }, 1000 / hz);
+  }, []);
+
+  const stopTick = useCallback(() => {
+    if (tickIntervalRef.current) {
+      clearInterval(tickIntervalRef.current);
+      tickIntervalRef.current = null;
+    }
+    setIsTickRunning(false);
+  }, []);
+
+  // Clean up tick interval on unmount
+  useEffect(() => {
+    return () => {
+      if (tickIntervalRef.current) {
+        clearInterval(tickIntervalRef.current);
+        tickIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  return {
+    isReady,
+    isNative,
+    setCamera,
+    importExport,
+    updateState,
+    stepTick,
+    startTick,
+    stopTick,
+    isTickRunning,
+    simTickCount,
+    simElapsedSeconds,
+  };
 }

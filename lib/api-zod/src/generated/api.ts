@@ -803,3 +803,53 @@ export const RendererSetCameraBody = zod.object({
     .optional()
     .describe("Vertical field of view in degrees (default 60)"),
 });
+
+// ─── M3 Simulation tick bindings ──────────────────────────────────────────────
+
+/**
+ * @summary Advance the PacSimulation by one tick
+ */
+export const SimulationStepBody = zod.object({
+  dt: zod
+    .number()
+    .optional()
+    .describe("Delta-time in seconds (default 0.05 = 20 Hz)"),
+});
+
+export const SimulationStepResponse = zod.object({
+  tickCount: zod.number().describe("Total tick count since LoadWorld"),
+  elapsedSeconds: zod.number().describe("Elapsed simulation time in seconds"),
+  simLoaded: zod.boolean().describe("True when a world has been loaded into the simulation"),
+});
+
+/**
+ * @summary Get current entity position snapshot from PacSimulation
+ */
+export const EntityPositionSnapshot = zod.object({
+  id: zod.number().describe("Entity id (uint64 as JS number)"),
+  x: zod.number(),
+  y: zod.number(),
+  z: zod.number(),
+});
+
+export const SimulationSnapshotResponse = zod.object({
+  entities: zod.array(EntityPositionSnapshot).describe("Current entity positions"),
+  tickCount: zod.number(),
+  elapsedSeconds: zod.number(),
+  simLoaded: zod.boolean(),
+});
+
+/**
+ * @summary Start the simulation tick loop
+ */
+export const SimulationStartTickBody = zod.object({
+  hz: zod
+    .number()
+    .optional()
+    .describe("Target tick frequency in Hz (default 20)"),
+});
+
+export const SimulationTickControlResponse = zod.object({
+  running: zod.boolean().describe("True when the tick loop is running"),
+  hz: zod.number().optional().describe("Configured Hz (present when starting)"),
+});

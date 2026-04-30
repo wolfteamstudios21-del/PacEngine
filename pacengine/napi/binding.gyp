@@ -2,12 +2,16 @@
   "targets": [
     {
       "target_name": "pacrenderer",
-      "sources": ["src/PacRendererAddon.cpp"],
+      "sources": [
+        "src/PacRendererAddon.cpp",
+        "../simulation/PacSimulation.cpp"
+      ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")",
         "../render/core",
         "../render/vendor",
-        "../render/importer"
+        "../render/importer",
+        "../simulation"
       ],
       "cflags!":    ["-fno-exceptions"],
       "cflags_cc!": ["-fno-exceptions"],

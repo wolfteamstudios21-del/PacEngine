@@ -229,9 +229,48 @@ void PacRenderer::UpdateSimulationState(const PacDataWorld& world) {
     if (!m_impl->scene) return;
 
     for (const auto& ent : world.entities) {
-        // Phase 2.5.2 — build a PacMat4 from ent.transform and push to the proxy:
-        // m_impl->scene->UpdateProxyTransform(ent.id, BuildTransform(ent.transform));
-        (void)ent;
+        // Build a TRS matrix from the entity transform and push it to the proxy.
+        const PacTransformComponent& t = ent.transform;
+
+        // Scale matrix
+        PacMat4 S;
+        S.m[0][0] = t.scale.x;
+        S.m[1][1] = t.scale.y;
+        S.m[2][2] = t.scale.z;
+
+        // Rotation matrix from quaternion xyzw
+        const float qx = t.rotation[0], qy = t.rotation[1],
+                    qz = t.rotation[2], qw = t.rotation[3];
+        PacMat4 R;
+        R.m[0][0] = 1.f - 2.f*(qy*qy + qz*qz);
+        R.m[0][1] =       2.f*(qx*qy + qz*qw);
+        R.m[0][2] =       2.f*(qx*qz - qy*qw);
+        R.m[1][0] =       2.f*(qx*qy - qz*qw);
+        R.m[1][1] = 1.f - 2.f*(qx*qx + qz*qz);
+        R.m[1][2] =       2.f*(qy*qz + qx*qw);
+        R.m[2][0] =       2.f*(qx*qz + qy*qw);
+        R.m[2][1] =       2.f*(qy*qz - qx*qw);
+        R.m[2][2] = 1.f - 2.f*(qx*qx + qy*qy);
+
+        // Translation matrix
+        PacMat4 T;
+        T.m[3][0] = t.position.x;
+        T.m[3][1] = t.position.y;
+        T.m[3][2] = t.position.z;
+
+        // TRS = T * R * S (column-major, apply S first)
+        PacMat4 mat;
+        for (int col = 0; col < 4; ++col) {
+            for (int row = 0; row < 3; ++row) {
+                float rs = R.m[col][row] * (col < 3 ? S.m[col][col] : 1.f);
+                mat.m[col][row] = rs;
+            }
+        }
+        mat.m[3][0] += T.m[3][0];
+        mat.m[3][1] += T.m[3][1];
+        mat.m[3][2] += T.m[3][2];
+
+        m_impl->scene->UpdateProxyTransform(ent.id, mat);
     }
 }
 

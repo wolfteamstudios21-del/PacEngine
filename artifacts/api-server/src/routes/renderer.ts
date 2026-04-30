@@ -9,6 +9,11 @@ import {
   RendererResizeBody,
   RendererUpdateStateBody,
   RendererSetCameraBody,
+  SimulationStepBody,
+  SimulationStepResponse,
+  SimulationSnapshotResponse,
+  SimulationStartTickBody,
+  SimulationTickControlResponse,
 } from "@workspace/api-zod";
 import {
   rendererInitialize,
@@ -19,6 +24,10 @@ import {
   rendererSetCamera,
   rendererUpdateSimulationState,
   rendererStatus,
+  rendererStartTick,
+  rendererStopTick,
+  rendererSimulationStep,
+  rendererGetEntitySnapshot,
   WORKSPACE_ROOT,
 } from "../lib/renderer-bridge";
 
@@ -84,6 +93,30 @@ router.post("/renderer/set-camera", (req, res) => {
   const target = body.target   as [number, number, number];
   rendererSetCamera(pos, target, body.fov ?? 60);
   res.status(204).end();
+});
+
+// ─── M3 Simulation tick routes ────────────────────────────────────────────────
+
+router.post("/renderer/simulation/start", (req, res) => {
+  const body   = SimulationStartTickBody.parse(req.body);
+  const result = rendererStartTick(body.hz);
+  res.json(SimulationTickControlResponse.parse(result));
+});
+
+router.post("/renderer/simulation/stop", (_req, res) => {
+  const result = rendererStopTick();
+  res.json(SimulationTickControlResponse.parse(result));
+});
+
+router.post("/renderer/simulation/step", (req, res) => {
+  const body   = SimulationStepBody.parse(req.body);
+  const result = rendererSimulationStep(body.dt);
+  res.json(SimulationStepResponse.parse(result));
+});
+
+router.get("/renderer/simulation/snapshot", (_req, res) => {
+  const result = rendererGetEntitySnapshot();
+  res.json(SimulationSnapshotResponse.parse(result));
 });
 
 export default router;
