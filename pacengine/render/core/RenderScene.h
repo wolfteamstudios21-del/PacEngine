@@ -31,12 +31,21 @@ public:
     void Update(float deltaTime);
     void Render();
 
+    // Scene takes shared ownership of imported meshes + materials so that
+    // RenderProxy raw pointers into them never dangle.
+    void RegisterMesh(std::shared_ptr<class Mesh> mesh);
+    void RegisterMaterial(std::shared_ptr<Material> mat);
+
 private:
     std::unordered_map<uint64_t, std::unique_ptr<RenderProxy>> m_proxies;
     std::vector<LightData>                                      m_lights;
-    std::vector<std::unique_ptr<Material>>                      m_materials;
-    EnvironmentData    m_env;
-    GiSettings         m_gi;
+
+    // Shared ownership pools — raw Mesh*/Material* in RenderProxy borrow from here.
+    std::vector<std::shared_ptr<class Mesh>> m_meshCache;
+    std::vector<std::shared_ptr<Material>>   m_materials;
+
+    EnvironmentData     m_env;
+    GiSettings          m_gi;
     PostProcessSettings m_pp;
 };
 

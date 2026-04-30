@@ -1,0 +1,117 @@
+Here's a clean, practical CMake setup tailored for your current PacEngine project (solo dev, mixed C++/TypeScript, Replit-friendly where possible).
+1. Updated Root CMakeLists.txt
+Replace or merge this into your existing root CMakeLists.txt:
+cmake# pacengine/CMakeLists.txt
+cmake_minimum_required(VERSION 3.22)
+project(PacEngine VERSION 0.3.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Useful options
+option(PACENGINE_BUILD_RENDERER "Build the 3D Rendering module" ON)
+
+# Find dependencies
+find_package(glm CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+
+# Add subdirectories
+add_subdirectory(simulation)    # Your existing simulation core
+add_subdirectory(render)        # New rendering module
+
+if(PACENGINE_BUILD_RENDERER)
+    add_subdirectory(bindings)  # Node-API bridge for TypeScript
+endif()
+
+# Main executable / library (adjust based on your current setup)
+add_executable(PacEngineEditor 
+    main.cpp                    # Your entry point if any
+)
+
+target_link_libraries(PacEngineEditor 
+    PRIVATE 
+        PacSimulation
+        PacRenderer
+)
+
+# Include directories
+target_include_directories(PacEngineEditor PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+2. New render/CMakeLists.txt
+Create this file: render/CMakeLists.txt
+cmake# render/CMakeLists.txt
+cmake_minimum_required(VERSION 3.22)
+
+add_library(PacRenderer STATIC)
+
+target_sources(PacRenderer PRIVATE
+    core/PacRenderer.cpp
+    core/RenderScene.cpp
+    core/RenderProxy.cpp
+    core/Material.cpp
+    
+    pacdata/VisualManifestLoader.cpp
+    
+    assets/GltfLoader.cpp
+)
+
+target_include_directories(PacRenderer PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+
+target_link_libraries(PacRenderer PUBLIC 
+    glm::glm
+    nlohmann_json::nlohmann_json
+)
+
+# Optional: Add Vulkan later
+# find_package(Vulkan REQUIRED)
+# target_link_libraries(PacRenderer PRIVATE Vulkan::Vulkan)
+
+# For now, we'll keep it as a stub so it compiles
+target_compile_definitions(PacRenderer PRIVATE 
+    PACENGINE_RENDERER_STUB=1
+)
+3. Directory Structure You Should Create Now
+Run these commands in your project root:
+Bashmkdir -p render/core
+mkdir -p render/assets
+mkdir -p render/backend
+mkdir -p render/pacdata
+mkdir -p bindings
+Then place the files we’ve already written:
+
+render/core/PacRenderer.h/cpp
+render/core/RenderScene.h/cpp
+render/core/RenderProxy.h/cpp
+render/core/Material.h/cpp (you can create a minimal one)
+render/pacdata/VisualManifest.h + VisualManifestLoader.h/cpp
+render/assets/GltfLoader.h/cpp
+
+4. Minimal Material.cpp (Quick Addition)
+C++// render/core/Material.cpp
+#include "Material.h"
+
+Material::Material() = default;
+Material::~Material() = default;
+5. Next Steps After CMake
+Once this builds successfully, we will:
+
+Add a very basic Vulkan context (just clear screen + colored triangle) to prove rendering works.
+Integrate a real glTF loader (tinygltf is easiest to start with).
+Create the Node-API bindings so your TypeScript editor can call PacRenderer::ImportPacAiExport().
+
+
+Your Action Items Right Now:
+
+Create the folder structure shown above.
+Add the render/CMakeLists.txt and update the root CMakeLists.txt.
+Copy all the class files we’ve created so far into the proper folders.
+Try building with:
+
+Bashmkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Debug
+cmake --build .

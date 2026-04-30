@@ -1,6 +1,7 @@
 #include "RenderScene.h"
 #include "RenderProxy.h"
 #include "Material.h"
+#include "Mesh.h"
 #include <cstdio>
 
 namespace pac::render {
@@ -45,6 +46,14 @@ void RenderScene::SetGi(const GiSettings& gi) {
 
 void RenderScene::SetPostProcess(const PostProcessSettings& pp) {
     m_pp = pp;
+}
+
+void RenderScene::RegisterMesh(std::shared_ptr<Mesh> mesh) {
+    if (mesh) m_meshCache.push_back(std::move(mesh));
+}
+
+void RenderScene::RegisterMaterial(std::shared_ptr<Material> mat) {
+    if (mat) m_materials.push_back(std::move(mat));
 }
 
 void RenderScene::Update(float /*deltaTime*/) {

@@ -2,11 +2,10 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "../core/Mesh.h"
+#include "../core/Material.h"
 
 namespace pac::render {
-
-class Mesh;
-class Material;
 
 struct GltfLoadResult {
     std::vector<std::shared_ptr<Mesh>>     meshes;

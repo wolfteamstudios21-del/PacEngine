@@ -1,11 +1,11 @@
 #pragma once
 #include <cstdint>
+#include <string>
 #include "render_types.h"
+#include "Mesh.h"
+#include "Material.h"
 
 namespace pac::render {
-
-class Mesh;
-class Material;
 
 // One RenderProxy per simulation entity.  Owned by RenderScene.
 struct RenderProxy {

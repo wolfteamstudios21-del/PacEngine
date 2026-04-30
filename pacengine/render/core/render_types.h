@@ -62,17 +62,17 @@ struct LightData {
 };
 
 struct EnvironmentData {
-    SkyModel  skyModel         = SkyModel::PhysicalSky;
-    PacVec3   sunDirection     = {0.5f, 0.8f, 0.3f};
-    float     sunIntensity     = 1.f;
+    SkyModel  skyModel           = SkyModel::Physical;
+    PacVec3   sunDirection       = {0.5f, 0.8f, 0.3f};
+    float     sunIntensity       = 1.f;
     float     atmosphericDensity = 1.f;
-    float     fogDensity       = 0.02f;
-    PacVec3   fogColor         = {0.7f, 0.8f, 0.9f};
+    float     fogDensity         = 0.02f;
+    PacVec3   fogColor           = {0.7f, 0.8f, 0.9f};
     std::string hdriPath;
 };
 
 struct GiSettings {
-    GiType giType       = GiType::VoxelProbeHybrid;
+    GiType giType       = GiType::ProbeGrid;
     float  voxelSize    = 0.5f;
     int    probeDensity = 1;  // 0=low 1=medium 2=high
 };
