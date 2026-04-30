@@ -13,18 +13,11 @@ if(NOT PACENGINE_BUILD_RENDER)
     return()
 endif()
 
-include(FetchContent)
-
 # -----------------------------------------------------------------------
-# nlohmann/json — single-header JSON parser for VisualManifestLoader
+# nlohmann/json — vendored single header (render/vendor/nlohmann/json.hpp)
+# No network access needed; header is committed directly to the repo.
 # -----------------------------------------------------------------------
-FetchContent_Declare(nlohmann_json
-    URL      https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp
-    URL_HASH SHA256=9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6
-    DOWNLOAD_NO_EXTRACT TRUE
-    DOWNLOAD_DIR        ${CMAKE_BINARY_DIR}/_deps/nlohmann_json_header
-)
-FetchContent_MakeAvailable(nlohmann_json)
+set(NLOHMANN_JSON_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/vendor)
 
 # -----------------------------------------------------------------------
 # pacengine_render static library
@@ -44,7 +37,7 @@ add_library(pacengine_render STATIC ${RENDER_SOURCES})
 
 target_include_directories(pacengine_render
     PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}
-    PRIVATE ${CMAKE_BINARY_DIR}/_deps/nlohmann_json_header
+    PRIVATE ${NLOHMANN_JSON_INCLUDE}
 )
 
 target_compile_features(pacengine_render PUBLIC cxx_std_20)

@@ -1,0 +1,154 @@
+I recommend we create a new file: lib/export/pacengine-export.ts
+Here’s my proposal for it:
+TypeScript// lib/export/pacengine-export.ts
+import { ConflictContext } from '../conflict-sim-v7';
+import fs from 'fs/promises';
+import path from 'path';
+
+export interface PacEngineExportOptions {
+  projectId: string;
+  pacCoreResult: any;
+  conflictSnapshot: ConflictContext;
+  seed: number;
+  description: string;
+  factions: any[];
+  zones: any[];
+  conflicts: any[];
+  motionProfile: any;
+}
+
+/**
+ * Exports PacCore/ConflictSim data into a format PacEngine can import and run deterministically.
+ * Creates a self-contained export folder with:
+ *   - world.pacdata.json
+ *   - visual_manifest.json
+ *   - assets/ (references)
+ */
+export async function exportToPacEngine(
+  projectId: string, 
+  options: PacEngineExportOptions
+): Promise<string> {
+  
+  const exportDir = path.join(process.cwd(), 'exports', projectId, Date.now().toString());
+  await fs.mkdir(exportDir, { recursive: true });
+
+  // 1. Create world.pacdata.json (Core simulation data for PacEngine)
+  const pacdata = buildPacData(options);
+  
+  // 2. Create visual_manifest.json (for 3D rendering in PacEngine)
+  const visualManifest = buildVisualManifest(options);
+
+  await Promise.all([
+    fs.writeFile(
+      path.join(exportDir, 'world.pacdata.json'), 
+      JSON.stringify(pacdata, null, 2)
+    ),
+    fs.writeFile(
+      path.join(exportDir, 'visual_manifest.json'), 
+      JSON.stringify(visualManifest, null, 2)
+    )
+  ]);
+
+  // TODO: Later - copy or reference glTF assets into exportDir/assets/
+
+  console.log(`[PacEngine Export] Successfully exported to: ${exportDir}`);
+  return exportDir;
+}
+
+// ====================== Core Conversion Functions ======================
+
+function buildPacData(options: PacEngineExportOptions) {
+  return {
+    pacdata_version: "1.1.0",
+    paccore_version: "3.0.0",
+    world: {
+      name: `conflict_world_${options.projectId}`,
+      seed: options.seed,
+      description: options.description,
+      
+      entities: buildEntities(options),
+      
+      conflict_sim: {
+        enabled: true,
+        version: "v2",
+        zones: options.zones,
+        factions: options.factions,
+        active_conflicts: options.conflicts,
+        history: options.conflictSnapshot.history || [],
+        npc_memory: options.conflictSnapshot.npcMemory,
+        director_state: options.conflictSnapshot.directorState,
+        motion_profile: options.motionProfile
+      },
+
+      // Shard & GM setup (for M3)
+      shards: [
+        { id: "main", type: "conflict_arena", priority: 1 }
+      ],
+
+      behavior_graphs: buildBehaviorGraphs(options),
+      gm_logic: buildGMLogic(options)
+    }
+  };
+}
+
+function buildVisualManifest(options: PacEngineExportOptions) {
+  return {
+    visual_version: "1.0.0",
+    environment: {
+      sky_type: "physical",
+      sun_direction: [0.45, 0.85, 0.35],
+      sun_intensity: 1.25,
+      fog_enabled: true,
+      fog_density: 0.018,
+      fog_color: [0.72, 0.80, 0.95]
+    },
+    entities: options.conflicts.flatMap((conflict: any, index: number) => [
+      {
+        id: conflict.id || index + 1000,
+        render: {
+          asset: "assets/models/agent.gltf",
+          material_overrides: {
+            "0": { "baseColorFactor": getFactionColor(conflict.faction) }
+          }
+        }
+      }
+    ]),
+    static_meshes: [
+      {
+        id: "arena_floor",
+        asset: "assets/models/terrain/arena.gltf",
+        material_intent: "sandstone"
+      }
+    ],
+    post_processing: {
+      bloom_intensity: 0.35,
+      exposure: 1.05
+    }
+  };
+}
+
+// Helper functions
+function getFactionColor(faction: string): number[] {
+  const colors: Record<string, number[]> = {
+    "red": [0.9, 0.2, 0.2],
+    "blue": [0.2, 0.4, 0.9],
+    // add more...
+  };
+  return colors[faction?.toLowerCase()] || [0.7, 0.7, 0.7];
+}
+
+function buildEntities(options: PacEngineExportOptions) {
+  // Convert factions + conflicts into PacEngine entities with components
+  return [];
+}
+
+function buildBehaviorGraphs(options: PacEngineExportOptions) {
+  return []; // TODO: Convert motionProfile + directorState into behavior nodes
+}
+
+function buildGMLogic(options: PacEngineExportOptions) {
+  return {
+    pacing: options.conflictSnapshot.directorState?.pacing || "medium",
+    scenario_type: "skirmish"
+  };
+}
