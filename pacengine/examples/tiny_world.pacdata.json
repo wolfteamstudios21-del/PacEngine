@@ -1,0 +1,29 @@
+{
+  "pacdata_version": "1.0.0",
+  "paccore_version": "3.0.0",
+
+  "world": {
+    "name": "tiny_agent_world",
+
+    "entities": [
+      {
+        "id": 1,
+        "type": "agent",
+        "components": {
+          "transform": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "agent_state": {
+            "active": true
+          }
+        }
+      }
+    ],
+
+    "conflict_sim": {
+      "enabled": false
+    }
+  }
+}

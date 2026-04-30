@@ -1,0 +1,172 @@
+Here's a practical, solo-dev-friendly proposal tailored to your goals for **PacEngine** (simulation-first, deterministic core, lean atmospheric visuals, and seamless **PacAi → PacEngine** import with minimal last-20% polish).
+
+### 1. High-Level Architecture for the Rendering Layer (C++ + TypeScript Integration)
+
+**Core Principle**: Strict separation between **Simulation** (truth) and **Presentation** (view). The simulation (PacRuntime/ECS/ConflictSim) runs on fixed timesteps and stays fully deterministic. The renderer reads simulation state each frame and interpolates for smooth visuals where needed.
+
+#### Overall Structure
+```
+PacEngine
+├── Core (Simulation - Deterministic)
+│   ├── PacData Importer / Serializer
+│   ├── ECS + Scheduler (fixed order)
+│   ├── ConflictSim
+│   ├── Workers + Internal DB
+│   └── Binary Trace / Replay System
+│
+├── Rendering Layer (Pluggable, Optional)
+│   ├── Render Backend (C++ core)
+│   ├── Resource Manager (assets, materials, shaders)
+│   ├── Scene Graph (render-only, mirrors simulation entities)
+│   ├── GI System (lean voxel/probe hybrid)
+│   ├── Particle/FX System (deterministic + GPU)
+│   └── Post-processing stack
+│
+├── Editor / Tools (TypeScript-heavy)
+│   └── PacEditor (scene hierarchy, inspector, debugger overlays)
+│
+├── Scripting Layer (Lua recommended for fast iteration)
+│
+└── Public API Facade (TypeScript)
+```
+
+#### C++ Rendering Backend (Performance-critical)
+- **Backend**: Vulkan (strong choice in 2026 for control, performance, and multi-platform support). WebGPU can be added later as a secondary path for tools/editor.
+- **Renderer Design**: Forward+ or simple clustered forward renderer (easier to keep lightweight and deterministic-friendly than full deferred).
+- **Key Systems in C++**:
+  - Mesh / Material / Texture loader (glTF 2.0 focused)
+  - GPU-driven batching + mesh clustering (lean Nanite alternative)
+  - GPU skinning + animation upload
+  - Lean GI (Voxel GI or SDFGI + probe grid hybrid — inspired by Godot techniques)
+  - Volumetric fog, atmospheric scattering, cascaded shadows + contact shadows
+  - Lightweight node-based shader graph (data-driven, not full visual editor at first)
+- **Data Flow**: Simulation → Render Proxy Components (position, rotation, animation state, material overrides). Renderer pulls state every frame via a clean interface.
+
+#### TypeScript Layer Integration
+- **High-level orchestration** and editor logic stay in TypeScript (your current strength).
+- Use **Node-API (N-API)** or **WebAssembly** bindings to call into the C++ rendering core.
+- Recommended binding pattern:
+  - C++ exposes a `PacRenderer` class with methods like `LoadSceneFromPacData()`, `UpdateSimulationState()`, `RenderFrame()`, `SetCamera()`, `HotReloadShader()`.
+  - TypeScript wraps it with clean async-friendly APIs and event emitters for editor use.
+- Editor (TS) communicates with renderer via commands (e.g., "apply material override", "toggle GI debug view").
+
+**Benefits for Solo Dev**:
+- Simulation core remains pure and unchanged.
+- Rendering can be disabled entirely for headless PacAi/PacCore runs.
+- Easy to profile and optimize C++ parts independently.
+- Fast iteration on editor/tools in TypeScript while keeping rendering fast.
+
+**Phased Rollout**:
+1. Basic glTF loader + simple PBR forward renderer (meshes + materials + direct lighting).
+2. Add shadows + atmospherics (fog, sky).
+3. Integrate lean GI + post-processing.
+4. GPU skinning + animation + particles.
+
+### 2. Detailed Spec for PacAi → PacEngine Export/Import Format
+
+**Primary Format**: A **PacAi Export Package** (folder or .pacexport zip) containing:
+- One main `world.pacdata.json` (or binary) for simulation data.
+- A companion `visual_manifest.json` (or embedded in PacData via extensions).
+- Asset folder with glTF 2.0 files (meshes, materials, animations, textures).
+
+#### Recommended Structure
+```
+my_pacai_project.pacexport/
+├── world.pacdata.json          # Core simulation (entities, components, behaviors, ConflictSim)
+├── visual_manifest.json        # Visual overrides and scene description
+├── assets/
+│   ├── models/
+│   │   ├── building_01.gltf
+│   │   ├── character_agent.gltf
+│   │   └── ...
+│   ├── textures/
+│   └── animations/
+├── environment/
+│   └── sky_settings.json (optional)
+└── thumbnails/ (optional)
+```
+
+#### What Visual Data to Include (Key Elements)
+
+**1. visual_manifest.json** (high-level scene description):
+```json
+{
+  "pacdata_version": "1.0.0",
+  "visual_version": "1.0.0",
+  "environment": {
+    "sky_model": "physical_sky",
+    "sun_direction": [0.5, 0.8, 0.3],
+    "sun_intensity": 1.2,
+    "atmospheric_density": 1.0,
+    "fog_density": 0.02,
+    "fog_color": [0.7, 0.8, 0.9]
+  },
+  "global_illumination": {
+    "gi_type": "voxel_probe_hybrid",   // or "probe_grid", "sdf"
+    "probe_density": "medium",
+    "voxel_size": 0.5
+  },
+  "entities": [
+    {
+      "id": 42,
+      "render": {
+        "asset": "assets/models/agent.gltf",
+        "material_overrides": { "0": { "baseColorFactor": [1.0, 0.8, 0.6] } },
+        "animation_state": "idle",
+        "lod_policy": "auto",
+        "cast_shadows": true
+      }
+    }
+  ],
+  "static_meshes": [
+    {
+      "id": "terrain_chunk_01",
+      "asset": "assets/models/terrain.gltf",
+      "transform": { ... },
+      "material_intent": "rock_rough"
+    }
+  ],
+  "lights": [
+    {
+      "type": "directional",
+      "intensity": 1.5,
+      "color": [1.0, 0.95, 0.8]
+    }
+  ],
+  "post_processing": {
+    "tonemap": "aces",
+    "bloom_intensity": 0.3,
+    "exposure": 1.0
+  }
+}
+```
+
+**2. glTF Assets Requirements**:
+- Use standard glTF 2.0 with PBR metallic-roughness workflow (core spec).
+- Support common extensions where useful: `KHR_materials_emissive_strength`, `KHR_materials_clearcoat`, `KHR_materials_transmission`, `KHR_materials_volume`, `KHR_materials_sheen`, etc. (keep optional — provide fallback materials).
+- Include skeleton + skinning for characters.
+- Animation clips (idle, walk, attack, etc.) with events/notifies if possible.
+
+**3. Simulation + Visual Linking**:
+- Every renderable entity in PacData gets an optional `visual_component` or UUID linking to glTF asset.
+- PacEngine importer:
+  1. Loads core PacData → materializes ECS world.
+  2. Loads `visual_manifest.json` + glTF assets.
+  3. Creates render proxies and applies defaults (good-looking PBR materials, atmospheric lighting, fog).
+  4. Result: Immediately walkable, professional-looking scene.
+
+**Import Workflow in PacEngine**:
+- `pacengine import my_pacai_project.pacexport --headless` → pure simulation.
+- `pacengine import my_pacai_project.pacexport` → full render scene ready in editor.
+- Editor then allows quick overrides (material tweaks, manual detail placement, UI, lighting adjustments) — the "last 20%".
+
+This format keeps PacAi responsible for the heavy 80% (world generation + initial visuals) while giving you clean, maintainable control in PacEngine.
+
+Would you like me to expand on any part?
+- More detailed C++ class structure / binding examples
+- Full JSON schema for `visual_manifest.json`
+- Phased implementation plan (v5 → v7)
+- Lean GI system design details
+- Lua scripting integration points for the last 20%
+
+Let me know what to refine next. This architecture should keep things maintainable for you as the sole developer while delivering the import-and-walk-around experience comparable to UE5 at a professional (but not Hollywood) level.
