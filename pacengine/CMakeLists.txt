@@ -17,11 +17,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-option(PACENGINE_BUILD_TESTS "Build PacEngine tests" ON)
-option(PACENGINE_BUILD_GAME  "Build sample game host" ON)
+option(PACENGINE_BUILD_TESTS  "Build PacEngine tests" ON)
+option(PACENGINE_BUILD_GAME   "Build sample game host" ON)
+option(PACENGINE_BUILD_RENDER "Build PacEngine render layer (M2.5, requires Vulkan SDK)" OFF)
 
 add_subdirectory(pacdata)
 add_subdirectory(engine)
+add_subdirectory(render)
 
 if(PACENGINE_BUILD_GAME)
     add_subdirectory(game)

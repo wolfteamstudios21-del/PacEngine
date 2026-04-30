@@ -1,0 +1,215 @@
+pacdata/schemas/visual_manifest.json (Schema)
+JSON{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PacEngine Visual Manifest",
+  "description": "Visual and rendering information for PacAi exports",
+  "type": "object",
+  "properties": {
+    "visual_version": {
+      "type": "string",
+      "description": "Version of the visual manifest format",
+      "default": "1.0.0"
+    },
+    "pacdata_version": {
+      "type": "string"
+    },
+
+    "environment": {
+      "type": "object",
+      "properties": {
+        "sky_type": {
+          "type": "string",
+          "enum": ["physical", "hdr_cubemap", "procedural", "simple"],
+          "default": "physical"
+        },
+        "sun_direction": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 3,
+          "maxItems": 3,
+          "default": [0.5, 0.8, 0.3]
+        },
+        "sun_intensity": { "type": "number", "default": 1.2 },
+        "sun_color": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 3,
+          "maxItems": 3,
+          "default": [1.0, 0.95, 0.85]
+        },
+        "ambient_intensity": { "type": "number", "default": 0.4 },
+        
+        "fog_enabled": { "type": "boolean", "default": true },
+        "fog_density": { "type": "number", "default": 0.015 },
+        "fog_color": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 3,
+          "maxItems": 3,
+          "default": [0.7, 0.8, 0.9]
+        },
+        "fog_height_falloff": { "type": "number", "default": 0.5 }
+      }
+    },
+
+    "global_illumination": {
+      "type": "object",
+      "properties": {
+        "gi_type": {
+          "type": "string",
+          "enum": ["none", "probe_grid", "voxel", "hybrid"],
+          "default": "probe_grid"
+        },
+        "probe_density": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "default": "medium"
+        }
+      }
+    },
+
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "render": {
+            "type": "object",
+            "properties": {
+              "asset": {
+                "type": "string",
+                "description": "Relative path to glTF file (e.g. 'assets/models/agent.gltf')"
+              },
+              "material_overrides": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "baseColorFactor": { "type": "array", "items": { "type": "number" }, "minItems": 4 },
+                    "metallicFactor": { "type": "number" },
+                    "roughnessFactor": { "type": "number" }
+                  }
+                }
+              },
+              "cast_shadows": { "type": "boolean", "default": true },
+              "receive_shadows": { "type": "boolean", "default": true },
+              "visible": { "type": "boolean", "default": true }
+            },
+            "required": ["asset"]
+          }
+        },
+        "required": ["id", "render"]
+      }
+    },
+
+    "static_meshes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "asset": { "type": "string" },
+          "transform": {
+            "type": "object",
+            "properties": {
+              "position": { "type": "array", "items": { "type": "number" }, "minItems": 3 },
+              "rotation": { "type": "array", "items": { "type": "number" }, "minItems": 4 },
+              "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "default": [1,1,1] }
+            }
+          },
+          "material_intent": { "type": "string" }   // e.g. "rock_rough", "grass", "concrete"
+        },
+        "required": ["id", "asset"]
+      }
+    },
+
+    "lights": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["directional", "point", "spot"] },
+          "position": { "type": "array", "items": { "type": "number" }, "minItems": 3 },
+          "direction": { "type": "array", "items": { "type": "number" }, "minItems": 3 },
+          "color": { "type": "array", "items": { "type": "number" }, "minItems": 3 },
+          "intensity": { "type": "number" },
+          "range": { "type": "number" }
+        }
+      }
+    },
+
+    "post_processing": {
+      "type": "object",
+      "properties": {
+        "tonemap": { "type": "string", "default": "aces" },
+        "exposure": { "type": "number", "default": 1.0 },
+        "bloom_intensity": { "type": "number", "default": 0.25 },
+        "contrast": { "type": "number", "default": 1.0 },
+        "saturation": { "type": "number", "default": 1.0 }
+      }
+    },
+
+    "camera_default": {
+      "type": "object",
+      "properties": {
+        "position": { "type": "array", "items": { "type": "number" }, "minItems": 3 },
+        "target": { "type": "array", "items": { "type": "number" }, "minItems": 3 }
+      }
+    }
+  },
+
+  "required": ["visual_version", "environment"]
+}
+Example: visual_manifest.json for multi_agent_sandbox
+JSON{
+  "visual_version": "1.0.0",
+  "pacdata_version": "1.0.0",
+  
+  "environment": {
+    "sky_type": "physical",
+    "sun_direction": [0.4, 0.85, 0.35],
+    "sun_intensity": 1.3,
+    "fog_enabled": true,
+    "fog_density": 0.012,
+    "fog_color": [0.75, 0.82, 0.95]
+  },
+
+  "global_illumination": {
+    "gi_type": "probe_grid",
+    "probe_density": "medium"
+  },
+
+  "entities": [
+    {
+      "id": 1,
+      "render": {
+        "asset": "assets/models/agent.gltf",
+        "material_overrides": {
+          "0": { "baseColorFactor": [0.9, 0.3, 0.3, 1.0] }
+        }
+      }
+    }
+  ],
+
+  "static_meshes": [
+    {
+      "id": "ground",
+      "asset": "assets/models/ground_plane.gltf",
+      "material_intent": "grass"
+    }
+  ],
+
+  "post_processing": {
+    "bloom_intensity": 0.3,
+    "exposure": 0.95
+  },
+
+  "camera_default": {
+    "position": [15, 25, 15],
+    "target": [0, 0, 0]
+  }
+}
+
+Next Actions:
+This schema gives your PacRenderer::ImportPacAiExport() function everything it needs to create a good-looking scene immediately.

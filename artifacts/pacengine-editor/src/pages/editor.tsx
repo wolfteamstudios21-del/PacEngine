@@ -52,6 +52,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import Viewport3D from "@/components/Viewport3D";
 import { 
   Dialog, 
   DialogContent, 
@@ -87,6 +88,9 @@ export default function Editor() {
   
   const [lastRun, setLastRun] = useState<any>(null);
   const [lastCheck, setLastCheck] = useState<any>(null);
+
+  // Viewport mode toggle (2D orthographic ↔ 3D atmospheric)
+  const [viewMode, setViewMode] = useState<"2D" | "3D">("2D");
 
   // Import .pacexport dialog state
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -260,6 +264,24 @@ export default function Editor() {
           </Link>
           <div className="font-semibold tracking-tight">{project.summary.name}</div>
           <Badge variant="outline" className="font-mono text-[10px] bg-background">v{project.summary.pacdataVersion}</Badge>
+          <div className="flex items-center gap-0.5 bg-muted/40 rounded p-0.5 border border-border ml-1">
+            <Button
+              size="sm"
+              variant={viewMode === "2D" ? "secondary" : "ghost"}
+              className="h-5 text-[10px] px-2 gap-1"
+              onClick={() => setViewMode("2D")}
+            >
+              <LayoutGrid className="h-2.5 w-2.5" /> 2D
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === "3D" ? "secondary" : "ghost"}
+              className="h-5 text-[10px] px-2 gap-1"
+              onClick={() => setViewMode("3D")}
+            >
+              <Box className="h-2.5 w-2.5" /> 3D
+            </Button>
+          </div>
         </div>
         
         <div className="flex items-center gap-2 bg-background/50 p-1 rounded-md border border-border">
@@ -381,85 +403,100 @@ export default function Editor() {
             
             {/* Viewport */}
             <ResizablePanel defaultSize={60} className="bg-background flex flex-col relative overflow-hidden">
-              <div className="absolute top-0 w-full h-8 bg-gradient-to-b from-black/50 to-transparent z-10 flex items-center px-4 pointer-events-none">
-                {lastRunId ? (
-                  <Badge variant="secondary" className="text-[10px] font-mono bg-blue-500/20 text-blue-400 border-blue-500/30 flex items-center gap-2">
-                    <History className="h-3 w-3"/> Replay @ tick {currentTick}
-                  </Badge>
-                ) : (
-                  <span className="text-[10px] font-mono text-white/50 flex items-center gap-2"><LayoutGrid className="h-3 w-3"/> Orthographic Viewport</span>
-                )}
-              </div>
-              
-              {/* Pseudo-Viewport Canvas */}
-              <div className="flex-1 w-full h-full relative" style={{ 
-                backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)',
-                backgroundSize: '40px 40px',
-                backgroundPosition: 'center center'
-              }}>
-                {/* Trail rendering */}
-                {trailData?.frames?.map((frame: any) => (
-                  frame.tick < currentTick && frame.entities.map((ef: any) => {
-                    if (!ef.position) return null;
-                    const left = ((ef.position.x - worldBounds.min) / (worldBounds.max - worldBounds.min)) * 100;
-                    const top = ((ef.position.z - worldBounds.min) / (worldBounds.max - worldBounds.min)) * 100;
-                    const opacity = 0.1 + (frame.tick - (currentTick - 8)) / 10;
-                    return (
-                      <div 
-                        key={`${frame.tick}-${ef.index}`}
-                        className="absolute w-1 h-1 rounded-full bg-primary"
-                        style={{ 
-                          left: `${Math.max(0, Math.min(100, left))}%`, 
-                          top: `${Math.max(0, Math.min(100, top))}%`,
-                          opacity: opacity,
-                          transform: 'translate(-50%, -50%)'
-                        }}
-                      />
-                    );
-                  })
-                ))}
 
-                {/* Entity markers */}
-                {projectEntities.map((e, i) => {
-                  const frameEntity = (currentFrame?.entities as EntityFrame[] | undefined)?.find((fe: EntityFrame) => fe.index === i);
-                  let left, top;
+              {/* ── 3D Atmospheric View ─────────────────────────────────── */}
+              {viewMode === "3D" && (
+                <Viewport3D
+                  entities={projectEntities}
+                  currentFrameEntities={(currentFrame?.entities as EntityFrame[] | undefined) ?? []}
+                  selectedEntityIndex={selectedEntityIndex}
+                  onSelectEntity={setSelectedEntityIndex}
+                  worldBounds={worldBounds}
+                />
+              )}
 
-                  if (frameEntity?.position) {
-                    left = ((frameEntity.position.x - worldBounds.min) / (worldBounds.max - worldBounds.min)) * 100;
-                    top = ((frameEntity.position.z - worldBounds.min) / (worldBounds.max - worldBounds.min)) * 100;
-                  } else {
-                    // deterministic random scatter fallback
-                    const seed = i * 137.5;
-                    left = 20 + (Math.sin(seed) * 30 + 30);
-                    top = 20 + (Math.cos(seed) * 30 + 30);
-                  }
+              {/* ── 2D Orthographic View ─────────────────────────────────── */}
+              {viewMode === "2D" && (
+                <>
+                  <div className="absolute top-0 w-full h-8 bg-gradient-to-b from-black/50 to-transparent z-10 flex items-center px-4 pointer-events-none">
+                    {lastRunId ? (
+                      <Badge variant="secondary" className="text-[10px] font-mono bg-blue-500/20 text-blue-400 border-blue-500/30 flex items-center gap-2">
+                        <History className="h-3 w-3"/> Replay @ tick {currentTick}
+                      </Badge>
+                    ) : (
+                      <span className="text-[10px] font-mono text-white/50 flex items-center gap-2"><LayoutGrid className="h-3 w-3"/> Orthographic Viewport</span>
+                    )}
+                  </div>
 
-                  const isAgent = e.type === 'agent';
-                  const isSelected = selectedEntityIndex === i;
+                  <div className="flex-1 w-full h-full relative" style={{ 
+                    backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)',
+                    backgroundSize: '40px 40px',
+                    backgroundPosition: 'center center'
+                  }}>
+                    {/* Trail rendering */}
+                    {trailData?.frames?.map((frame: any) => (
+                      frame.tick < currentTick && frame.entities.map((ef: any) => {
+                        if (!ef.position) return null;
+                        const left = ((ef.position.x - worldBounds.min) / (worldBounds.max - worldBounds.min)) * 100;
+                        const top  = ((ef.position.z - worldBounds.min) / (worldBounds.max - worldBounds.min)) * 100;
+                        const opacity = 0.1 + (frame.tick - (currentTick - 8)) / 10;
+                        return (
+                          <div 
+                            key={`${frame.tick}-${ef.index}`}
+                            className="absolute w-1 h-1 rounded-full bg-primary"
+                            style={{ 
+                              left: `${Math.max(0, Math.min(100, left))}%`, 
+                              top:  `${Math.max(0, Math.min(100, top))}%`,
+                              opacity,
+                              transform: 'translate(-50%, -50%)'
+                            }}
+                          />
+                        );
+                      })
+                    ))}
 
-                  return (
-                    <div 
-                      key={e.id}
-                      onClick={() => setSelectedEntityIndex(i)}
-                      className={cn(
-                        "absolute p-2 rounded border border-border shadow-md bg-card/80 backdrop-blur text-[10px] font-mono transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 cursor-pointer transition-all duration-200",
-                        isSelected && "ring-2 ring-primary border-primary z-20"
-                      )}
-                      style={{ 
-                        left: `${Math.max(0, Math.min(100, left))}%`, 
-                        top: `${Math.max(0, Math.min(100, top))}%` 
-                      }}
-                    >
-                      <div className={cn(
-                        "w-2 h-2 rounded-full",
-                        isAgent ? "bg-blue-500" : "bg-orange-500",
-                        isSelected && "animate-pulse"
-                      )} />
-                      {e.id}
-                    </div>
-                  );
-                })}
-              </div>
+                    {/* Entity markers */}
+                    {projectEntities.map((e, i) => {
+                      const frameEntity = (currentFrame?.entities as EntityFrame[] | undefined)?.find((fe: EntityFrame) => fe.index === i);
+                      let left: number, top: number;
+
+                      if (frameEntity?.position) {
+                        left = ((frameEntity.position.x - worldBounds.min) / (worldBounds.max - worldBounds.min)) * 100;
+                        top  = ((frameEntity.position.z - worldBounds.min) / (worldBounds.max - worldBounds.min)) * 100;
+                      } else {
+                        const seed = i * 137.5;
+                        left = 20 + (Math.sin(seed) * 30 + 30);
+                        top  = 20 + (Math.cos(seed) * 30 + 30);
+                      }
+
+                      const isAgent    = e.type === 'agent';
+                      const isSelected = selectedEntityIndex === i;
+
+                      return (
+                        <div 
+                          key={e.id}
+                          onClick={() => setSelectedEntityIndex(i)}
+                          className={cn(
+                            "absolute p-2 rounded border border-border shadow-md bg-card/80 backdrop-blur text-[10px] font-mono transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 cursor-pointer transition-all duration-200",
+                            isSelected && "ring-2 ring-primary border-primary z-20"
+                          )}
+                          style={{ 
+                            left: `${Math.max(0, Math.min(100, left))}%`, 
+                            top:  `${Math.max(0, Math.min(100, top))}%` 
+                          }}
+                        >
+                          <div className={cn(
+                            "w-2 h-2 rounded-full",
+                            isAgent ? "bg-blue-500" : "bg-orange-500",
+                            isSelected && "animate-pulse"
+                          )} />
+                          {e.id}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </ResizablePanel>
 
             <ResizableHandle className="w-1 bg-border hover:bg-primary transition-colors" />

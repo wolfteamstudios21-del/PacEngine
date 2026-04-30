@@ -129,3 +129,50 @@ The editor Details panel shows a **Visual Properties** section (Environment,
 Global Illumination, Post-processing, Entity Overrides, Static Meshes, Lights)
 when a sidecar exists. A **Import .pacexport** button in the editor toolbar
 opens a paste-in dialog for both JSON files.
+
+## M2.5 — Tier 2 Foundation: 3D Rendering MVP + PacAi Visual Import Pipeline
+
+### C++ Render Layer (`pacengine/render/`)
+
+Gated behind `PACENGINE_BUILD_RENDER=OFF` (default) — existing builds are unaffected.
+Enable with `cmake -DPACENGINE_BUILD_RENDER=ON ..`.
+
+```
+pacengine/render/
+├── CMakeLists.txt              # PACENGINE_BUILD_RENDER option, optional Vulkan SDK, fastgltf hook
+├── core/
+│   ├── render_types.h          # PacVec3, PacMat4, LightData, EnvironmentData, GiSettings, PostProcessSettings
+│   ├── PacRenderer.h/.cpp      # Top-level API: Initialize, BeginFrame/Render/EndFrame, ImportPacAiExport, SetCamera
+│   ├── RenderScene.h/.cpp      # Proxy map, lights, env/GI/PP settings, per-frame Render()
+│   ├── RenderProxy.h/.cpp      # Per-entity GPU state (mesh, material, transform, shadows, animation)
+│   └── Material.h/.cpp         # PBR MaterialProperties, 5 texture slots, BuildPipeline()
+├── assets/
+│   ├── GltfLoader.h/.cpp       # glTF 2.0 stub (Phase 2.5.1: swap in fastgltf)
+│   └── TextureManager.h/.cpp   # Path-keyed texture cache, HDR support
+├── backend/
+│   └── VulkanContext.h/.cpp    # Swapchain stub; guarded behind HAVE_VULKAN
+├── effects/
+│   ├── SkySystem.h             # physical_sky / hdri / procedural modes
+│   ├── FogSystem.h             # Exponential height-based fog
+│   └── PostProcess.h           # ACES tonemap + bloom + exposure
+└── bindings/
+    └── PacRendererBridge.h     # extern "C" flat API for N-API / WASM bridge (Phase 2.5.3)
+```
+
+**Phase roadmap:**
+- **2.5.1** (next): Vulkan context + swapchain + triangle. Integrate fastgltf via FetchContent.
+- **2.5.2** (next): `ImportPacAiExport()` — parse pacdata + visual_manifest, create proxies, apply env.
+- **2.5.3** (next): N-API/WASM bridge. Replace stub bridge in `usePacRenderer.ts`. 3D mode renders real frames.
+
+### Editor 3D Integration
+
+**2D ↔ 3D toggle** — pill in the editor toolbar (left of project name area).
+
+| File | Purpose |
+|------|---------|
+| `src/components/Viewport3D.tsx` | Atmospheric canvas renderer (2D Canvas API placeholder). Sky gradient, perspective grid, foggy horizon, entity spheres with depth/perspective, click hit-test. WebGPU availability badge. |
+| `src/hooks/usePacRenderer.ts` | Bridge hook. Resolves `window.__pacRenderer` (real N-API module) or falls back to `stubBridge`. Manages ResizeObserver, init/shutdown lifecycle. |
+
+**Data flow (current stub):** `viewMode === "3D"` → `Viewport3D` renders atmospheric canvas → `usePacRenderer` initializes stub bridge (logs to console, all calls are no-ops until Phase 2.5.3 module is registered).
+
+**Data flow (Phase 2.5.3):** C++ `PacRenderer` exposed via `window.__pacRenderer` → `usePacRenderer` resolves real bridge → each simulation tick sends delta to `updateSimulationState()` → dirty proxies rebuilt → frame rendered to canvas.
