@@ -2,6 +2,7 @@
 #include "RenderProxy.h"
 #include "Material.h"
 #include "Mesh.h"
+#include "../backend/VulkanContext.h"
 #include <cstdio>
 
 #if defined(HAVE_VULKAN)
@@ -11,7 +12,31 @@
 namespace pac::render {
 
 RenderScene::RenderScene()  = default;
-RenderScene::~RenderScene() = default;
+
+RenderScene::~RenderScene() {
+    // Free all GPU buffers allocated for cached meshes.
+    if (m_vkCtx) {
+        for (auto& mesh : m_meshCache) {
+            if (!mesh) continue;
+            for (auto& prim : mesh->primitives) {
+                if (prim.vertexBufferHandle)
+                    m_vkCtx->FreeHostBuffer(prim.vertexBufferHandle,
+                                            prim.vertexMemoryHandle);
+                if (prim.indexBufferHandle)
+                    m_vkCtx->FreeHostBuffer(prim.indexBufferHandle,
+                                            prim.indexMemoryHandle);
+                prim.vertexBufferHandle = 0;
+                prim.vertexMemoryHandle = 0;
+                prim.indexBufferHandle  = 0;
+                prim.indexMemoryHandle  = 0;
+            }
+        }
+    }
+}
+
+void RenderScene::SetVulkanContext(VulkanContext* ctx) {
+    m_vkCtx = ctx;
+}
 
 RenderProxy* RenderScene::CreateProxy(uint64_t entityId) {
     auto proxy = std::make_unique<RenderProxy>();

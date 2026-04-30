@@ -1,6 +1,8 @@
 #include "PacRenderer.h"
 #include "RenderScene.h"
 #include "RenderProxy.h"
+#include "Mesh.h"
+#include "Material.h"
 #include "VisualManifestLoader.h"
 #include "PacDataLoader.h"
 #include "../importer/PacWorldImporter.h"
@@ -98,6 +100,8 @@ bool PacRenderer::Initialize(void* windowHandle, uint32_t width, uint32_t height
         return false;
     }
     m_impl->scene = std::make_unique<RenderScene>();
+    m_impl->scene->SetVulkanContext(m_impl->vkCtx.get());
+    RegisterBuiltinTriangle();
     m_impl->initialized = true;
     std::printf("[PacRenderer] Initialized (%ux%u)\n", width, height);
     return true;
@@ -338,6 +342,50 @@ uint64_t PacRenderer::HashMeshId(const std::string& id) {
     }
     // High bit set so static-mesh keys never collide with entity int ids.
     return hash | 0x8000'0000'0000'0000ull;
+}
+
+void PacRenderer::RegisterBuiltinTriangle() {
+    // A minimal coloured triangle in clip-space NDC so it is visible regardless
+    // of the camera transform.  Vertex colours are passed as the normal field so
+    // the simple unlit shader can render with colour variety.
+    auto mesh = std::make_shared<Mesh>();
+    mesh->name = "__builtin_triangle";
+
+    MeshPrimitive prim;
+    prim.vertices = {
+        // position               normal (used as colour by unlit shader)
+        {{ 0.0f,  0.5f, 0.0f},  {1.0f, 0.0f, 0.0f}},   // top    — red
+        {{ 0.5f, -0.5f, 0.0f},  {0.0f, 1.0f, 0.0f}},   // right  — green
+        {{-0.5f, -0.5f, 0.0f},  {0.0f, 0.0f, 1.0f}},   // left   — blue
+    };
+    prim.indices = {0u, 1u, 2u};
+
+    // Upload to GPU immediately via the host-visible path — no staging command
+    // buffer is required because AllocateHostBuffer uses persistent mapping.
+    // In headless / no-GPU builds this is a no-op (AllocateHostBuffer stubs out).
+    VulkanContext* ctx = m_impl->vkCtx.get();
+    if (ctx && ctx->IsGpuActive()) {
+        constexpr uint32_t kVBUsage = 0x00000080; // VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+        constexpr uint32_t kIBUsage = 0x00000040; // VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+        ctx->AllocateHostBuffer(prim.vertices.data(),
+                                prim.vertices.size() * sizeof(Vertex),
+                                kVBUsage,
+                                &prim.vertexBufferHandle,
+                                &prim.vertexMemoryHandle);
+        ctx->AllocateHostBuffer(prim.indices.data(),
+                                prim.indices.size() * sizeof(uint32_t),
+                                kIBUsage,
+                                &prim.indexBufferHandle,
+                                &prim.indexMemoryHandle);
+    }
+
+    mesh->primitives.push_back(std::move(prim));
+    m_impl->scene->RegisterMesh(mesh);
+
+    // Register a proxy so RecordDrawCalls iterates it on the first frame.
+    constexpr uint64_t kBuiltinId = 0xFFFF'FFFE'DEAD'BEEFull;
+    RenderProxy* proxy = m_impl->scene->CreateProxy(kBuiltinId);
+    proxy->mesh = mesh.get();
 }
 
 } // namespace pac::render

@@ -83,6 +83,12 @@ private:
     // High bit is set so static-mesh ids never collide with entity int ids.
     static uint64_t HashMeshId(const std::string& id);
 
+    // Creates a minimal coloured triangle mesh and registers it as the default
+    // draw call so RecordDrawCalls always issues at least one draw in Vulkan mode.
+    // Called once in Initialize(); GPU upload is attempted immediately if the
+    // VulkanContext is active (host-visible path, no staging command buffer needed).
+    void RegisterBuiltinTriangle();
+
     struct Impl;
     std::unique_ptr<Impl> m_impl;
 };

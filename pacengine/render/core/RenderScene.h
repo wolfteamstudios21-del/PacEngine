@@ -9,6 +9,7 @@ namespace pac::render {
 
 class RenderProxy;
 class Material;
+class VulkanContext;
 
 class RenderScene {
 public:
@@ -44,7 +45,13 @@ public:
     void RegisterMesh(std::shared_ptr<class Mesh> mesh);
     void RegisterMaterial(std::shared_ptr<Material> mat);
 
+    // Provide the GPU context so the scene destructor can free VkBuffer/VkMemory
+    // for every cached mesh.  Call once after VulkanContext::Initialize succeeds.
+    // Passing nullptr is safe (GPU free is skipped).
+    void SetVulkanContext(VulkanContext* ctx);
+
 private:
+    VulkanContext* m_vkCtx = nullptr;
     std::unordered_map<uint64_t, std::unique_ptr<RenderProxy>> m_proxies;
     std::vector<LightData>                                      m_lights;
 

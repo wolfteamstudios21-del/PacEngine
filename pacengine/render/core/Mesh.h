@@ -20,9 +20,13 @@ struct MeshPrimitive {
     std::vector<uint32_t> indices;
     int materialIndex = 0;
 
-    // Phase 2.5.1 — GPU buffer handles (set by GltfLoader::UploadToGpu)
+    // Phase 2.5.1 — GPU buffer handles (set by GltfLoader::UploadToGpu).
+    // Both the VkBuffer handle and its backing VkDeviceMemory are stored so
+    // that VulkanContext::FreeHostBuffer can release both at shutdown/reload.
     uint64_t vertexBufferHandle = 0;
+    uint64_t vertexMemoryHandle = 0;
     uint64_t indexBufferHandle  = 0;
+    uint64_t indexMemoryHandle  = 0;
 };
 
 // A Mesh is one glTF mesh node — it may contain several primitives.

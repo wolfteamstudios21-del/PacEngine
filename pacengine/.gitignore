@@ -1,6 +1,6 @@
 build/
+build*/
 *.o
 *.a
 *.bin
 trace_*.bin
-build_render/

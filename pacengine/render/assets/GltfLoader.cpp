@@ -256,19 +256,17 @@ void GltfLoader::UploadToGpu(GltfLoadResult& result, VulkanContext* ctx) {
             if (prim.vertices.empty() || prim.indices.empty()) continue;
 
             const size_t vbSize = prim.vertices.size() * sizeof(Vertex);
-            uint64_t vbHandle = 0, vbMem = 0;
             if (ctx->AllocateHostBuffer(prim.vertices.data(), vbSize, kVertexUsage,
-                                        &vbHandle, &vbMem)) {
-                prim.vertexBufferHandle = vbHandle;
-                (void)vbMem;
+                                        &prim.vertexBufferHandle,
+                                        &prim.vertexMemoryHandle)) {
+                // vertexBufferHandle and vertexMemoryHandle stored directly.
             }
 
             const size_t ibSize = prim.indices.size() * sizeof(uint32_t);
-            uint64_t ibHandle = 0, ibMem = 0;
             if (ctx->AllocateHostBuffer(prim.indices.data(), ibSize, kIndexUsage,
-                                        &ibHandle, &ibMem)) {
-                prim.indexBufferHandle = ibHandle;
-                (void)ibMem;
+                                        &prim.indexBufferHandle,
+                                        &prim.indexMemoryHandle)) {
+                // indexBufferHandle and indexMemoryHandle stored directly.
             }
 
             if (prim.vertexBufferHandle && prim.indexBufferHandle) ++uploaded;
