@@ -118,8 +118,29 @@ static std::vector<uint32_t> LoadSpv(const std::string& path) {
 
 // ─── Sub-steps (each returns bool and populates Impl) ─────────────────────────
 
+// Returns true if name is in the list of available instance extensions.
+static bool ExtensionAvailable(const char* name) {
+    uint32_t count = 0;
+    vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
+    std::vector<VkExtensionProperties> props(count);
+    vkEnumerateInstanceExtensionProperties(nullptr, &count, props.data());
+    for (const auto& p : props)
+        if (std::strcmp(p.extensionName, name) == 0) return true;
+    return false;
+}
+
+// Returns true if name is in the list of available instance layers.
+static bool LayerAvailable(const char* name) {
+    uint32_t count = 0;
+    vkEnumerateInstanceLayerProperties(&count, nullptr);
+    std::vector<VkLayerProperties> props(count);
+    vkEnumerateInstanceLayerProperties(&count, props.data());
+    for (const auto& p : props)
+        if (std::strcmp(p.layerName, name) == 0) return true;
+    return false;
+}
+
 static bool CreateInstance(VulkanContext::Impl& m) {
-    // Application info
     VkApplicationInfo appInfo{};
     appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName   = "PacEngine";
@@ -128,22 +149,28 @@ static bool CreateInstance(VulkanContext::Impl& m) {
     appInfo.engineVersion      = VK_MAKE_VERSION(0, 2, 5);
     appInfo.apiVersion         = VK_API_VERSION_1_3;
 
-    // Extensions
-    std::vector<const char*> extensions = {
-        VK_KHR_SURFACE_EXTENSION_NAME,
+    // ── Extensions: only add what is actually available ────────────────────────
+    std::vector<const char*> extensions;
+    // Surface extension is required for any rendering; skip entirely on headless.
+    if (ExtensionAvailable(VK_KHR_SURFACE_EXTENSION_NAME))
+        extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
 #if defined(__linux__)
-        VK_KHR_XCB_SURFACE_EXTENSION_NAME,
+    if (ExtensionAvailable(VK_KHR_XCB_SURFACE_EXTENSION_NAME))
+        extensions.push_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
 #endif
-        VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-    };
+    const bool haveDebugUtils = ExtensionAvailable(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    if (haveDebugUtils) extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
+    // ── Validation layer: opt-in only when available ────────────────────────────
 #if defined(NDEBUG)
-    const bool enableValidation = false;
+    const bool wantValidation = false;
 #else
-    const bool enableValidation = true;
+    const bool wantValidation = true;
 #endif
     std::vector<const char*> layers;
-    if (enableValidation) layers.push_back("VK_LAYER_KHRONOS_validation");
+    const bool haveValidation = wantValidation &&
+        LayerAvailable("VK_LAYER_KHRONOS_validation");
+    if (haveValidation) layers.push_back("VK_LAYER_KHRONOS_validation");
 
     VkInstanceCreateInfo ci{};
     ci.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -152,10 +179,14 @@ static bool CreateInstance(VulkanContext::Impl& m) {
     ci.ppEnabledExtensionNames = extensions.data();
     ci.enabledLayerCount       = static_cast<uint32_t>(layers.size());
     ci.ppEnabledLayerNames     = layers.data();
-    VK_CHECK(vkCreateInstance(&ci, nullptr, &m.instance));
 
-    // Attach debug messenger
-    if (enableValidation) {
+    if (vkCreateInstance(&ci, nullptr, &m.instance) != VK_SUCCESS) {
+        std::fprintf(stderr, "[VulkanContext] vkCreateInstance failed\n");
+        return false;
+    }
+
+    // Attach debug messenger only if the extension was loaded.
+    if (haveValidation && haveDebugUtils) {
         VkDebugUtilsMessengerCreateInfoEXT dbgCi{};
         dbgCi.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
         dbgCi.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
@@ -164,7 +195,6 @@ static bool CreateInstance(VulkanContext::Impl& m) {
                                 VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT  |
                                 VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
         dbgCi.pfnUserCallback = DebugCallback;
-
         auto fn = (PFN_vkCreateDebugUtilsMessengerEXT)
             vkGetInstanceProcAddr(m.instance, "vkCreateDebugUtilsMessengerEXT");
         if (fn) fn(m.instance, &dbgCi, nullptr, &m.debugMessenger);

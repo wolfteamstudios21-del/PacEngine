@@ -277,6 +277,8 @@ void PacRenderer::LoadVisualEntities(const VisualManifest& manifest,
                     proxy->material = loaded.materials[0].get();
                     m_impl->scene->RegisterMaterial(loaded.materials[0]);
                 }
+                // Upload all primitives to GPU immediately after CPU load.
+                m_impl->gltfLoader.UploadToGpu(loaded, m_impl->vkCtx.get());
             }
             ApplyMaterialOverrides(proxy, entityData.render.material_overrides);
         }
@@ -303,6 +305,7 @@ void PacRenderer::LoadStaticMeshes(const VisualManifest& manifest,
                     proxy->material = loaded.materials[0].get();
                     m_impl->scene->RegisterMaterial(loaded.materials[0]);
                 }
+                m_impl->gltfLoader.UploadToGpu(loaded, m_impl->vkCtx.get());
             }
         }
         // Phase 2.5.1 — apply TRS from meshData.transform
