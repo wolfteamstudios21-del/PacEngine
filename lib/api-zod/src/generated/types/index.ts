@@ -68,6 +68,7 @@ export * from "./traceDiffEntryKind";
 export * from "./traceDiffResponse";
 export * from "./traceFrame";
 export * from "./versionBucket";
+export * from "./visualArtLibraryMesh";
 export * from "./visualCameraDefault";
 export * from "./visualEntityOverride";
 export * from "./visualEntityRender";

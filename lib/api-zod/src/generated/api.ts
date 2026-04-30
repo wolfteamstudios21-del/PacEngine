@@ -348,6 +348,16 @@ export const GetProjectResponse = zod.object({
         })
         .optional()
         .describe("Default camera pose for the scene."),
+      art_library_meshes: zod
+        .array(
+          zod.object({
+            modelId: zod.string(),
+            storageKey: zod.string(),
+            name: zod.string(),
+          }),
+        )
+        .optional()
+        .describe("Models added from the Art Library to this project scene"),
     })
     .optional()
     .describe(

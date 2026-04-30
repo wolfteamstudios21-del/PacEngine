@@ -409,6 +409,12 @@ export interface VisualCameraDefault {
   target?: number[];
 }
 
+export interface VisualArtLibraryMesh {
+  modelId: string;
+  storageKey: string;
+  name: string;
+}
+
 /**
  * Optional companion document to a PacData file that carries visual / rendering properties. Persisted as <projectId>.visual_manifest.json alongside the .pacdata.json sidecar. Not required for headless runs. v7 manifests use "version" instead of "visual_version", "postfx" instead of "post_processing", "camera_defaults" instead of "camera_default", and may omit the environment block entirely.
 
@@ -429,6 +435,8 @@ export interface VisualManifest {
   lights?: VisualLight[];
   post_processing?: VisualPostProcessing;
   camera_default?: VisualCameraDefault;
+  /** Models added from the Art Library to this project scene */
+  art_library_meshes?: VisualArtLibraryMesh[];
 }
 
 export interface ProjectDetail {

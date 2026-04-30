@@ -218,9 +218,11 @@ pacengine/render/
 
 | File | Purpose |
 |------|---------|
-| `src/components/Viewport3D.tsx` | Atmospheric canvas renderer (2D Canvas API placeholder). Sky gradient, perspective grid, foggy horizon, entity spheres with depth/perspective, click hit-test. WebGPU availability badge. |
-| `src/hooks/usePacRenderer.ts` | Bridge hook. Resolves `window.__pacRenderer` (real N-API module) or falls back to `stubBridge`. Manages ResizeObserver, init/shutdown lifecycle. |
+| `src/components/Viewport3D.tsx` | **React Three Fiber** 3D scene. Real WebGL renderer with Sky (physical sky simulation), OrbitControls (LMB rotate / RMB pan / scroll zoom), atmospheric fog, infinite perspective grid, animated entity meshes (spheres for agents, boxes for obstacles) with movement trail lines, billboarded labels, click selection, smooth position lerp, and GLTF model loading for Art Library assets. |
+| `src/hooks/usePacRenderer.ts` | Legacy bridge hook — kept for Phase 2.5.3 N-API integration. Resolves `window.__pacRenderer` (real native module) or falls back to `stubBridge`. |
 
-**Data flow (current stub):** `viewMode === "3D"` → `Viewport3D` renders atmospheric canvas → `usePacRenderer` initializes stub bridge (logs to console, all calls are no-ops until Phase 2.5.3 module is registered).
+**Data flow (current):** `viewMode === "3D"` → `Viewport3D` (React Three Fiber Canvas) → `SceneContent` renders Sky + Grid + EntityMesh array + art library GLTF models. Entities update each frame via smooth lerp as `currentFrameEntities` changes.
 
-**Data flow (Phase 2.5.3):** C++ `PacRenderer` exposed via `window.__pacRenderer` → `usePacRenderer` resolves real bridge → each simulation tick sends delta to `updateSimulationState()` → dirty proxies rebuilt → frame rendered to canvas.
+**Art Library integration:** `artLibraryMeshes` prop (from `visualManifest.art_library_meshes`) is passed to `Viewport3D`. Each entry is loaded as a GLTF model (`/api/storage/object/<storageKey>`) and placed in the scene using `useGLTF` + `Suspense`.
+
+**Data flow (Phase 2.5.3):** C++ `PacRenderer` exposed via `window.__pacRenderer` → `usePacRenderer` resolves real bridge → each simulation tick sends delta to `updateSimulationState()` → dirty proxies rebuilt → frame rendered to canvas (will replace R3F layer).

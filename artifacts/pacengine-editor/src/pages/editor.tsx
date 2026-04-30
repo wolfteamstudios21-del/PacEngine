@@ -537,6 +537,7 @@ export default function Editor() {
                   selectedEntityIndex={selectedEntityIndex}
                   onSelectEntity={setSelectedEntityIndex}
                   worldBounds={worldBounds}
+                  artLibraryMeshes={(project as any).visualManifest?.art_library_meshes ?? []}
                 />
               )}
 

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { VisualArtLibraryMesh } from "./visualArtLibraryMesh";
 import type { VisualCameraDefault } from "./visualCameraDefault";
 import type { VisualEntityOverride } from "./visualEntityOverride";
 import type { VisualEnvironment } from "./visualEnvironment";
@@ -33,4 +34,6 @@ export interface VisualManifest {
   lights?: VisualLight[];
   post_processing?: VisualPostProcessing;
   camera_default?: VisualCameraDefault;
+  /** Models added from the Art Library to this project scene */
+  art_library_meshes?: VisualArtLibraryMesh[];
 }

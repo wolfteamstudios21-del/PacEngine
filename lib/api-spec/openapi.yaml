@@ -1414,6 +1414,22 @@ components:
           $ref: "#/components/schemas/VisualPostProcessing"
         camera_default:
           $ref: "#/components/schemas/VisualCameraDefault"
+        art_library_meshes:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisualArtLibraryMesh"
+          description: Models added from the Art Library to this project scene
+
+    VisualArtLibraryMesh:
+      type: object
+      required: [modelId, storageKey, name]
+      properties:
+        modelId:
+          type: string
+        storageKey:
+          type: string
+        name:
+          type: string
 
     # ── Import request schemas ──────────────────────────────────────────────
 
