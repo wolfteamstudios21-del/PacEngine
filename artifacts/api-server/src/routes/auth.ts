@@ -91,7 +91,7 @@ router.post("/auth/login", authLimiter, async (req: Request, res: Response) => {
   res.json({ user });
 });
 
-router.post("/auth/logout", (_req: Request, res: Response) => {
+router.post("/auth/logout", authLimiter, (_req: Request, res: Response) => {
   res.clearCookie("pac_token", { path: "/" });
   res.json({ ok: true });
 });

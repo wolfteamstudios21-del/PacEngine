@@ -4,7 +4,7 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
-const ADMIN_USERNAME = "WolfTeam19";
+const ADMIN_USERNAME = process.env["ADMIN_USERNAME"] ?? "WolfTeam19";
 
 export async function seedAdminUser(): Promise<void> {
   const adminPassword = process.env["ADMIN_PASSWORD"];
