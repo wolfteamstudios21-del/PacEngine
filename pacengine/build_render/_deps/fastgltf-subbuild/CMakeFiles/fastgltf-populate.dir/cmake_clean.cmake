@@ -6,9 +6,9 @@ file(REMOVE_RECURSE
   "fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-download"
   "fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-install"
   "fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-mkdir"
-  "fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch"
+  "fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch_disconnected"
   "fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-test"
-  "fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update"
+  "fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update_disconnected"
 )
 
 # Per-language clean rules from dependency scanning.

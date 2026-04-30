@@ -31,8 +31,6 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/Compiler/GNU.cmake"
   "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/ExternalProject/shared_internal_commands.cmake"
   "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/FetchContent.cmake"
-  "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/FetchContent/CMakeLists.cmake.in"
-  "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/FindGit.cmake"
   "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake"
   "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/FindPackageMessage.cmake"
   "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/FindVulkan.cmake"
@@ -65,7 +63,6 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "CMakeFiles/CMakeDirectoryInformation.cmake"
   "pacdata/CMakeFiles/CMakeDirectoryInformation.cmake"
   "engine/CMakeFiles/CMakeDirectoryInformation.cmake"
-  "_deps/fastgltf-subbuild/CMakeLists.txt"
   "render/CMakeFiles/CMakeDirectoryInformation.cmake"
   "_deps/fastgltf-build/CMakeFiles/CMakeDirectoryInformation.cmake"
   )

@@ -266,7 +266,7 @@ FETCHCONTENT_BASE_DIR:PATH=/home/runner/workspace/pacengine/build_render/_deps
 
 //Disables all attempts to download or update content and assumes
 // source dirs already exist
-FETCHCONTENT_FULLY_DISCONNECTED:BOOL=OFF
+FETCHCONTENT_FULLY_DISCONNECTED:BOOL=ON
 
 //Enables QUIET option for all content population
 FETCHCONTENT_QUIET:BOOL=ON
@@ -276,7 +276,7 @@ FETCHCONTENT_QUIET:BOOL=ON
 FETCHCONTENT_SOURCE_DIR_FASTGLTF:PATH=
 
 //Enables UPDATE_DISCONNECTED behavior for all content population
-FETCHCONTENT_UPDATES_DISCONNECTED:BOOL=OFF
+FETCHCONTENT_UPDATES_DISCONNECTED:BOOL=ON
 
 //Enables UPDATE_DISCONNECTED behavior just for population of fastgltf
 FETCHCONTENT_UPDATES_DISCONNECTED_FASTGLTF:BOOL=OFF

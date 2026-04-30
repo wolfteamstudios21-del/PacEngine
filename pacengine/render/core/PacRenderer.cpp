@@ -8,9 +8,65 @@
 #include "../assets/GltfLoader.h"
 
 #include <cstdio>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <unordered_map>
+
+// ─── Minimal matrix math (column-major, no external deps) ─────────────────────
+namespace {
+
+struct Mat4 { float m[16]{}; };
+
+inline float dot3(float ax, float ay, float az,
+                   float bx, float by, float bz) {
+    return ax*bx + ay*by + az*bz;
+}
+
+inline Mat4 LookAt(float ex, float ey, float ez,
+                    float cx, float cy, float cz) {
+    float fx = cx-ex, fy = cy-ey, fz = cz-ez;
+    float fl = std::sqrt(fx*fx + fy*fy + fz*fz);
+    if (fl < 1e-7f) fl = 1e-7f;
+    fx /= fl; fy /= fl; fz /= fl;
+
+    const float ux = 0.f, uy = 1.f, uz = 0.f;
+    float rx = fy*uz - fz*uy, ry = fz*ux - fx*uz, rz = fx*uy - fy*ux;
+    float rl = std::sqrt(rx*rx + ry*ry + rz*rz);
+    if (rl < 1e-7f) rl = 1e-7f;
+    rx /= rl; ry /= rl; rz /= rl;
+
+    float upx = ry*fz - rz*fy, upy = rz*fx - rx*fz, upz = rx*fy - ry*fx;
+
+    Mat4 v{};
+    v.m[ 0]=rx;  v.m[ 4]=ry;  v.m[ 8]=rz;  v.m[12]=-dot3(rx,ry,rz,ex,ey,ez);
+    v.m[ 1]=upx; v.m[ 5]=upy; v.m[ 9]=upz; v.m[13]=-dot3(upx,upy,upz,ex,ey,ez);
+    v.m[ 2]=-fx; v.m[ 6]=-fy; v.m[10]=-fz; v.m[14]= dot3(fx,fy,fz,ex,ey,ez);
+    v.m[15]=1.f;
+    return v;
+}
+
+inline Mat4 Perspective(float fovDeg, float aspect, float zn, float zf) {
+    const float f = 1.f / std::tan(fovDeg * 0.008726646f); // π/360
+    Mat4 p{};
+    p.m[ 0] = f / aspect;
+    p.m[ 5] = f;
+    p.m[10] = -(zf+zn)/(zf-zn);
+    p.m[11] = -1.f;
+    p.m[14] = -(2.f*zf*zn)/(zf-zn);
+    return p;
+}
+
+inline Mat4 Mul(const Mat4& a, const Mat4& b) {
+    Mat4 r{};
+    for (int col = 0; col < 4; ++col)
+        for (int row = 0; row < 4; ++row)
+            for (int k = 0; k < 4; ++k)
+                r.m[col*4+row] += a.m[k*4+row] * b.m[col*4+k];
+    return r;
+}
+
+} // anonymous namespace
 
 namespace pac::render {
 namespace fs = std::filesystem;
@@ -62,8 +118,26 @@ void PacRenderer::BeginFrame() {
 
 void PacRenderer::Render() {
     if (!m_impl->initialized) return;
-    m_impl->scene->Render();
-    m_impl->vkCtx->Present();
+
+    auto* vk = m_impl->vkCtx.get();
+    auto* sc  = m_impl->scene.get();
+
+    const float aspect = (m_impl->vkCtx->Height() > 0)
+        ? static_cast<float>(m_impl->vkCtx->Width()) /
+          static_cast<float>(m_impl->vkCtx->Height())
+        : 16.f / 9.f;
+
+    const Mat4 view = LookAt(
+        m_impl->camPos.x, m_impl->camPos.y, m_impl->camPos.z,
+        m_impl->camTarget.x, m_impl->camTarget.y, m_impl->camTarget.z);
+    const Mat4 proj = Perspective(m_impl->camFov, aspect, 0.1f, 1000.f);
+    const Mat4 mvp  = Mul(proj, view);
+
+    void* cmd    = vk->GetCurrentCommandBuffer();
+    void* layout = vk->GetPipelineLayout();
+    sc->RecordDrawCalls(cmd, layout, mvp.m);
+
+    vk->Present();
 }
 
 void PacRenderer::EndFrame() {}

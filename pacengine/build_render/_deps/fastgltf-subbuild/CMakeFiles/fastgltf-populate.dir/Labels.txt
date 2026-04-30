@@ -9,6 +9,6 @@
 /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-download.rule
 /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-install.rule
 /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-mkdir.rule
-/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch.rule
+/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch_disconnected.rule
 /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-test.rule
-/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update.rule
+/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update_disconnected.rule

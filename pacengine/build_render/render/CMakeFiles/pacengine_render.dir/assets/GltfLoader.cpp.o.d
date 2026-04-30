@@ -260,6 +260,7 @@ render/CMakeFiles/pacengine_render.dir/assets/GltfLoader.cpp.o: \
  /home/runner/workspace/pacengine/render/assets/../core/render_types.h \
  /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/array \
  /home/runner/workspace/pacengine/render/assets/../core/Material.h \
+ /home/runner/workspace/pacengine/render/assets/../backend/VulkanContext.h \
  /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/filesystem \
  /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/bits/fs_fwd.h \
  /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/bits/chrono.h \

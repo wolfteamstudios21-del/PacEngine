@@ -1,6 +1,7 @@
 #include "GltfLoader.h"
 #include "../core/Mesh.h"
 #include "../core/Material.h"
+#include "../backend/VulkanContext.h"
 
 #include <cstdio>
 #include <filesystem>
@@ -240,8 +241,42 @@ GltfLoadResult GltfLoader::LoadMemory(const void* data, size_t size, const std::
 #endif
 }
 
-void GltfLoader::UploadToGpu(GltfLoadResult& result) {
-    (void)result;
+void GltfLoader::UploadToGpu(GltfLoadResult& result, VulkanContext* ctx) {
+    // VK_BUFFER_USAGE_VERTEX_BUFFER_BIT = 0x00000080
+    // VK_BUFFER_USAGE_INDEX_BUFFER_BIT  = 0x00000040
+    static constexpr uint32_t kVertexUsage = 0x00000080u;
+    static constexpr uint32_t kIndexUsage  = 0x00000040u;
+
+    if (!ctx || !ctx->IsGpuActive()) return;
+
+    uint32_t uploaded = 0;
+    for (auto& mesh : result.meshes) {
+        if (!mesh) continue;
+        for (auto& prim : mesh->primitives) {
+            if (prim.vertices.empty() || prim.indices.empty()) continue;
+
+            const size_t vbSize = prim.vertices.size() * sizeof(Vertex);
+            uint64_t vbHandle = 0, vbMem = 0;
+            if (ctx->AllocateHostBuffer(prim.vertices.data(), vbSize, kVertexUsage,
+                                        &vbHandle, &vbMem)) {
+                prim.vertexBufferHandle = vbHandle;
+                (void)vbMem;
+            }
+
+            const size_t ibSize = prim.indices.size() * sizeof(uint32_t);
+            uint64_t ibHandle = 0, ibMem = 0;
+            if (ctx->AllocateHostBuffer(prim.indices.data(), ibSize, kIndexUsage,
+                                        &ibHandle, &ibMem)) {
+                prim.indexBufferHandle = ibHandle;
+                (void)ibMem;
+            }
+
+            if (prim.vertexBufferHandle && prim.indexBufferHandle) ++uploaded;
+        }
+    }
+
+    if (uploaded > 0)
+        std::printf("[GltfLoader] Uploaded %u primitive(s) to GPU\n", uploaded);
 }
 
 } // namespace pac::render

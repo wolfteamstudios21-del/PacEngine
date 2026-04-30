@@ -31,6 +31,14 @@ public:
     void Update(float deltaTime);
     void Render();
 
+    // Record draw commands into an already-open command buffer.
+    // commandBuffer is VkCommandBuffer cast to void* (SDK-free header).
+    // pipelineLayout is VkPipelineLayout cast to void*.
+    // mvpMatrix is a pointer to 16 floats (column-major 4×4) for the push constant.
+    // Called between BeginFrame and Present by PacRenderer.
+    void RecordDrawCalls(void* commandBuffer, void* pipelineLayout,
+                         const float* mvpMatrix16);
+
     // Scene takes shared ownership of imported meshes + materials so that
     // RenderProxy raw pointers into them never dangle.
     void RegisterMesh(std::shared_ptr<class Mesh> mesh);

@@ -71,8 +71,8 @@ CMakeFiles/fastgltf-populate: CMakeFiles/fastgltf-populate-complete
 CMakeFiles/fastgltf-populate-complete: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-install
 CMakeFiles/fastgltf-populate-complete: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-mkdir
 CMakeFiles/fastgltf-populate-complete: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-download
-CMakeFiles/fastgltf-populate-complete: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update
-CMakeFiles/fastgltf-populate-complete: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch
+CMakeFiles/fastgltf-populate-complete: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update_disconnected
+CMakeFiles/fastgltf-populate-complete: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch_disconnected
 CMakeFiles/fastgltf-populate-complete: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-configure
 CMakeFiles/fastgltf-populate-complete: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-build
 CMakeFiles/fastgltf-populate-complete: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-install
@@ -82,16 +82,13 @@ CMakeFiles/fastgltf-populate-complete: fastgltf-populate-prefix/src/fastgltf-pop
 	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E touch /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/CMakeFiles/fastgltf-populate-complete
 	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E touch /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-done
 
-fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update:
-.PHONY : fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update
-
 fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-build: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-configure
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "No build step for 'fastgltf-populate'"
 	cd /home/runner/workspace/pacengine/build_render/_deps/fastgltf-build && /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E echo_append
 	cd /home/runner/workspace/pacengine/build_render/_deps/fastgltf-build && /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E touch /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-build
 
 fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-configure: fastgltf-populate-prefix/tmp/fastgltf-populate-cfgcmd.txt
-fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-configure: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch
+fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-configure: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch_disconnected
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "No configure step for 'fastgltf-populate'"
 	cd /home/runner/workspace/pacengine/build_render/_deps/fastgltf-build && /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E echo_append
 	cd /home/runner/workspace/pacengine/build_render/_deps/fastgltf-build && /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E touch /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-configure
@@ -112,25 +109,23 @@ fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-mkdir:
 	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -Dcfgdir= -P /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/tmp/fastgltf-populate-mkdirs.cmake
 	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E touch /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-mkdir
 
-fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch-info.txt
-fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "No patch step for 'fastgltf-populate'"
+fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch_disconnected: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch-info.txt
+fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch_disconnected: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update_disconnected
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "No patch_disconnected step for 'fastgltf-populate'"
 	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E echo_append
-	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E touch /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch
-
-fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update:
-.PHONY : fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update
+	/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E touch /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch_disconnected
 
 fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-test: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-install
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "No test step for 'fastgltf-populate'"
 	cd /home/runner/workspace/pacengine/build_render/_deps/fastgltf-build && /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E echo_append
 	cd /home/runner/workspace/pacengine/build_render/_deps/fastgltf-build && /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E touch /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-test
 
-fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update: fastgltf-populate-prefix/tmp/fastgltf-populate-gitupdate.cmake
-fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update-info.txt
-fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-download
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Performing update step for 'fastgltf-populate'"
-	cd /home/runner/workspace/pacengine/build_render/_deps/fastgltf-src && /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/tmp/fastgltf-populate-gitupdate.cmake
+fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update_disconnected: fastgltf-populate-prefix/tmp/fastgltf-populate-gitupdate.cmake
+fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update_disconnected: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update-info.txt
+fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update_disconnected: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-download
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Performing disconnected update step for 'fastgltf-populate'"
+	cd /home/runner/workspace/pacengine/build_render/_deps/fastgltf-src && /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -Dcan_fetch=NO -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/tmp/fastgltf-populate-gitupdate.cmake
+	cd /home/runner/workspace/pacengine/build_render/_deps/fastgltf-src && /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/bin/cmake -E touch /home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update_disconnected
 
 CMakeFiles/fastgltf-populate.dir/codegen:
 .PHONY : CMakeFiles/fastgltf-populate.dir/codegen
@@ -142,9 +137,9 @@ fastgltf-populate: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf
 fastgltf-populate: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-download
 fastgltf-populate: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-install
 fastgltf-populate: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-mkdir
-fastgltf-populate: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch
+fastgltf-populate: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch_disconnected
 fastgltf-populate: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-test
-fastgltf-populate: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update
+fastgltf-populate: fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update_disconnected
 fastgltf-populate: CMakeFiles/fastgltf-populate.dir/build.make
 .PHONY : fastgltf-populate
 

@@ -4,6 +4,10 @@
 #include "Mesh.h"
 #include <cstdio>
 
+#if defined(HAVE_VULKAN)
+#include <vulkan/vulkan.h>
+#endif
+
 namespace pac::render {
 
 RenderScene::RenderScene()  = default;
@@ -61,13 +65,66 @@ void RenderScene::Update(float /*deltaTime*/) {
 }
 
 void RenderScene::Render() {
-    // Phase 2.5.1 — issue draw calls per proxy via Vulkan pipeline
-    // Phase 2.5.2 — sort by material, apply environment / GI / post-process
+    // Intentional no-op: RenderScene::Render() is superseded by
+    // PacRenderer::Render() which calls RecordDrawCalls with the live
+    // command buffer and current MVP matrix.
+    // Kept for API compatibility; remove in Phase M3 host-loop refactor.
+}
+
+void RenderScene::RecordDrawCalls(void* commandBuffer, void* pipelineLayout,
+                                   const float* mvpMatrix16) {
+    if (!commandBuffer) return;  // Stub backend or no active frame
+
+#if defined(HAVE_VULKAN)
+    auto cmd    = static_cast<VkCommandBuffer>(commandBuffer);
+    auto layout = static_cast<VkPipelineLayout>(pipelineLayout);
+
+    // Push MVP matrix (64 bytes) as a push constant to the vertex shader.
+    if (layout && mvpMatrix16)
+        vkCmdPushConstants(cmd, layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 64, mvpMatrix16);
+
+    uint32_t drawCount = 0;
     for (auto& [id, proxy] : m_proxies) {
-        if (!proxy->visible) continue;
+        if (!proxy->visible || !proxy->mesh) continue;
         (void)id;
-        // TODO: bind material pipeline, push transform, draw mesh
+
+        for (const auto& prim : proxy->mesh->primitives) {
+            // Skip primitives whose GPU buffers haven't been uploaded yet.
+            if (prim.vertexBufferHandle == 0 || prim.indexBufferHandle == 0) continue;
+
+            auto vb = reinterpret_cast<VkBuffer>(
+                static_cast<uintptr_t>(prim.vertexBufferHandle));
+            auto ib = reinterpret_cast<VkBuffer>(
+                static_cast<uintptr_t>(prim.indexBufferHandle));
+
+            const VkDeviceSize offset = 0;
+            vkCmdBindVertexBuffers(cmd, 0, 1, &vb, &offset);
+            vkCmdBindIndexBuffer(cmd, ib, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(cmd,
+                static_cast<uint32_t>(prim.indices.size()),
+                1,   // instanceCount
+                0,   // firstIndex
+                0,   // vertexOffset
+                0);  // firstInstance
+            ++drawCount;
+        }
     }
+
+    if (drawCount > 0)
+        std::printf("[RenderScene] Recorded %u draw call(s)\n", drawCount);
+#else
+    // Stub: count draw-capable proxies for diagnostics
+    uint32_t ready = 0;
+    for (auto& [id, proxy] : m_proxies) {
+        if (!proxy->visible || !proxy->mesh) continue;
+        (void)id;
+        for (const auto& prim : proxy->mesh->primitives) {
+            if (prim.vertexBufferHandle != 0) ++ready;
+        }
+    }
+    (void)commandBuffer; (void)pipelineLayout; (void)mvpMatrix16;
+    (void)ready;
+#endif
 }
 
 } // namespace pac::render

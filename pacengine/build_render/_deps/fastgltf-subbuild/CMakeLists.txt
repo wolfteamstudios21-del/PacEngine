@@ -27,7 +27,7 @@ set_property(GLOBAL PROPERTY _CMAKE_FindGit_GIT_EXECUTABLE_VERSION
 
 include(ExternalProject)
 ExternalProject_Add(fastgltf-populate
-                     "UPDATE_DISCONNECTED" "False" "GIT_REPOSITORY" "https://github.com/spnda/fastgltf.git" "EXTERNALPROJECT_INTERNAL_ARGUMENT_SEPARATOR" "GIT_TAG" "v0.7.1" "GIT_SHALLOW" "TRUE"
+                     "UPDATE_DISCONNECTED" "True" "GIT_REPOSITORY" "https://github.com/spnda/fastgltf.git" "EXTERNALPROJECT_INTERNAL_ARGUMENT_SEPARATOR" "GIT_TAG" "v0.7.1" "GIT_SHALLOW" "TRUE"
                     SOURCE_DIR          "/home/runner/workspace/pacengine/build_render/_deps/fastgltf-src"
                     BINARY_DIR          "/home/runner/workspace/pacengine/build_render/_deps/fastgltf-build"
                     CONFIGURE_COMMAND   ""

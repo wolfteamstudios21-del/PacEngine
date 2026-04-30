@@ -745,7 +745,6 @@ void VulkanContext::Resize(uint32_t width, uint32_t height) {
     auto& m = *m_impl;
     vkDeviceWaitIdle(m.device);
 
-    // Destroy old swapchain resources
     for (auto fb : m.framebuffers) vkDestroyFramebuffer(m.device, fb, nullptr);
     m.framebuffers.clear();
     for (auto iv : m.swapImageViews) vkDestroyImageView(m.device, iv, nullptr);
@@ -756,6 +755,81 @@ void VulkanContext::Resize(uint32_t width, uint32_t height) {
     CreateSwapchain(m, width, height);
     CreateFramebuffers(m);
     std::printf("[VulkanContext] Swapchain recreated (%ux%u)\n", width, height);
+}
+
+// ─── Memory helper ────────────────────────────────────────────────────────────
+
+static uint32_t FindMemoryType(VkPhysicalDevice physDev, uint32_t typeMask,
+                               VkMemoryPropertyFlags props) {
+    VkPhysicalDeviceMemoryProperties mp;
+    vkGetPhysicalDeviceMemoryProperties(physDev, &mp);
+    for (uint32_t i = 0; i < mp.memoryTypeCount; ++i)
+        if ((typeMask & (1u << i)) &&
+            (mp.memoryTypes[i].propertyFlags & props) == props)
+            return i;
+    return UINT32_MAX;
+}
+
+bool VulkanContext::AllocateHostBuffer(const void* data, size_t size, uint32_t usageFlags,
+                                       uint64_t* outBuffer, uint64_t* outMemory) {
+    if (!m_gpuActive || !data || size == 0) return false;
+    auto& m = *m_impl;
+
+    VkBufferCreateInfo bci{};
+    bci.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bci.size        = size;
+    bci.usage       = static_cast<VkBufferUsageFlags>(usageFlags);
+    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkBuffer buf = VK_NULL_HANDLE;
+    if (vkCreateBuffer(m.device, &bci, nullptr, &buf) != VK_SUCCESS) return false;
+
+    VkMemoryRequirements req;
+    vkGetBufferMemoryRequirements(m.device, buf, &req);
+
+    const uint32_t memIdx = FindMemoryType(m.physDev, req.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (memIdx == UINT32_MAX) { vkDestroyBuffer(m.device, buf, nullptr); return false; }
+
+    VkMemoryAllocateInfo ai{};
+    ai.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    ai.allocationSize  = req.size;
+    ai.memoryTypeIndex = memIdx;
+
+    VkDeviceMemory mem = VK_NULL_HANDLE;
+    if (vkAllocateMemory(m.device, &ai, nullptr, &mem) != VK_SUCCESS) {
+        vkDestroyBuffer(m.device, buf, nullptr);
+        return false;
+    }
+
+    void* mapped = nullptr;
+    vkMapMemory(m.device, mem, 0, size, 0, &mapped);
+    std::memcpy(mapped, data, size);
+    vkUnmapMemory(m.device, mem);
+    vkBindBufferMemory(m.device, buf, mem, 0);
+
+    *outBuffer = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(buf));
+    *outMemory = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(mem));
+    return true;
+}
+
+void VulkanContext::FreeHostBuffer(uint64_t vkBuffer, uint64_t vkMemory) {
+    if (!m_gpuActive) return;
+    auto& m = *m_impl;
+    auto buf = reinterpret_cast<VkBuffer>(static_cast<uintptr_t>(vkBuffer));
+    auto mem = reinterpret_cast<VkDeviceMemory>(static_cast<uintptr_t>(vkMemory));
+    if (buf) vkDestroyBuffer(m.device, buf, nullptr);
+    if (mem) vkFreeMemory(m.device, mem, nullptr);
+}
+
+void* VulkanContext::GetCurrentCommandBuffer() const {
+    if (!m_gpuActive) return nullptr;
+    return static_cast<void*>(m_impl->cmdBufs[m_impl->currentFrame]);
+}
+
+void* VulkanContext::GetPipelineLayout() const {
+    if (!m_gpuActive) return nullptr;
+    return static_cast<void*>(m_impl->pipelineLayout);
 }
 
 } // namespace pac::render
@@ -788,6 +862,17 @@ void VulkanContext::Shutdown() {
 void VulkanContext::BeginFrame() {}
 void VulkanContext::Present()    {}
 void VulkanContext::Resize(uint32_t w, uint32_t h) { m_width = w; m_height = h; }
+
+bool VulkanContext::AllocateHostBuffer(const void*, size_t, uint32_t,
+                                       uint64_t* outBuf, uint64_t* outMem) {
+    if (outBuf) *outBuf = 0;
+    if (outMem) *outMem = 0;
+    return false;
+}
+
+void VulkanContext::FreeHostBuffer(uint64_t, uint64_t) {}
+void* VulkanContext::GetCurrentCommandBuffer() const { return nullptr; }
+void* VulkanContext::GetPipelineLayout()       const { return nullptr; }
 
 } // namespace pac::render
 

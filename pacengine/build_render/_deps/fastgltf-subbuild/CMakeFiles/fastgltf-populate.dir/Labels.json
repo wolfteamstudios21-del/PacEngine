@@ -26,13 +26,13 @@
 			"file" : "/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-mkdir.rule"
 		},
 		{
-			"file" : "/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch.rule"
+			"file" : "/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-patch_disconnected.rule"
 		},
 		{
 			"file" : "/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-test.rule"
 		},
 		{
-			"file" : "/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update.rule"
+			"file" : "/home/runner/workspace/pacengine/build_render/_deps/fastgltf-subbuild/fastgltf-populate-prefix/src/fastgltf-populate-stamp/fastgltf-populate-update_disconnected.rule"
 		}
 	],
 	"target" : 

@@ -3,3 +3,4 @@ build/
 *.a
 *.bin
 trace_*.bin
+build_render/

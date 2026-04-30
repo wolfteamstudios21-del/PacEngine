@@ -301,6 +301,30 @@ render/CMakeFiles/pacengine_render.dir/core/PacRenderer.cpp.o: \
  /home/runner/workspace/pacengine/render/core/../importer/PacWorldImporter.h \
  /home/runner/workspace/pacengine/render/core/../backend/VulkanContext.h \
  /home/runner/workspace/pacengine/render/core/../assets/GltfLoader.h \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/cmath \
+ /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include/math.h \
+ /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include/bits/math-vector.h \
+ /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include/bits/libm-simd-decl-stubs.h \
+ /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include/bits/flt-eval-method.h \
+ /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include/bits/fp-logb.h \
+ /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include/bits/fp-fast.h \
+ /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include/bits/mathcalls-helper-functions.h \
+ /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include/bits/mathcalls.h \
+ /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include/bits/mathcalls-narrow.h \
+ /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include/bits/iscanonical.h \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/bits/specfun.h \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/tr1/gamma.tcc \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/tr1/special_function_util.h \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/tr1/bessel_function.tcc \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/tr1/beta_function.tcc \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/tr1/ell_integral.tcc \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/tr1/exp_integral.tcc \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/tr1/hypergeometric.tcc \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/tr1/legendre_function.tcc \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/tr1/modified_bessel_func.tcc \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/tr1/poly_hermite.tcc \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/tr1/poly_laguerre.tcc \
+ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/tr1/riemann_zeta.tcc \
  /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/fstream \
  /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/x86_64-unknown-linux-gnu/bits/basic_file.h \
  /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/x86_64-unknown-linux-gnu/bits/c++io.h \

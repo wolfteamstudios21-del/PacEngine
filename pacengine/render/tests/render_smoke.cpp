@@ -39,7 +39,12 @@ static int g_fail = 0;
         }                                                               \
     } while (0)
 
-// Minimal glTF 2.0 JSON with one mesh / one triangle primitive
+// Minimal glTF 2.0 — one triangle primitive.
+// Binary buffer (78 bytes, all zeros):
+//   [0..35]  3×VEC3 FLOAT positions — (0,0,0) × 3  (count still drives vertex creation)
+//   [36..71] 3×VEC3 FLOAT normals   — (0,0,0) × 3
+//   [72..77] 3×UNSIGNED_SHORT indices — 0, 0, 0 (GltfLoader up-casts to uint32_t)
+// 78 bytes → 26 base64 groups → exactly 104 'A' characters, no padding needed.
 static constexpr const char kMinimalGltf[] = R"({
   "asset": {"version": "2.0"},
   "scene": 0,
@@ -63,7 +68,7 @@ static constexpr const char kMinimalGltf[] = R"({
     {"buffer": 0, "byteOffset": 36, "byteLength": 36},
     {"buffer": 0, "byteOffset": 72, "byteLength":  6}
   ],
-  "buffers": [{"byteLength": 78, "uri": "data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}]
+  "buffers": [{"byteLength": 78, "uri": "data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}]
 })";
 
 // Minimal valid glTF 2.0 (for folder-based import tests — no geometry needed)
@@ -125,29 +130,37 @@ static void TestRendererLifecycle() {
 }
 
 static void TestGltfLoader() {
-    std::printf("\n── Test 2: GltfLoader (fastgltf) ────────────────────────────\n");
+    std::printf("\n── Test 2: GltfLoader (fastgltf in-memory) ──────────────────\n");
 
     pac::render::GltfLoader loader;
 
 #if defined(HAVE_FASTGLTF)
-    // In-memory load of the minimal glTF above
-    // Note: the embedded base64 buffer has zeroed bytes — positions are all (0,0,0),
-    // which is intentional; we only verify the parse succeeds.
     GltfLoadResult r = loader.LoadMemory(
         kMinimalGltf, std::strlen(kMinimalGltf), ".");
 
-    // With zeroed vertex positions the parser still produces a mesh
-    EXPECT(r.success || !r.error.empty()); // At minimum we get an error message
     std::printf("  success=%d  meshes=%zu  error=%s\n",
                 r.success,
                 r.meshes.size(),
                 r.error.empty() ? "(none)" : r.error.c_str());
+
+    // Hard assertions — must get a mesh with real vertex and index data.
+    EXPECT(r.success);
+    EXPECT(!r.meshes.empty());
+    if (!r.meshes.empty() && r.meshes[0]) {
+        EXPECT(!r.meshes[0]->primitives.empty());
+        if (!r.meshes[0]->primitives.empty()) {
+            const auto& prim = r.meshes[0]->primitives[0];
+            std::printf("  vertices=%zu  indices=%zu\n",
+                        prim.vertices.size(), prim.indices.size());
+            EXPECT(prim.vertices.size() == 3);  // accessor.count=3
+            EXPECT(prim.indices.size()  == 3);  // accessor.count=3
+        }
+    }
 #else
     auto r = loader.LoadMemory(kMinimalGltf, std::strlen(kMinimalGltf), ".");
-    EXPECT(!r.success);  // Expected: stub returns false
+    EXPECT(!r.success);
     EXPECT(!r.error.empty());
     std::printf("  fastgltf not compiled in — stub path confirmed\n");
-    ++g_pass;  // count the stub-confirmed test
 #endif
 }
 
@@ -171,8 +184,19 @@ static void TestGltfLoaderFile() {
     std::printf("  success=%d  meshes=%zu  error=%s\n",
                 r.success, r.meshes.size(),
                 r.error.empty() ? "(none)" : r.error.c_str());
-    // success depends on whether the buffer data decodes correctly
-    EXPECT(r.success || !r.error.empty());
+
+    EXPECT(r.success);
+    EXPECT(!r.meshes.empty());
+    if (!r.meshes.empty() && r.meshes[0]) {
+        EXPECT(!r.meshes[0]->primitives.empty());
+        if (!r.meshes[0]->primitives.empty()) {
+            const auto& prim = r.meshes[0]->primitives[0];
+            std::printf("  file: vertices=%zu  indices=%zu\n",
+                        prim.vertices.size(), prim.indices.size());
+            EXPECT(prim.vertices.size() == 3);
+            EXPECT(prim.indices.size()  == 3);
+        }
+    }
 #else
     EXPECT(!r.success);
     std::printf("  Stub path confirmed\n");
