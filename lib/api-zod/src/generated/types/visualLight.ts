@@ -12,10 +12,21 @@ import type { VisualLightType } from "./visualLightType";
  */
 export interface VisualLight {
   type?: VisualLightType;
-  intensity?: number;
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  position?: number[];
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  direction?: number[];
   /**
    * @minItems 3
    * @maxItems 3
    */
   color?: number[];
+  intensity?: number;
+  range?: number;
 }

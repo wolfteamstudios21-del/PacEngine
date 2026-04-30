@@ -52,14 +52,44 @@ export const GetProjectParams = zod.object({
   projectId: zod.coerce.string(),
 });
 
+export const getProjectResponseVisualManifestEnvironmentSkyTypeDefault = `physical`;
 export const getProjectResponseVisualManifestEnvironmentSunDirectionMin = 3;
 export const getProjectResponseVisualManifestEnvironmentSunDirectionMax = 3;
+
+export const getProjectResponseVisualManifestEnvironmentSunColorMin = 3;
+export const getProjectResponseVisualManifestEnvironmentSunColorMax = 3;
 
 export const getProjectResponseVisualManifestEnvironmentFogColorMin = 3;
 export const getProjectResponseVisualManifestEnvironmentFogColorMax = 3;
 
+export const getProjectResponseVisualManifestGlobalIlluminationGiTypeDefault = `probe_grid`;
+export const getProjectResponseVisualManifestGlobalIlluminationProbeDensityDefault = `medium`;
+export const getProjectResponseVisualManifestEntitiesItemRenderMaterialOverridesBaseColorFactorMin = 4;
+export const getProjectResponseVisualManifestEntitiesItemRenderMaterialOverridesBaseColorFactorMax = 4;
+
+export const getProjectResponseVisualManifestStaticMeshesItemTransformPositionMin = 3;
+export const getProjectResponseVisualManifestStaticMeshesItemTransformPositionMax = 3;
+
+export const getProjectResponseVisualManifestStaticMeshesItemTransformRotationMin = 4;
+export const getProjectResponseVisualManifestStaticMeshesItemTransformRotationMax = 4;
+
+export const getProjectResponseVisualManifestStaticMeshesItemTransformScaleMin = 3;
+export const getProjectResponseVisualManifestStaticMeshesItemTransformScaleMax = 3;
+
+export const getProjectResponseVisualManifestLightsItemPositionMin = 3;
+export const getProjectResponseVisualManifestLightsItemPositionMax = 3;
+
+export const getProjectResponseVisualManifestLightsItemDirectionMin = 3;
+export const getProjectResponseVisualManifestLightsItemDirectionMax = 3;
+
 export const getProjectResponseVisualManifestLightsItemColorMin = 3;
 export const getProjectResponseVisualManifestLightsItemColorMax = 3;
+
+export const getProjectResponseVisualManifestCameraDefaultPositionMin = 3;
+export const getProjectResponseVisualManifestCameraDefaultPositionMax = 3;
+
+export const getProjectResponseVisualManifestCameraDefaultTargetMin = 3;
+export const getProjectResponseVisualManifestCameraDefaultTargetMax = 3;
 
 export const GetProjectResponse = zod.object({
   summary: zod.object({
@@ -98,99 +128,148 @@ export const GetProjectResponse = zod.object({
   rawJson: zod.string(),
   visualManifest: zod
     .object({
-      pacdataVersion: zod
+      visual_version: zod
+        .string()
+        .describe('visual_manifest schema version (currently \"1.0.0\")'),
+      pacdata_version: zod
         .string()
         .optional()
         .describe("PacData format version this manifest was authored for"),
-      visualVersion: zod
-        .string()
-        .optional()
-        .describe('visual_manifest schema version (currently \"1.0.0\")'),
       environment: zod
         .object({
-          skyModel: zod
-            .string()
-            .optional()
-            .describe("physical_sky | hdri | procedural"),
-          sunDirection: zod
+          sky_type: zod
+            .enum(["physical", "hdr_cubemap", "procedural", "simple"])
+            .default(getProjectResponseVisualManifestEnvironmentSkyTypeDefault),
+          sun_direction: zod
             .array(zod.number())
             .min(getProjectResponseVisualManifestEnvironmentSunDirectionMin)
             .max(getProjectResponseVisualManifestEnvironmentSunDirectionMax)
             .optional(),
-          sunIntensity: zod.number().optional(),
-          atmosphericDensity: zod.number().optional(),
-          fogDensity: zod.number().optional(),
-          fogColor: zod
+          sun_intensity: zod.number().optional(),
+          sun_color: zod
+            .array(zod.number())
+            .min(getProjectResponseVisualManifestEnvironmentSunColorMin)
+            .max(getProjectResponseVisualManifestEnvironmentSunColorMax)
+            .optional(),
+          ambient_intensity: zod.number().optional(),
+          fog_enabled: zod.boolean().optional(),
+          fog_density: zod.number().optional(),
+          fog_color: zod
             .array(zod.number())
             .min(getProjectResponseVisualManifestEnvironmentFogColorMin)
             .max(getProjectResponseVisualManifestEnvironmentFogColorMax)
             .optional(),
+          fog_height_falloff: zod.number().optional(),
         })
-        .optional()
         .describe("Atmospheric and sky settings for the scene."),
-      globalIllumination: zod
+      global_illumination: zod
         .object({
-          giType: zod
-            .string()
-            .optional()
-            .describe("voxel_probe_hybrid | probe_grid | sdf | none"),
-          probeDensity: zod.string().optional().describe("low | medium | high"),
-          voxelSize: zod.number().optional(),
+          gi_type: zod
+            .enum(["none", "probe_grid", "voxel", "hybrid"])
+            .default(
+              getProjectResponseVisualManifestGlobalIlluminationGiTypeDefault,
+            ),
+          probe_density: zod
+            .enum(["low", "medium", "high"])
+            .default(
+              getProjectResponseVisualManifestGlobalIlluminationProbeDensityDefault,
+            ),
         })
         .optional()
         .describe("Global illumination settings."),
-      postProcessing: zod
-        .object({
-          tonemap: zod.string().optional().describe("aces | filmic | linear"),
-          bloomIntensity: zod.number().optional(),
-          exposure: zod.number().optional(),
-        })
-        .optional()
-        .describe("Camera post-processing stack."),
       entities: zod
         .array(
           zod
             .object({
-              id: zod.string().describe("Entity id matching PacData entity id"),
+              id: zod
+                .number()
+                .describe(
+                  "Entity slot index matching PacData entity order (0-based)",
+                ),
               render: zod
                 .object({
                   asset: zod
                     .string()
-                    .optional()
                     .describe("Relative path to glTF asset file"),
-                  animationState: zod
-                    .string()
+                  material_overrides: zod
+                    .record(
+                      zod.string(),
+                      zod
+                        .object({
+                          baseColorFactor: zod
+                            .array(zod.number())
+                            .min(
+                              getProjectResponseVisualManifestEntitiesItemRenderMaterialOverridesBaseColorFactorMin,
+                            )
+                            .max(
+                              getProjectResponseVisualManifestEntitiesItemRenderMaterialOverridesBaseColorFactorMax,
+                            )
+                            .optional(),
+                          metallicFactor: zod.number().optional(),
+                          roughnessFactor: zod.number().optional(),
+                        })
+                        .describe(
+                          "PBR material channel overrides for a single material slot.",
+                        ),
+                    )
                     .optional()
                     .describe(
-                      'Default animation clip name (e.g. \"idle\", \"walk\")',
+                      "Material slot index (as string key) → override properties",
                     ),
-                  lodPolicy: zod
-                    .string()
-                    .optional()
-                    .describe("auto | lod0 | lod1 | lod2"),
-                  castShadows: zod.boolean().optional(),
+                  cast_shadows: zod.boolean().optional(),
+                  receive_shadows: zod.boolean().optional(),
+                  visible: zod.boolean().optional(),
                 })
-                .optional()
                 .describe("Per-entity rendering configuration."),
             })
             .describe("Visual override for a single simulation entity."),
         )
         .optional()
-        .describe("Per-entity visual overrides keyed by entity id"),
-      staticMeshes: zod
+        .describe("Per-entity visual overrides keyed by integer slot index"),
+      static_meshes: zod
         .array(
           zod
             .object({
-              id: zod.string().optional(),
-              asset: zod
-                .string()
+              id: zod.string(),
+              asset: zod.string().describe("Relative path to glTF asset file"),
+              transform: zod
+                .object({
+                  position: zod
+                    .array(zod.number())
+                    .min(
+                      getProjectResponseVisualManifestStaticMeshesItemTransformPositionMin,
+                    )
+                    .max(
+                      getProjectResponseVisualManifestStaticMeshesItemTransformPositionMax,
+                    )
+                    .optional(),
+                  rotation: zod
+                    .array(zod.number())
+                    .min(
+                      getProjectResponseVisualManifestStaticMeshesItemTransformRotationMin,
+                    )
+                    .max(
+                      getProjectResponseVisualManifestStaticMeshesItemTransformRotationMax,
+                    )
+                    .optional()
+                    .describe("Quaternion (x, y, z, w)"),
+                  scale: zod
+                    .array(zod.number())
+                    .min(
+                      getProjectResponseVisualManifestStaticMeshesItemTransformScaleMin,
+                    )
+                    .max(
+                      getProjectResponseVisualManifestStaticMeshesItemTransformScaleMax,
+                    )
+                    .optional(),
+                })
                 .optional()
-                .describe("Relative path to glTF asset file"),
-              materialIntent: zod
+                .describe("World-space transform for a static mesh."),
+              material_intent: zod
                 .string()
                 .optional()
                 .describe(
-                  "Hint to the renderer (e.g. rock_rough, grass, concrete)",
+                  "Semantic hint to the renderer (e.g. rock_rough, grass, concrete)",
                 ),
             })
             .describe("Non-simulated decorative mesh in the scene."),
@@ -201,16 +280,52 @@ export const GetProjectResponse = zod.object({
           zod
             .object({
               type: zod.enum(["directional", "point", "spot"]).optional(),
-              intensity: zod.number().optional(),
+              position: zod
+                .array(zod.number())
+                .min(getProjectResponseVisualManifestLightsItemPositionMin)
+                .max(getProjectResponseVisualManifestLightsItemPositionMax)
+                .optional(),
+              direction: zod
+                .array(zod.number())
+                .min(getProjectResponseVisualManifestLightsItemDirectionMin)
+                .max(getProjectResponseVisualManifestLightsItemDirectionMax)
+                .optional(),
               color: zod
                 .array(zod.number())
                 .min(getProjectResponseVisualManifestLightsItemColorMin)
                 .max(getProjectResponseVisualManifestLightsItemColorMax)
                 .optional(),
+              intensity: zod.number().optional(),
+              range: zod.number().optional(),
             })
             .describe("A light placed in the scene."),
         )
         .optional(),
+      post_processing: zod
+        .object({
+          tonemap: zod.string().optional().describe("aces | filmic | linear"),
+          exposure: zod.number().optional(),
+          bloom_intensity: zod.number().optional(),
+          contrast: zod.number().optional(),
+          saturation: zod.number().optional(),
+        })
+        .optional()
+        .describe("Camera post-processing stack."),
+      camera_default: zod
+        .object({
+          position: zod
+            .array(zod.number())
+            .min(getProjectResponseVisualManifestCameraDefaultPositionMin)
+            .max(getProjectResponseVisualManifestCameraDefaultPositionMax)
+            .optional(),
+          target: zod
+            .array(zod.number())
+            .min(getProjectResponseVisualManifestCameraDefaultTargetMin)
+            .max(getProjectResponseVisualManifestCameraDefaultTargetMax)
+            .optional(),
+        })
+        .optional()
+        .describe("Default camera pose for the scene."),
     })
     .optional()
     .describe(

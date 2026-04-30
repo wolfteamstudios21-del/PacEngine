@@ -12,6 +12,8 @@
 export interface VisualPostProcessing {
   /** aces | filmic | linear */
   tonemap?: string;
-  bloomIntensity?: number;
   exposure?: number;
+  bloom_intensity?: number;
+  contrast?: number;
+  saturation?: number;
 }

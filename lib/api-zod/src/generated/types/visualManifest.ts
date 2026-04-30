@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { VisualCameraDefault } from "./visualCameraDefault";
 import type { VisualEntityOverride } from "./visualEntityOverride";
 import type { VisualEnvironment } from "./visualEnvironment";
 import type { VisualGI } from "./visualGI";
@@ -17,15 +18,16 @@ import type { VisualStaticMesh } from "./visualStaticMesh";
 
  */
 export interface VisualManifest {
-  /** PacData format version this manifest was authored for */
-  pacdataVersion?: string;
   /** visual_manifest schema version (currently "1.0.0") */
-  visualVersion?: string;
-  environment?: VisualEnvironment;
-  globalIllumination?: VisualGI;
-  postProcessing?: VisualPostProcessing;
-  /** Per-entity visual overrides keyed by entity id */
+  visual_version: string;
+  /** PacData format version this manifest was authored for */
+  pacdata_version?: string;
+  environment: VisualEnvironment;
+  global_illumination?: VisualGI;
+  /** Per-entity visual overrides keyed by integer slot index */
   entities?: VisualEntityOverride[];
-  staticMeshes?: VisualStaticMesh[];
+  static_meshes?: VisualStaticMesh[];
   lights?: VisualLight[];
+  post_processing?: VisualPostProcessing;
+  camera_default?: VisualCameraDefault;
 }

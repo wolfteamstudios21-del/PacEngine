@@ -1,44 +1,49 @@
 {
-  "visualVersion": "1.0.0",
+  "visual_version": "1.0.0",
+  "pacdata_version": "1.0.0",
   "environment": {
-    "skyModel": "physical_sky",
-    "sunIntensity": 1.2,
-    "fogDensity": 0.02,
-    "fogColor": [
-      0.7,
-      0.8,
-      0.9
-    ]
+    "sky_type": "physical",
+    "sun_direction": [0.5, 0.8, 0.3],
+    "sun_intensity": 1.2,
+    "sun_color": [1.0, 0.95, 0.85],
+    "ambient_intensity": 0.4,
+    "fog_enabled": true,
+    "fog_density": 0.02,
+    "fog_color": [0.7, 0.8, 0.9],
+    "fog_height_falloff": 0.5
   },
-  "globalIllumination": {
-    "giType": "voxel_probe_hybrid",
-    "probeDensity": "medium",
-    "voxelSize": 0.5
-  },
-  "postProcessing": {
-    "tonemap": "aces",
-    "bloomIntensity": 0.3,
-    "exposure": 1
+  "global_illumination": {
+    "gi_type": "probe_grid",
+    "probe_density": "medium"
   },
   "entities": [
     {
-      "id": "hero",
+      "id": 0,
       "render": {
         "asset": "assets/models/hero.gltf",
-        "animationState": "idle",
-        "castShadows": true
+        "cast_shadows": true,
+        "receive_shadows": true,
+        "visible": true
       }
     }
   ],
   "lights": [
     {
       "type": "directional",
+      "direction": [0.5, -0.8, 0.3],
       "intensity": 1.5,
-      "color": [
-        1,
-        0.95,
-        0.8
-      ]
+      "color": [1.0, 0.95, 0.8]
     }
-  ]
+  ],
+  "post_processing": {
+    "tonemap": "aces",
+    "exposure": 1.0,
+    "bloom_intensity": 0.3,
+    "contrast": 1.0,
+    "saturation": 1.0
+  },
+  "camera_default": {
+    "position": [15, 25, 15],
+    "target": [0, 0, 0]
+  }
 }

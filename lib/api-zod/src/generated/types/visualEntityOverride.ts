@@ -11,7 +11,7 @@ import type { VisualEntityRender } from "./visualEntityRender";
  * Visual override for a single simulation entity.
  */
 export interface VisualEntityOverride {
-  /** Entity id matching PacData entity id */
-  id: string;
-  render?: VisualEntityRender;
+  /** Entity slot index matching PacData entity order (0-based) */
+  id: number;
+  render: VisualEntityRender;
 }

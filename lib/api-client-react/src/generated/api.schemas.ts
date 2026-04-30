@@ -52,79 +52,144 @@ export interface ConflictSimDetail {
   scenarios: ScenarioDetail[];
 }
 
+export type VisualEnvironmentSkyType =
+  (typeof VisualEnvironmentSkyType)[keyof typeof VisualEnvironmentSkyType];
+
+export const VisualEnvironmentSkyType = {
+  physical: "physical",
+  hdr_cubemap: "hdr_cubemap",
+  procedural: "procedural",
+  simple: "simple",
+} as const;
+
 /**
  * Atmospheric and sky settings for the scene.
  */
 export interface VisualEnvironment {
-  /** physical_sky | hdri | procedural */
-  skyModel?: string;
+  sky_type?: VisualEnvironmentSkyType;
   /**
    * @minItems 3
    * @maxItems 3
    */
-  sunDirection?: number[];
-  sunIntensity?: number;
-  atmosphericDensity?: number;
-  fogDensity?: number;
+  sun_direction?: number[];
+  sun_intensity?: number;
   /**
    * @minItems 3
    * @maxItems 3
    */
-  fogColor?: number[];
+  sun_color?: number[];
+  ambient_intensity?: number;
+  fog_enabled?: boolean;
+  fog_density?: number;
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  fog_color?: number[];
+  fog_height_falloff?: number;
 }
+
+export type VisualGIGiType =
+  (typeof VisualGIGiType)[keyof typeof VisualGIGiType];
+
+export const VisualGIGiType = {
+  none: "none",
+  probe_grid: "probe_grid",
+  voxel: "voxel",
+  hybrid: "hybrid",
+} as const;
+
+export type VisualGIProbeDensity =
+  (typeof VisualGIProbeDensity)[keyof typeof VisualGIProbeDensity];
+
+export const VisualGIProbeDensity = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
 
 /**
  * Global illumination settings.
  */
 export interface VisualGI {
-  /** voxel_probe_hybrid | probe_grid | sdf | none */
-  giType?: string;
-  /** low | medium | high */
-  probeDensity?: string;
-  voxelSize?: number;
+  gi_type?: VisualGIGiType;
+  probe_density?: VisualGIProbeDensity;
 }
 
 /**
- * Camera post-processing stack.
+ * PBR material channel overrides for a single material slot.
  */
-export interface VisualPostProcessing {
-  /** aces | filmic | linear */
-  tonemap?: string;
-  bloomIntensity?: number;
-  exposure?: number;
+export interface VisualMaterialOverride {
+  /**
+   * @minItems 4
+   * @maxItems 4
+   */
+  baseColorFactor?: number[];
+  metallicFactor?: number;
+  roughnessFactor?: number;
 }
+
+/**
+ * Material slot index (as string key) → override properties
+ */
+export type VisualEntityRenderMaterialOverrides = {
+  [key: string]: VisualMaterialOverride;
+};
 
 /**
  * Per-entity rendering configuration.
  */
 export interface VisualEntityRender {
   /** Relative path to glTF asset file */
-  asset?: string;
-  /** Default animation clip name (e.g. "idle", "walk") */
-  animationState?: string;
-  /** auto | lod0 | lod1 | lod2 */
-  lodPolicy?: string;
-  castShadows?: boolean;
+  asset: string;
+  /** Material slot index (as string key) → override properties */
+  material_overrides?: VisualEntityRenderMaterialOverrides;
+  cast_shadows?: boolean;
+  receive_shadows?: boolean;
+  visible?: boolean;
 }
 
 /**
  * Visual override for a single simulation entity.
  */
 export interface VisualEntityOverride {
-  /** Entity id matching PacData entity id */
-  id: string;
-  render?: VisualEntityRender;
+  /** Entity slot index matching PacData entity order (0-based) */
+  id: number;
+  render: VisualEntityRender;
+}
+
+/**
+ * World-space transform for a static mesh.
+ */
+export interface VisualStaticMeshTransform {
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  position?: number[];
+  /**
+   * Quaternion (x, y, z, w)
+   * @minItems 4
+   * @maxItems 4
+   */
+  rotation?: number[];
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  scale?: number[];
 }
 
 /**
  * Non-simulated decorative mesh in the scene.
  */
 export interface VisualStaticMesh {
-  id?: string;
+  id: string;
   /** Relative path to glTF asset file */
-  asset?: string;
-  /** Hint to the renderer (e.g. rock_rough, grass, concrete) */
-  materialIntent?: string;
+  asset: string;
+  transform?: VisualStaticMeshTransform;
+  /** Semantic hint to the renderer (e.g. rock_rough, grass, concrete) */
+  material_intent?: string;
 }
 
 export type VisualLightType =
@@ -141,12 +206,51 @@ export const VisualLightType = {
  */
 export interface VisualLight {
   type?: VisualLightType;
-  intensity?: number;
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  position?: number[];
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  direction?: number[];
   /**
    * @minItems 3
    * @maxItems 3
    */
   color?: number[];
+  intensity?: number;
+  range?: number;
+}
+
+/**
+ * Camera post-processing stack.
+ */
+export interface VisualPostProcessing {
+  /** aces | filmic | linear */
+  tonemap?: string;
+  exposure?: number;
+  bloom_intensity?: number;
+  contrast?: number;
+  saturation?: number;
+}
+
+/**
+ * Default camera pose for the scene.
+ */
+export interface VisualCameraDefault {
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  position?: number[];
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  target?: number[];
 }
 
 /**
@@ -154,17 +258,18 @@ export interface VisualLight {
 
  */
 export interface VisualManifest {
-  /** PacData format version this manifest was authored for */
-  pacdataVersion?: string;
   /** visual_manifest schema version (currently "1.0.0") */
-  visualVersion?: string;
-  environment?: VisualEnvironment;
-  globalIllumination?: VisualGI;
-  postProcessing?: VisualPostProcessing;
-  /** Per-entity visual overrides keyed by entity id */
+  visual_version: string;
+  /** PacData format version this manifest was authored for */
+  pacdata_version?: string;
+  environment: VisualEnvironment;
+  global_illumination?: VisualGI;
+  /** Per-entity visual overrides keyed by integer slot index */
   entities?: VisualEntityOverride[];
-  staticMeshes?: VisualStaticMesh[];
+  static_meshes?: VisualStaticMesh[];
   lights?: VisualLight[];
+  post_processing?: VisualPostProcessing;
+  camera_default?: VisualCameraDefault;
 }
 
 export interface ProjectDetail {

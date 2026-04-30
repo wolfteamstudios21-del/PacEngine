@@ -4,72 +4,116 @@ import { z } from "zod";
 import { EXAMPLES_DIR } from "./pacengine-paths";
 
 const Vec3 = z.array(z.number()).min(3).max(3);
+const Vec4 = z.array(z.number()).min(4).max(4);
+
+// ── Sub-schemas (snake_case to match visual_manifest.json v1.0.0 spec) ──────
 
 export const VisualEnvironmentSchema = z
   .object({
-    skyModel: z.string().optional(),
-    sunDirection: Vec3.optional(),
-    sunIntensity: z.number().optional(),
-    atmosphericDensity: z.number().optional(),
-    fogDensity: z.number().optional(),
-    fogColor: Vec3.optional(),
+    sky_type: z
+      .enum(["physical", "hdr_cubemap", "procedural", "simple"])
+      .optional(),
+    sun_direction: Vec3.optional(),
+    sun_intensity: z.number().optional(),
+    sun_color: Vec3.optional(),
+    ambient_intensity: z.number().optional(),
+    fog_enabled: z.boolean().optional(),
+    fog_density: z.number().optional(),
+    fog_color: Vec3.optional(),
+    fog_height_falloff: z.number().optional(),
   })
   .optional();
 
 export const VisualGISchema = z
   .object({
-    giType: z.string().optional(),
-    probeDensity: z.string().optional(),
-    voxelSize: z.number().optional(),
+    gi_type: z
+      .enum(["none", "probe_grid", "voxel", "hybrid"])
+      .optional(),
+    probe_density: z.enum(["low", "medium", "high"]).optional(),
   })
   .optional();
 
 export const VisualPostProcessingSchema = z
   .object({
     tonemap: z.string().optional(),
-    bloomIntensity: z.number().optional(),
     exposure: z.number().optional(),
+    bloom_intensity: z.number().optional(),
+    contrast: z.number().optional(),
+    saturation: z.number().optional(),
+  })
+  .optional();
+
+const MaterialOverrideSchema = z
+  .object({
+    baseColorFactor: Vec4.optional(),
+    metallicFactor: z.number().optional(),
+    roughnessFactor: z.number().optional(),
   })
   .optional();
 
 export const VisualEntityRenderSchema = z
   .object({
-    asset: z.string().optional(),
-    animationState: z.string().optional(),
-    lodPolicy: z.string().optional(),
-    castShadows: z.boolean().optional(),
+    asset: z.string(),
+    material_overrides: z
+      .record(z.string(), MaterialOverrideSchema)
+      .optional(),
+    cast_shadows: z.boolean().optional(),
+    receive_shadows: z.boolean().optional(),
+    visible: z.boolean().optional(),
   })
   .optional();
 
 export const VisualEntityOverrideSchema = z.object({
-  id: z.string(),
+  id: z.number().int(),
   render: VisualEntityRenderSchema,
 });
 
+const StaticMeshTransformSchema = z
+  .object({
+    position: Vec3.optional(),
+    rotation: z.array(z.number()).min(4).max(4).optional(),
+    scale: Vec3.optional(),
+  })
+  .optional();
+
 export const VisualStaticMeshSchema = z.object({
-  id: z.string().optional(),
-  asset: z.string().optional(),
-  materialIntent: z.string().optional(),
+  id: z.string(),
+  asset: z.string(),
+  transform: StaticMeshTransformSchema,
+  material_intent: z.string().optional(),
 });
 
 export const VisualLightSchema = z.object({
   type: z.enum(["directional", "point", "spot"]).optional(),
-  intensity: z.number().optional(),
+  position: Vec3.optional(),
+  direction: Vec3.optional(),
   color: Vec3.optional(),
+  intensity: z.number().optional(),
+  range: z.number().optional(),
 });
 
+export const VisualCameraDefaultSchema = z
+  .object({
+    position: Vec3.optional(),
+    target: Vec3.optional(),
+  })
+  .optional();
+
 export const VisualManifestSchema = z.object({
-  pacdataVersion: z.string().optional(),
-  visualVersion: z.string().optional(),
+  visual_version: z.string().optional(),
+  pacdata_version: z.string().optional(),
   environment: VisualEnvironmentSchema,
-  globalIllumination: VisualGISchema,
-  postProcessing: VisualPostProcessingSchema,
+  global_illumination: VisualGISchema,
   entities: z.array(VisualEntityOverrideSchema).optional(),
-  staticMeshes: z.array(VisualStaticMeshSchema).optional(),
+  static_meshes: z.array(VisualStaticMeshSchema).optional(),
   lights: z.array(VisualLightSchema).optional(),
+  post_processing: VisualPostProcessingSchema,
+  camera_default: VisualCameraDefaultSchema,
 });
 
 export type VisualManifest = z.infer<typeof VisualManifestSchema>;
+
+// ── Parse / IO helpers ───────────────────────────────────────────────────────
 
 export class VisualManifestParseError extends Error {
   constructor(
@@ -127,5 +171,9 @@ export async function writeVisualManifest(
   manifest: VisualManifest,
 ): Promise<void> {
   const filePath = visualManifestPath(projectId);
-  await fs.writeFile(filePath, JSON.stringify(manifest, null, 2) + "\n", "utf8");
+  await fs.writeFile(
+    filePath,
+    JSON.stringify(manifest, null, 2) + "\n",
+    "utf8",
+  );
 }

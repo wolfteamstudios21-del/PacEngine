@@ -5,14 +5,16 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { VisualStaticMeshTransform } from "./visualStaticMeshTransform";
 
 /**
  * Non-simulated decorative mesh in the scene.
  */
 export interface VisualStaticMesh {
-  id?: string;
+  id: string;
   /** Relative path to glTF asset file */
-  asset?: string;
-  /** Hint to the renderer (e.g. rock_rough, grass, concrete) */
-  materialIntent?: string;
+  asset: string;
+  transform?: VisualStaticMeshTransform;
+  /** Semantic hint to the renderer (e.g. rock_rough, grass, concrete) */
+  material_intent?: string;
 }

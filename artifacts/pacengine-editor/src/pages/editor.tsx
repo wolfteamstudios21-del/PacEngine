@@ -345,7 +345,7 @@ export default function Editor() {
               </Label>
               <Textarea
                 id="import-visual"
-                placeholder='{"visualVersion": "1.0.0", "environment": {"skyModel": "physical_sky", ...}}'
+                placeholder='{"visual_version": "1.0.0", "environment": {"sky_type": "physical", "sun_intensity": 1.2, "fog_enabled": true, "fog_density": 0.015}, "global_illumination": {"gi_type": "probe_grid", "probe_density": "medium"}}'
                 value={importVisualJson}
                 onChange={e => setImportVisualJson(e.target.value)}
                 className="h-28 text-xs font-mono resize-none"
@@ -934,18 +934,19 @@ export default function Editor() {
 
 function VisualPropertiesPanel({ manifest }: { manifest: VisualManifest }) {
   const env = manifest.environment;
-  const gi = manifest.globalIllumination;
-  const pp = manifest.postProcessing;
+  const gi = manifest.global_illumination;
+  const pp = manifest.post_processing;
   const entityOverrides = manifest.entities ?? [];
-  const staticMeshes = manifest.staticMeshes ?? [];
+  const staticMeshes = manifest.static_meshes ?? [];
   const lights = manifest.lights ?? [];
+  const cam = manifest.camera_default;
 
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-medium border-b border-border pb-1 flex items-center gap-2">
         <Sparkles className="h-3.5 w-3.5 text-purple-400" /> Visual Properties
-        {manifest.visualVersion && (
-          <Badge variant="outline" className="text-[9px] h-4 ml-auto font-mono">v{manifest.visualVersion}</Badge>
+        {manifest.visual_version && (
+          <Badge variant="outline" className="text-[9px] h-4 ml-auto font-mono">v{manifest.visual_version}</Badge>
         )}
       </h3>
 
@@ -955,18 +956,29 @@ function VisualPropertiesPanel({ manifest }: { manifest: VisualManifest }) {
           <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1 mb-2">
             <Sun className="h-3 w-3 text-yellow-400" /> Environment
           </div>
-          <div className="grid grid-cols-[90px_1fr] gap-y-1 text-[11px]">
-            {env.skyModel && <><div className="text-muted-foreground">Sky Model</div><div className="font-mono">{env.skyModel}</div></>}
-            {env.sunIntensity !== undefined && <><div className="text-muted-foreground">Sun Intensity</div><div className="font-mono text-yellow-300">{env.sunIntensity}</div></>}
-            {env.fogDensity !== undefined && <><div className="text-muted-foreground">Fog Density</div><div className="font-mono text-blue-300">{env.fogDensity}</div></>}
-            {env.atmosphericDensity !== undefined && <><div className="text-muted-foreground">Atm. Density</div><div className="font-mono">{env.atmosphericDensity}</div></>}
-            {env.sunDirection && <><div className="text-muted-foreground">Sun Dir.</div><div className="font-mono text-[10px]">[{env.sunDirection.map(v => v.toFixed(2)).join(", ")}]</div></>}
-            {env.fogColor && (
+          <div className="grid grid-cols-[100px_1fr] gap-y-1 text-[11px]">
+            {env.sky_type && <><div className="text-muted-foreground">Sky Type</div><div className="font-mono">{env.sky_type}</div></>}
+            {env.sun_intensity !== undefined && <><div className="text-muted-foreground">Sun Intensity</div><div className="font-mono text-yellow-300">{env.sun_intensity}</div></>}
+            {env.ambient_intensity !== undefined && <><div className="text-muted-foreground">Ambient</div><div className="font-mono">{env.ambient_intensity}</div></>}
+            {env.sun_direction && <><div className="text-muted-foreground">Sun Dir.</div><div className="font-mono text-[10px]">[{env.sun_direction.map((v: number) => v.toFixed(2)).join(", ")}]</div></>}
+            {env.sun_color && (
+              <>
+                <div className="text-muted-foreground">Sun Color</div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-sm border border-border/50" style={{ background: `rgb(${env.sun_color.map((v: number) => Math.round(v * 255)).join(",")})` }} />
+                  <span className="font-mono text-[10px]">[{env.sun_color.map((v: number) => v.toFixed(2)).join(", ")}]</span>
+                </div>
+              </>
+            )}
+            {env.fog_enabled !== undefined && <><div className="text-muted-foreground">Fog</div><div className="font-mono">{env.fog_enabled ? "enabled" : "disabled"}</div></>}
+            {env.fog_density !== undefined && <><div className="text-muted-foreground">Fog Density</div><div className="font-mono text-blue-300">{env.fog_density}</div></>}
+            {env.fog_height_falloff !== undefined && <><div className="text-muted-foreground">Fog Falloff</div><div className="font-mono">{env.fog_height_falloff}</div></>}
+            {env.fog_color && (
               <>
                 <div className="text-muted-foreground">Fog Color</div>
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-sm border border-border/50" style={{ background: `rgb(${env.fogColor.map(v => Math.round(v * 255)).join(",")})` }} />
-                  <span className="font-mono text-[10px]">[{env.fogColor.map(v => v.toFixed(2)).join(", ")}]</span>
+                  <div className="w-3 h-3 rounded-sm border border-border/50" style={{ background: `rgb(${env.fog_color.map((v: number) => Math.round(v * 255)).join(",")})` }} />
+                  <span className="font-mono text-[10px]">[{env.fog_color.map((v: number) => v.toFixed(2)).join(", ")}]</span>
                 </div>
               </>
             )}
@@ -980,10 +992,9 @@ function VisualPropertiesPanel({ manifest }: { manifest: VisualManifest }) {
           <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1 mb-2">
             <Lightbulb className="h-3 w-3 text-green-400" /> Global Illumination
           </div>
-          <div className="grid grid-cols-[90px_1fr] gap-y-1 text-[11px]">
-            {gi.giType && <><div className="text-muted-foreground">GI Type</div><div className="font-mono">{gi.giType}</div></>}
-            {gi.probeDensity && <><div className="text-muted-foreground">Probe Density</div><div className="font-mono">{gi.probeDensity}</div></>}
-            {gi.voxelSize !== undefined && <><div className="text-muted-foreground">Voxel Size</div><div className="font-mono">{gi.voxelSize}</div></>}
+          <div className="grid grid-cols-[100px_1fr] gap-y-1 text-[11px]">
+            {gi.gi_type && <><div className="text-muted-foreground">GI Type</div><div className="font-mono">{gi.gi_type}</div></>}
+            {gi.probe_density && <><div className="text-muted-foreground">Probe Density</div><div className="font-mono">{gi.probe_density}</div></>}
           </div>
         </div>
       )}
@@ -994,10 +1005,25 @@ function VisualPropertiesPanel({ manifest }: { manifest: VisualManifest }) {
           <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1 mb-2">
             <Sparkles className="h-3 w-3 text-cyan-400" /> Post-processing
           </div>
-          <div className="grid grid-cols-[90px_1fr] gap-y-1 text-[11px]">
+          <div className="grid grid-cols-[100px_1fr] gap-y-1 text-[11px]">
             {pp.tonemap && <><div className="text-muted-foreground">Tonemap</div><div className="font-mono">{pp.tonemap}</div></>}
-            {pp.bloomIntensity !== undefined && <><div className="text-muted-foreground">Bloom</div><div className="font-mono text-pink-300">{pp.bloomIntensity}</div></>}
             {pp.exposure !== undefined && <><div className="text-muted-foreground">Exposure</div><div className="font-mono">{pp.exposure}</div></>}
+            {pp.bloom_intensity !== undefined && <><div className="text-muted-foreground">Bloom</div><div className="font-mono text-pink-300">{pp.bloom_intensity}</div></>}
+            {pp.contrast !== undefined && <><div className="text-muted-foreground">Contrast</div><div className="font-mono">{pp.contrast}</div></>}
+            {pp.saturation !== undefined && <><div className="text-muted-foreground">Saturation</div><div className="font-mono">{pp.saturation}</div></>}
+          </div>
+        </div>
+      )}
+
+      {/* Camera default */}
+      {cam && (cam.position || cam.target) && (
+        <div className="p-2 rounded bg-muted/30 border border-border/50">
+          <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1 mb-2">
+            <Box className="h-3 w-3 text-purple-400" /> Camera Default
+          </div>
+          <div className="grid grid-cols-[100px_1fr] gap-y-1 text-[11px]">
+            {cam.position && <><div className="text-muted-foreground">Position</div><div className="font-mono text-[10px]">[{cam.position.map((v: number) => v.toFixed(1)).join(", ")}]</div></>}
+            {cam.target && <><div className="text-muted-foreground">Target</div><div className="font-mono text-[10px]">[{cam.target.map((v: number) => v.toFixed(1)).join(", ")}]</div></>}
           </div>
         </div>
       )}
@@ -1011,7 +1037,7 @@ function VisualPropertiesPanel({ manifest }: { manifest: VisualManifest }) {
           <div className="space-y-1">
             {lights.map((l, i) => (
               <div key={i} className="flex items-center gap-2 text-[11px]">
-                {l.color && <div className="w-3 h-3 rounded-sm border border-border/50 shrink-0" style={{ background: `rgb(${l.color.map(v => Math.round(v * 255)).join(",")})` }} />}
+                {l.color && <div className="w-3 h-3 rounded-sm border border-border/50 shrink-0" style={{ background: `rgb(${l.color.map((v: number) => Math.round(v * 255)).join(",")})` }} />}
                 <span className="text-muted-foreground capitalize">{l.type ?? "light"}</span>
                 {l.intensity !== undefined && <span className="font-mono ml-auto">{l.intensity}</span>}
               </div>
@@ -1029,9 +1055,9 @@ function VisualPropertiesPanel({ manifest }: { manifest: VisualManifest }) {
           <div className="space-y-1">
             {entityOverrides.map((e, i) => (
               <div key={i} className="text-[11px] flex items-center gap-2">
-                <span className="font-mono text-primary">{e.id}</span>
+                <span className="font-mono text-primary">#{e.id}</span>
                 {e.render?.asset && <span className="text-muted-foreground truncate text-[9px]">{e.render.asset}</span>}
-                {e.render?.animationState && <Badge variant="secondary" className="text-[9px] h-3 px-1">{e.render.animationState}</Badge>}
+                {e.render?.cast_shadows === false && <Badge variant="secondary" className="text-[9px] h-3 px-1">no shadow</Badge>}
               </div>
             ))}
           </div>
@@ -1047,8 +1073,8 @@ function VisualPropertiesPanel({ manifest }: { manifest: VisualManifest }) {
           <div className="space-y-1">
             {staticMeshes.map((m, i) => (
               <div key={i} className="text-[11px] flex items-center gap-2">
-                <span className="font-mono text-muted-foreground">{m.id ?? `mesh_${i}`}</span>
-                {m.materialIntent && <Badge variant="outline" className="text-[9px] h-3 px-1">{m.materialIntent}</Badge>}
+                <span className="font-mono text-muted-foreground">{m.id}</span>
+                {m.material_intent && <Badge variant="outline" className="text-[9px] h-3 px-1">{m.material_intent}</Badge>}
               </div>
             ))}
           </div>

@@ -5,24 +5,31 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { VisualEnvironmentSkyType } from "./visualEnvironmentSkyType";
 
 /**
  * Atmospheric and sky settings for the scene.
  */
 export interface VisualEnvironment {
-  /** physical_sky | hdri | procedural */
-  skyModel?: string;
+  sky_type?: VisualEnvironmentSkyType;
   /**
    * @minItems 3
    * @maxItems 3
    */
-  sunDirection?: number[];
-  sunIntensity?: number;
-  atmosphericDensity?: number;
-  fogDensity?: number;
+  sun_direction?: number[];
+  sun_intensity?: number;
   /**
    * @minItems 3
    * @maxItems 3
    */
-  fogColor?: number[];
+  sun_color?: number[];
+  ambient_intensity?: number;
+  fog_enabled?: boolean;
+  fog_density?: number;
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  fog_color?: number[];
+  fog_height_falloff?: number;
 }

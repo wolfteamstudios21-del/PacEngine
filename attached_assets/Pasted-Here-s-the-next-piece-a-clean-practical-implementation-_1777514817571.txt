@@ -1,0 +1,152 @@
+Here's the next piece — a clean, practical implementation skeleton for the PacRenderer with focus on the PacAi Visual Import Pipeline.
+1. Updated PacRenderer.h (with Import Support)
+C++// render/core/PacRenderer.h
+#pragma once
+#include <string>
+#include <memory>
+#include <glm/glm.hpp>
+
+class RenderScene;
+struct VisualManifest;
+struct PacDataWorld;        // Your existing simulation world type
+
+class PacRenderer {
+public:
+    PacRenderer();
+    ~PacRenderer();
+
+    bool Initialize(void* windowHandle, uint32_t width, uint32_t height);
+    void Shutdown();
+
+    // === Core Rendering ===
+    void BeginFrame();
+    void Render();
+    void EndFrame();
+
+    void Resize(uint32_t width, uint32_t height);
+
+    // === PacAi Import Pipeline (M2.5 Core Feature) ===
+    bool ImportPacAiExport(const std::string& exportFolderPath);
+
+    // === Simulation Integration ===
+    void UpdateSimulationState(const PacDataWorld& worldDelta);
+    
+    // Camera control (used by editor)
+    void SetCamera(const glm::vec3& position, const glm::vec3& target, float fov = 60.0f);
+
+    // Viewport mode (2D Debug vs 3D Atmospheric)
+    void SetViewportMode(bool use3D);
+
+private:
+    std::unique_ptr<RenderScene> m_scene;
+    bool m_use3D = true;                    // Default to 3D once implemented
+    // Vulkan backend will be held here or in a separate VulkanRenderer impl
+};
+2. PacRenderer.cpp — Import Implementation Skeleton
+C++// render/core/PacRenderer.cpp
+#include "PacRenderer.h"
+#include "RenderScene.h"
+#include "GltfLoader.h"
+#include "../pacdata/VisualManifestLoader.h"   // We'll create this
+
+#include <filesystem>
+#include <iostream>
+
+PacRenderer::PacRenderer() = default;
+PacRenderer::~PacRenderer() = default;
+
+bool PacRenderer::Initialize(void* windowHandle, uint32_t width, uint32_t height) {
+    // TODO: Initialize Vulkan context, swapchain, render graph, etc.
+    m_scene = std::make_unique<RenderScene>();
+    std::cout << "[PacRenderer] Initialized successfully.\n";
+    return true;
+}
+
+void PacRenderer::Shutdown() {
+    m_scene.reset();
+    std::cout << "[PacRenderer] Shutdown complete.\n";
+}
+
+bool PacRenderer::ImportPacAiExport(const std::string& exportFolderPath) {
+    namespace fs = std::filesystem;
+
+    if (!fs::exists(exportFolderPath)) {
+        std::cerr << "[PacRenderer] Export folder not found: " << exportFolderPath << std::endl;
+        return false;
+    }
+
+    // 1. Load visual manifest
+    std::string manifestPath = exportFolderPath + "/visual_manifest.json";
+    VisualManifest manifest;
+
+    if (!VisualManifestLoader::Load(manifestPath, manifest)) {
+        std::cerr << "[PacRenderer] Failed to load visual_manifest.json\n";
+        return false;
+    }
+
+    // 2. Load core PacData (simulation)
+    std::string pacdataPath = exportFolderPath + "/world.pacdata.json";
+    // TODO: Call your existing PacData loader here
+    // PacDataWorld world = PacDataLoader::Load(pacdataPath);
+
+    // 3. Setup environment (sky, fog, lighting)
+    m_scene->SetEnvironment(manifest.environment);
+
+    // 4. Load static meshes
+    for (const auto& meshData : manifest.static_meshes) {
+        std::string fullPath = exportFolderPath + "/" + meshData.asset;
+        auto* proxy = m_scene->CreateProxy(0); // Use proper entity ID later
+        if (proxy) {
+            // Load glTF mesh + material
+            if (GltfLoader::LoadMesh(fullPath, proxy)) {
+                // Apply transform
+                // proxy->transform = ... from meshData.transform
+                proxy->castShadows = true;
+            }
+        }
+    }
+
+    // 5. Load entities with render components
+    for (const auto& entityData : manifest.entities) {
+        auto* proxy = m_scene->CreateProxy(entityData.id);
+        if (proxy && !entityData.render.asset.empty()) {
+            std::string fullAssetPath = exportFolderPath + "/" + entityData.render.asset;
+            
+            if (GltfLoader::LoadMesh(fullAssetPath, proxy)) {
+                // Apply material overrides from manifest
+                ApplyMaterialOverrides(proxy, entityData.render.material_overrides);
+            }
+        }
+    }
+
+    std::cout << "[PacRenderer] Successfully imported PacAi export from: " 
+              << exportFolderPath << std::endl;
+    std::cout << "   Entities: " << manifest.entities.size() 
+              << " | Static Meshes: " << manifest.static_meshes.size() << std::endl;
+
+    return true;
+}
+
+void PacRenderer::UpdateSimulationState(const PacDataWorld& worldDelta) {
+    if (!m_scene) return;
+    
+    // Update only changed entities (delta-driven for performance)
+    for (const auto& entity : worldDelta.entities) {
+        m_scene->UpdateProxyTransform(entity.id, entity.transform);
+        // Update animation state, visibility, etc. in future
+    }
+}
+
+void PacRenderer::SetCamera(const glm::vec3& position, const glm::vec3& target, float fov) {
+    // Pass to camera system in RenderScene or Vulkan backend
+}
+
+void PacRenderer::SetViewportMode(bool use3D) {
+    m_use3D = use3D;
+}
+3. Supporting Files to Create Next
+You will also need these supporting classes/files:
+
+VisualManifest.h + VisualManifestLoader.h/cpp — to parse the JSON schema we defined earlier.
+GltfLoader.h/cpp — using fastgltf or tinygltf.
+Updated RenderScene.cpp to handle environment and proxies properly.

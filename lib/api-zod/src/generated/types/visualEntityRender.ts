@@ -5,16 +5,17 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { VisualEntityRenderMaterialOverrides } from "./visualEntityRenderMaterialOverrides";
 
 /**
  * Per-entity rendering configuration.
  */
 export interface VisualEntityRender {
   /** Relative path to glTF asset file */
-  asset?: string;
-  /** Default animation clip name (e.g. "idle", "walk") */
-  animationState?: string;
-  /** auto | lod0 | lod1 | lod2 */
-  lodPolicy?: string;
-  castShadows?: boolean;
+  asset: string;
+  /** Material slot index (as string key) → override properties */
+  material_overrides?: VisualEntityRenderMaterialOverrides;
+  cast_shadows?: boolean;
+  receive_shadows?: boolean;
+  visible?: boolean;
 }

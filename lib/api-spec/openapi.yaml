@@ -521,46 +521,58 @@ components:
       type: object
       description: Atmospheric and sky settings for the scene.
       properties:
-        skyModel:
+        sky_type:
           type: string
-          description: "physical_sky | hdri | procedural"
-        sunDirection:
+          enum: [physical, hdr_cubemap, procedural, simple]
+          default: physical
+        sun_direction:
           type: array
           items:
             type: number
             format: float
           minItems: 3
           maxItems: 3
-        sunIntensity:
+        sun_intensity:
           type: number
           format: float
-        atmosphericDensity:
-          type: number
-          format: float
-        fogDensity:
-          type: number
-          format: float
-        fogColor:
+        sun_color:
           type: array
           items:
             type: number
             format: float
           minItems: 3
           maxItems: 3
+        ambient_intensity:
+          type: number
+          format: float
+        fog_enabled:
+          type: boolean
+        fog_density:
+          type: number
+          format: float
+        fog_color:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 3
+          maxItems: 3
+        fog_height_falloff:
+          type: number
+          format: float
 
     VisualGI:
       type: object
       description: Global illumination settings.
       properties:
-        giType:
+        gi_type:
           type: string
-          description: "voxel_probe_hybrid | probe_grid | sdf | none"
-        probeDensity:
+          enum: [none, probe_grid, voxel, hybrid]
+          default: probe_grid
+        probe_density:
           type: string
-          description: "low | medium | high"
-        voxelSize:
-          type: number
-          format: float
+          enum: [low, medium, high]
+          default: medium
 
     VisualPostProcessing:
       type: object
@@ -569,52 +581,110 @@ components:
         tonemap:
           type: string
           description: "aces | filmic | linear"
-        bloomIntensity:
+        exposure:
           type: number
           format: float
-        exposure:
+        bloom_intensity:
+          type: number
+          format: float
+        contrast:
+          type: number
+          format: float
+        saturation:
+          type: number
+          format: float
+
+    VisualMaterialOverride:
+      type: object
+      description: PBR material channel overrides for a single material slot.
+      properties:
+        baseColorFactor:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 4
+          maxItems: 4
+        metallicFactor:
+          type: number
+          format: float
+        roughnessFactor:
           type: number
           format: float
 
     VisualEntityRender:
       type: object
       description: Per-entity rendering configuration.
+      required: [asset]
       properties:
         asset:
           type: string
           description: Relative path to glTF asset file
-        animationState:
-          type: string
-          description: Default animation clip name (e.g. "idle", "walk")
-        lodPolicy:
-          type: string
-          description: "auto | lod0 | lod1 | lod2"
-        castShadows:
+        material_overrides:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/VisualMaterialOverride"
+          description: Material slot index (as string key) → override properties
+        cast_shadows:
+          type: boolean
+        receive_shadows:
+          type: boolean
+        visible:
           type: boolean
 
     VisualEntityOverride:
       type: object
       description: Visual override for a single simulation entity.
+      required: [id, render]
       properties:
         id:
-          type: string
-          description: Entity id matching PacData entity id
+          type: integer
+          description: Entity slot index matching PacData entity order (0-based)
         render:
           $ref: "#/components/schemas/VisualEntityRender"
-      required: [id]
+
+    VisualStaticMeshTransform:
+      type: object
+      description: World-space transform for a static mesh.
+      properties:
+        position:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 3
+          maxItems: 3
+        rotation:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 4
+          maxItems: 4
+          description: Quaternion (x, y, z, w)
+        scale:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 3
+          maxItems: 3
 
     VisualStaticMesh:
       type: object
       description: Non-simulated decorative mesh in the scene.
+      required: [id, asset]
       properties:
         id:
           type: string
         asset:
           type: string
           description: Relative path to glTF asset file
-        materialIntent:
+        transform:
+          $ref: "#/components/schemas/VisualStaticMeshTransform"
+        material_intent:
           type: string
-          description: "Hint to the renderer (e.g. rock_rough, grass, concrete)"
+          description: "Semantic hint to the renderer (e.g. rock_rough, grass, concrete)"
 
     VisualLight:
       type: object
@@ -623,10 +693,46 @@ components:
         type:
           type: string
           enum: [directional, point, spot]
+        position:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 3
+          maxItems: 3
+        direction:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 3
+          maxItems: 3
+        color:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 3
+          maxItems: 3
         intensity:
           type: number
           format: float
-        color:
+        range:
+          type: number
+          format: float
+
+    VisualCameraDefault:
+      type: object
+      description: Default camera pose for the scene.
+      properties:
+        position:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 3
+          maxItems: 3
+        target:
           type: array
           items:
             type: number
@@ -640,25 +746,24 @@ components:
         Optional companion document to a PacData file that carries visual /
         rendering properties. Persisted as <projectId>.visual_manifest.json
         alongside the .pacdata.json sidecar. Not required for headless runs.
+      required: [visual_version, environment]
       properties:
-        pacdataVersion:
-          type: string
-          description: PacData format version this manifest was authored for
-        visualVersion:
+        visual_version:
           type: string
           description: visual_manifest schema version (currently "1.0.0")
+        pacdata_version:
+          type: string
+          description: PacData format version this manifest was authored for
         environment:
           $ref: "#/components/schemas/VisualEnvironment"
-        globalIllumination:
+        global_illumination:
           $ref: "#/components/schemas/VisualGI"
-        postProcessing:
-          $ref: "#/components/schemas/VisualPostProcessing"
         entities:
           type: array
           items:
             $ref: "#/components/schemas/VisualEntityOverride"
-          description: Per-entity visual overrides keyed by entity id
-        staticMeshes:
+          description: Per-entity visual overrides keyed by integer slot index
+        static_meshes:
           type: array
           items:
             $ref: "#/components/schemas/VisualStaticMesh"
@@ -666,6 +771,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/VisualLight"
+        post_processing:
+          $ref: "#/components/schemas/VisualPostProcessing"
+        camera_default:
+          $ref: "#/components/schemas/VisualCameraDefault"
 
     # ── Import request schemas ──────────────────────────────────────────────
 

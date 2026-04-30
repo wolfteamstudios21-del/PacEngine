@@ -5,14 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { VisualGIGiType } from "./visualGIGiType";
+import type { VisualGIProbeDensity } from "./visualGIProbeDensity";
 
 /**
  * Global illumination settings.
  */
 export interface VisualGI {
-  /** voxel_probe_hybrid | probe_grid | sdf | none */
-  giType?: string;
-  /** low | medium | high */
-  probeDensity?: string;
-  voxelSize?: number;
+  gi_type?: VisualGIGiType;
+  probe_density?: VisualGIProbeDensity;
 }

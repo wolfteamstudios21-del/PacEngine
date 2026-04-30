@@ -22,17 +22,20 @@ struct PacMat4 {
     };
 };
 
+// Sky types — matches visual_manifest.json sky_type enum
 enum class SkyModel : uint8_t {
-    PhysicalSky   = 0,
-    Hdri          = 1,
-    Procedural    = 2,
+    Physical    = 0,  // "physical"    — Rayleigh + Mie scattering
+    HdrCubemap  = 1,  // "hdr_cubemap" — equirectangular HDR panorama
+    Procedural  = 2,  // "procedural"  — custom gradient / shader
+    Simple      = 3,  // "simple"      — single colour fill
 };
 
+// GI types — matches visual_manifest.json gi_type enum
 enum class GiType : uint8_t {
-    VoxelProbeHybrid = 0,
-    ProbeGrid        = 1,
-    Sdf              = 2,
-    None             = 3,
+    None       = 0,  // "none"
+    ProbeGrid  = 1,  // "probe_grid"
+    Voxel      = 2,  // "voxel"
+    Hybrid     = 3,  // "hybrid"
 };
 
 enum class Tonemap : uint8_t {
