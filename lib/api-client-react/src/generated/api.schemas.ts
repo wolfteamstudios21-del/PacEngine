@@ -462,6 +462,48 @@ export interface EngineInfo {
   paccoreVersion: string;
 }
 
+export interface RendererStatusResponse {
+  /** Whether the C++ PacRenderer has been successfully initialized */
+  initialized: boolean;
+  /** True when the compiled .node addon is active; false in stub mode */
+  native: boolean;
+  /** Total frames rendered by the server-side frame pump since last init */
+  frameCount: number;
+}
+
+export interface RendererInitRequest {
+  /**
+   * Viewport width in pixels
+   * @minimum 1
+   */
+  width: number;
+  /**
+   * Viewport height in pixels
+   * @minimum 1
+   */
+  height: number;
+}
+
+export interface RendererInitResponse {
+  /** True when PacRenderer::Initialize returned true */
+  initialized: boolean;
+  /** True when the compiled .node addon is active */
+  native: boolean;
+}
+
+export interface RendererImportRequest {
+  /** Absolute server-side path to the export folder containing visual_manifest.json */
+  folderPath: string;
+}
+
+export interface RendererImportResponse {
+  success: boolean;
+  /** Number of entity proxies loaded into the render scene */
+  entities: number;
+  /** Number of static mesh proxies loaded into the render scene */
+  staticMeshes: number;
+}
+
 export type GetRunFramesParams = {
   /**
    * @minimum 0

@@ -63,6 +63,11 @@ public:
 
     RenderScene* GetScene() const;
 
+    // Returns the number of entity/static-mesh proxies loaded by the last
+    // ImportPacAiExport or ApplyVisualManifest call.
+    uint32_t GetEntityCount()     const;
+    uint32_t GetStaticMeshCount() const;
+
 private:
     // Reads manifest.entities (vector of VisualEntityOverride) and creates /
     // populates a RenderProxy per entry.

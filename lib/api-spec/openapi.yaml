@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: pacengine
     description: PacEngine project + run management
+  - name: renderer
+    description: PacEngine C++ render layer lifecycle (M2.5 N-API bridge)
 paths:
   /healthz:
     get:
@@ -351,6 +353,87 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /renderer/status:
+    get:
+      operationId: getRendererStatus
+      tags: [renderer]
+      summary: Query renderer lifecycle state and native-addon availability
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RendererStatusResponse"
+
+  /renderer/initialize:
+    post:
+      operationId: initializeRenderer
+      tags: [renderer]
+      summary: Initialize the C++ PacRenderer (headless on Replit, GPU on workstation)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RendererInitRequest"
+      responses:
+        "200":
+          description: Initialized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RendererInitResponse"
+
+  /renderer/shutdown:
+    delete:
+      operationId: shutdownRenderer
+      tags: [renderer]
+      summary: Shut down the C++ PacRenderer and stop the server-side frame pump
+      responses:
+        "204":
+          description: Shut down
+
+  /renderer/import-export:
+    post:
+      operationId: rendererImportExport
+      tags: [renderer]
+      summary: Import a PacAI export folder into the C++ render scene
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RendererImportRequest"
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RendererImportResponse"
+        "409":
+          description: Renderer not initialized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /renderer/resize:
+    post:
+      operationId: rendererResize
+      tags: [renderer]
+      summary: Notify the C++ renderer of a viewport resize
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RendererInitRequest"
+      responses:
+        "204":
+          description: Resize applied
 
 components:
   schemas:
@@ -1136,3 +1219,62 @@ components:
         - engineVersion
         - pacdataVersion
         - paccoreVersion
+
+    RendererStatusResponse:
+      type: object
+      properties:
+        initialized:
+          type: boolean
+          description: Whether the C++ PacRenderer has been successfully initialized
+        native:
+          type: boolean
+          description: True when the compiled .node addon is active; false in stub mode
+        frameCount:
+          type: integer
+          description: Total frames rendered by the server-side frame pump since last init
+      required: [initialized, native, frameCount]
+
+    RendererInitRequest:
+      type: object
+      properties:
+        width:
+          type: integer
+          minimum: 1
+          description: Viewport width in pixels
+        height:
+          type: integer
+          minimum: 1
+          description: Viewport height in pixels
+      required: [width, height]
+
+    RendererInitResponse:
+      type: object
+      properties:
+        initialized:
+          type: boolean
+          description: True when PacRenderer::Initialize returned true
+        native:
+          type: boolean
+          description: True when the compiled .node addon is active
+      required: [initialized, native]
+
+    RendererImportRequest:
+      type: object
+      properties:
+        folderPath:
+          type: string
+          description: Absolute server-side path to the export folder containing visual_manifest.json
+      required: [folderPath]
+
+    RendererImportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        entities:
+          type: integer
+          description: Number of entity proxies loaded into the render scene
+        staticMeshes:
+          type: integer
+          description: Number of static mesh proxies loaded into the render scene
+      required: [success, entities, staticMeshes]

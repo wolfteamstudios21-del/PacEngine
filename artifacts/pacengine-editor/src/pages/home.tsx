@@ -170,16 +170,6 @@ export default function Home() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("");
 
-  const resetImportDialog = () => {
-    setImportName("");
-    setImportWorldJson("");
-    setImportVisualJson("");
-    setZipStatus("idle");
-    setZipError("");
-    setZipFileName("");
-    setImportError(null);
-  };
-
   const handleImport = () => {
     setImportError(null);
 

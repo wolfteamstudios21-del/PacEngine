@@ -28,6 +28,11 @@ import type {
   InstantiateTemplateRequest,
   ProjectDetail,
   ProjectListResponse,
+  RendererImportRequest,
+  RendererImportResponse,
+  RendererInitRequest,
+  RendererInitResponse,
+  RendererStatusResponse,
   RunFramesResponse,
   RunMetadata,
   RunRequest,
@@ -1214,3 +1219,417 @@ export function useDiffRuns<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Query renderer lifecycle state and native-addon availability
+ */
+export const getGetRendererStatusUrl = () => {
+  return `/api/renderer/status`;
+};
+
+export const getRendererStatus = async (
+  options?: RequestInit,
+): Promise<RendererStatusResponse> => {
+  return customFetch<RendererStatusResponse>(getGetRendererStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRendererStatusQueryKey = () => {
+  return [`/api/renderer/status`] as const;
+};
+
+export const getGetRendererStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRendererStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getRendererStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRendererStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRendererStatus>>
+  > = ({ signal }) => getRendererStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRendererStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRendererStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRendererStatus>>
+>;
+export type GetRendererStatusQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Query renderer lifecycle state and native-addon availability
+ */
+
+export function useGetRendererStatus<
+  TData = Awaited<ReturnType<typeof getRendererStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getRendererStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRendererStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Initialize the C++ PacRenderer (headless on Replit, GPU on workstation)
+ */
+export const getInitializeRendererUrl = () => {
+  return `/api/renderer/initialize`;
+};
+
+export const initializeRenderer = async (
+  rendererInitRequest: RendererInitRequest,
+  options?: RequestInit,
+): Promise<RendererInitResponse> => {
+  return customFetch<RendererInitResponse>(getInitializeRendererUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(rendererInitRequest),
+  });
+};
+
+export const getInitializeRendererMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof initializeRenderer>>,
+    TError,
+    { data: BodyType<RendererInitRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof initializeRenderer>>,
+  TError,
+  { data: BodyType<RendererInitRequest> },
+  TContext
+> => {
+  const mutationKey = ["initializeRenderer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof initializeRenderer>>,
+    { data: BodyType<RendererInitRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return initializeRenderer(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InitializeRendererMutationResult = NonNullable<
+  Awaited<ReturnType<typeof initializeRenderer>>
+>;
+export type InitializeRendererMutationBody = BodyType<RendererInitRequest>;
+export type InitializeRendererMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Initialize the C++ PacRenderer (headless on Replit, GPU on workstation)
+ */
+export const useInitializeRenderer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof initializeRenderer>>,
+    TError,
+    { data: BodyType<RendererInitRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof initializeRenderer>>,
+  TError,
+  { data: BodyType<RendererInitRequest> },
+  TContext
+> => {
+  return useMutation(getInitializeRendererMutationOptions(options));
+};
+
+/**
+ * @summary Shut down the C++ PacRenderer and stop the server-side frame pump
+ */
+export const getShutdownRendererUrl = () => {
+  return `/api/renderer/shutdown`;
+};
+
+export const shutdownRenderer = async (
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getShutdownRendererUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getShutdownRendererMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof shutdownRenderer>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof shutdownRenderer>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["shutdownRenderer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof shutdownRenderer>>,
+    void
+  > = () => {
+    return shutdownRenderer(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ShutdownRendererMutationResult = NonNullable<
+  Awaited<ReturnType<typeof shutdownRenderer>>
+>;
+
+export type ShutdownRendererMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Shut down the C++ PacRenderer and stop the server-side frame pump
+ */
+export const useShutdownRenderer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof shutdownRenderer>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof shutdownRenderer>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getShutdownRendererMutationOptions(options));
+};
+
+/**
+ * @summary Import a PacAI export folder into the C++ render scene
+ */
+export const getRendererImportExportUrl = () => {
+  return `/api/renderer/import-export`;
+};
+
+export const rendererImportExport = async (
+  rendererImportRequest: RendererImportRequest,
+  options?: RequestInit,
+): Promise<RendererImportResponse> => {
+  return customFetch<RendererImportResponse>(getRendererImportExportUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(rendererImportRequest),
+  });
+};
+
+export const getRendererImportExportMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rendererImportExport>>,
+    TError,
+    { data: BodyType<RendererImportRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rendererImportExport>>,
+  TError,
+  { data: BodyType<RendererImportRequest> },
+  TContext
+> => {
+  const mutationKey = ["rendererImportExport"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rendererImportExport>>,
+    { data: BodyType<RendererImportRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return rendererImportExport(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RendererImportExportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rendererImportExport>>
+>;
+export type RendererImportExportMutationBody = BodyType<RendererImportRequest>;
+export type RendererImportExportMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Import a PacAI export folder into the C++ render scene
+ */
+export const useRendererImportExport = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rendererImportExport>>,
+    TError,
+    { data: BodyType<RendererImportRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rendererImportExport>>,
+  TError,
+  { data: BodyType<RendererImportRequest> },
+  TContext
+> => {
+  return useMutation(getRendererImportExportMutationOptions(options));
+};
+
+/**
+ * @summary Notify the C++ renderer of a viewport resize
+ */
+export const getRendererResizeUrl = () => {
+  return `/api/renderer/resize`;
+};
+
+export const rendererResize = async (
+  rendererInitRequest: RendererInitRequest,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRendererResizeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(rendererInitRequest),
+  });
+};
+
+export const getRendererResizeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rendererResize>>,
+    TError,
+    { data: BodyType<RendererInitRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rendererResize>>,
+  TError,
+  { data: BodyType<RendererInitRequest> },
+  TContext
+> => {
+  const mutationKey = ["rendererResize"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rendererResize>>,
+    { data: BodyType<RendererInitRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return rendererResize(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RendererResizeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rendererResize>>
+>;
+export type RendererResizeMutationBody = BodyType<RendererInitRequest>;
+export type RendererResizeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Notify the C++ renderer of a viewport resize
+ */
+export const useRendererResize = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rendererResize>>,
+    TError,
+    { data: BodyType<RendererInitRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rendererResize>>,
+  TError,
+  { data: BodyType<RendererInitRequest> },
+  TContext
+> => {
+  return useMutation(getRendererResizeMutationOptions(options));
+};

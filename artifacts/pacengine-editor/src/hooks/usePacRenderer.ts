@@ -1,50 +1,27 @@
-import { useRef, useCallback, useEffect } from "react";
+// usePacRenderer.ts — M2.5.3 HTTP bridge: React editor → C++ PacRenderer
+//
+// Architecture:
+//   Browser → HTTP API → @workspace/api-server → pacengine-napi (.node) → C++ PacRenderer
+//
+// The C++ PacRenderer lives in the API server process (Node.js), wrapped by the
+// N-API addon (pacengine/napi/).  On Replit it uses the stub Vulkan backend (no
+// GPU); on a developer machine with a Vulkan SDK it produces real GPU frames.
+//
+// Frame pump: runs server-side via setInterval at ~60 Hz once the renderer is
+// initialized.  The browser's requestAnimationFrame loop in this hook drives the
+// call-boundary timing check and status polling — Vulkan commands are issued
+// server-side.  GPU pixels are not yet surfaced to the browser (Phase 3.0).
+
+import { useRef, useCallback, useEffect, useState } from "react";
 
 export type ViewMode = "2D" | "3D";
 
-// Describes the bridge surface that the C++ PacRenderer will expose in Phase 2.5.3.
-// For now all methods are no-ops so the hook compiles and can be wired into the editor
-// without a real native module.
-interface PacRendererBridge {
-  initialize(width: number, height: number): Promise<boolean>;
-  importPacAiExport(exportPath: string): Promise<boolean>;
-  setCamera(
-    pos: [number, number, number],
-    target: [number, number, number],
-    fov?: number
-  ): void;
-  updateSimulationState(worldDelta: unknown): void;
-  beginFrame(): void;
-  render(): void;
-  endFrame(): void;
-  resize(width: number, height: number): void;
-  shutdown(): void;
-}
+// ── Public types ──────────────────────────────────────────────────────────────
 
-// Stub bridge used until the N-API / WASM module is available (Phase 2.5.3).
-const stubBridge: PacRendererBridge = {
-  initialize: async () => {
-    console.info("[PacRenderer] stub initialize");
-    return false;
-  },
-  importPacAiExport: async (path) => {
-    console.info("[PacRenderer] stub importPacAiExport:", path);
-    return false;
-  },
-  setCamera: () => {},
-  updateSimulationState: () => {},
-  beginFrame: () => {},
-  render: () => {},
-  endFrame: () => {},
-  resize: () => {},
-  shutdown: () => {},
-};
-
-// Loads the real native bridge at runtime if it has been registered on
-// window.__pacRenderer (e.g. injected by the Electron shell or N-API loader).
-function resolveBridge(): PacRendererBridge {
-  const w = window as unknown as Record<string, unknown>;
-  return (w["__pacRenderer"] as PacRendererBridge | undefined) ?? stubBridge;
+export interface ImportExportResult {
+  success:      boolean;
+  entities:     number;
+  staticMeshes: number;
 }
 
 export interface UsePacRendererOptions {
@@ -53,67 +30,156 @@ export interface UsePacRendererOptions {
 }
 
 export interface UsePacRendererResult {
+  /** True once the server-side PacRenderer::Initialize returned true. */
   isReady: boolean;
-  setCamera: PacRendererBridge["setCamera"];
-  importExport: PacRendererBridge["importPacAiExport"];
-  updateState: PacRendererBridge["updateSimulationState"];
+  /**
+   * True when the compiled .node native addon is active on the server.
+   * False in stub/fallback mode (addon not compiled or no GPU).
+   */
+  isNative: boolean;
+  setCamera(
+    pos:    [number, number, number],
+    target: [number, number, number],
+    fov?: number
+  ): void;
+  importExport(folderPath: string): Promise<ImportExportResult>;
+  updateState(worldDelta: unknown): void;
 }
+
+// ── HTTP helpers ──────────────────────────────────────────────────────────────
+
+type FetchMethod = "GET" | "POST" | "DELETE";
+
+async function apiFetch<T>(
+  method: FetchMethod,
+  path: string,
+  body?: unknown
+): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    method,
+    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+    body:    body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (res.status === 204) return undefined as T;
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`[usePacRenderer] ${method} ${path} → ${res.status}: ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+interface RendererStatusPayload {
+  initialized: boolean;
+  native:      boolean;
+  frameCount:  number;
+}
+
+interface RendererInitPayload {
+  initialized: boolean;
+  native:      boolean;
+}
+
+// ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function usePacRenderer({
   canvasRef,
   enabled = true,
 }: UsePacRendererOptions): UsePacRendererResult {
-  const bridgeRef = useRef<PacRendererBridge>(resolveBridge());
-  const readyRef  = useRef(false);
+  const [isReady,  setIsReady]  = useState(false);
+  const [isNative, setIsNative] = useState(false);
 
+  const rafRef     = useRef<number>(0);
+  const mountedRef = useRef(true);
+
+  // ── Initialize on mount, shut down on unmount ────────────────────────────
   useEffect(() => {
-    if (!enabled || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const bridge = bridgeRef.current;
+    mountedRef.current = true;
+    if (!enabled) return;
 
-    bridge
-      .initialize(canvas.clientWidth || 1280, canvas.clientHeight || 720)
-      .then((ok) => {
-        readyRef.current = ok;
-        if (!ok) {
+    const canvas = canvasRef.current;
+    const w = canvas?.clientWidth  || 1280;
+    const h = canvas?.clientHeight || 720;
+
+    apiFetch<RendererInitPayload>("POST", "/renderer/initialize", { width: w, height: h })
+      .then((data) => {
+        if (!mountedRef.current) return;
+        setIsReady(data.initialized);
+        setIsNative(data.native);
+        if (!data.initialized) {
           console.info(
-            "[usePacRenderer] Stub bridge active — real renderer not loaded yet."
+            "[usePacRenderer] Renderer not initialized — " +
+            "stub Vulkan backend active (headless / addon not compiled)"
           );
         }
+      })
+      .catch((err: unknown) => {
+        console.warn("[usePacRenderer] initialize request failed:", err);
       });
 
+    // rAF loop — runs at 60 Hz to drive the call-boundary timing check.
+    // Every 5 s it also polls /renderer/status to keep isReady / isNative current.
+    // Actual BeginFrame → Render → EndFrame are issued server-side at ~60 Hz.
+    let lastPollMs = 0;
+    const tick = (nowMs: number) => {
+      if (!mountedRef.current) return;
+      rafRef.current = requestAnimationFrame(tick);
+      if (nowMs - lastPollMs > 5_000) {
+        lastPollMs = nowMs;
+        apiFetch<RendererStatusPayload>("GET", "/renderer/status")
+          .then((s) => {
+            if (!mountedRef.current) return;
+            setIsReady(s.initialized);
+            setIsNative(s.native);
+          })
+          .catch(() => {/* server unreachable — keep current state */});
+      }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+
+    // Resize observer → forward to server-side renderer
     const onResize = () => {
-      bridge.resize(canvas.clientWidth, canvas.clientHeight);
+      if (!canvas) return;
+      apiFetch("POST", "/renderer/resize", {
+        width:  canvas.clientWidth,
+        height: canvas.clientHeight,
+      }).catch(() => {});
     };
     const ro = new ResizeObserver(onResize);
-    ro.observe(canvas);
+    if (canvas) ro.observe(canvas);
 
     return () => {
+      mountedRef.current = false;
+      cancelAnimationFrame(rafRef.current);
       ro.disconnect();
-      bridge.shutdown();
-      readyRef.current = false;
+      apiFetch("DELETE", "/renderer/shutdown").catch(() => {});
+      setIsReady(false);
+      setIsNative(false);
     };
   }, [canvasRef, enabled]);
 
-  const setCamera = useCallback<PacRendererBridge["setCamera"]>(
-    (...args) => bridgeRef.current.setCamera(...args),
+  // ── Stable callbacks ─────────────────────────────────────────────────────
+
+  const setCamera = useCallback(
+    (
+      _pos:    [number, number, number],
+      _target: [number, number, number],
+      _fov = 60
+    ) => {
+      // Camera state is applied locally in Viewport3D's 2D Canvas renderer.
+      // Phase 3.0 shared-surface will forward camera to the GPU pipeline.
+    },
     []
   );
 
-  const importExport = useCallback<PacRendererBridge["importPacAiExport"]>(
-    (path) => bridgeRef.current.importPacAiExport(path),
+  const importExport = useCallback(
+    (folderPath: string): Promise<ImportExportResult> =>
+      apiFetch<ImportExportResult>("POST", "/renderer/import-export", { folderPath }),
     []
   );
 
-  const updateState = useCallback<PacRendererBridge["updateSimulationState"]>(
-    (delta) => bridgeRef.current.updateSimulationState(delta),
-    []
-  );
+  const updateState = useCallback((_worldDelta: unknown) => {
+    // Phase M3 — simulation-state sync via dedicated endpoint.
+  }, []);
 
-  return {
-    isReady: readyRef.current,
-    setCamera,
-    importExport,
-    updateState,
-  };
+  return { isReady, isNative, setCamera, importExport, updateState };
 }

@@ -689,3 +689,70 @@ export const DiffRunsResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Query renderer lifecycle state and native-addon availability
+ */
+export const GetRendererStatusResponse = zod.object({
+  initialized: zod
+    .boolean()
+    .describe("Whether the C++ PacRenderer has been successfully initialized"),
+  native: zod
+    .boolean()
+    .describe(
+      "True when the compiled .node addon is active; false in stub mode",
+    ),
+  frameCount: zod
+    .number()
+    .describe(
+      "Total frames rendered by the server-side frame pump since last init",
+    ),
+});
+
+/**
+ * @summary Initialize the C++ PacRenderer (headless on Replit, GPU on workstation)
+ */
+
+export const InitializeRendererBody = zod.object({
+  width: zod.number().min(1).describe("Viewport width in pixels"),
+  height: zod.number().min(1).describe("Viewport height in pixels"),
+});
+
+export const InitializeRendererResponse = zod.object({
+  initialized: zod
+    .boolean()
+    .describe("True when PacRenderer::Initialize returned true"),
+  native: zod
+    .boolean()
+    .describe("True when the compiled .node addon is active"),
+});
+
+/**
+ * @summary Import a PacAI export folder into the C++ render scene
+ */
+export const RendererImportExportBody = zod.object({
+  folderPath: zod
+    .string()
+    .describe(
+      "Absolute server-side path to the export folder containing visual_manifest.json",
+    ),
+});
+
+export const RendererImportExportResponse = zod.object({
+  success: zod.boolean(),
+  entities: zod
+    .number()
+    .describe("Number of entity proxies loaded into the render scene"),
+  staticMeshes: zod
+    .number()
+    .describe("Number of static mesh proxies loaded into the render scene"),
+});
+
+/**
+ * @summary Notify the C++ renderer of a viewport resize
+ */
+
+export const RendererResizeBody = zod.object({
+  width: zod.number().min(1).describe("Viewport width in pixels"),
+  height: zod.number().min(1).describe("Viewport height in pixels"),
+});

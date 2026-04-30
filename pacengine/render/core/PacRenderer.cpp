@@ -86,6 +86,10 @@ struct PacRenderer::Impl {
     bool    use3D        = true;
     bool    debugOverlay = false;
     bool    initialized  = false;
+
+    // Counts updated by the last Import/ApplyVisualManifest call.
+    uint32_t entityCount     = 0;
+    uint32_t staticMeshCount = 0;
 };
 
 PacRenderer::PacRenderer()  : m_impl(std::make_unique<Impl>()) {}
@@ -102,6 +106,8 @@ bool PacRenderer::Initialize(void* windowHandle, uint32_t width, uint32_t height
     m_impl->scene = std::make_unique<RenderScene>();
     m_impl->scene->SetVulkanContext(m_impl->vkCtx.get());
     RegisterBuiltinTriangle();
+    m_impl->entityCount     = 0;
+    m_impl->staticMeshCount = 0;
     m_impl->initialized = true;
     std::printf("[PacRenderer] Initialized (%ux%u)\n", width, height);
     return true;
@@ -259,6 +265,9 @@ void PacRenderer::ToggleDebugOverlay(bool enabled) {
 
 RenderScene* PacRenderer::GetScene() const { return m_impl->scene.get(); }
 
+uint32_t PacRenderer::GetEntityCount()     const { return m_impl->entityCount; }
+uint32_t PacRenderer::GetStaticMeshCount() const { return m_impl->staticMeshCount; }
+
 // ─── Private import sub-steps ─────────────────────────────────────────────────
 
 void PacRenderer::LoadVisualEntities(const VisualManifest& manifest,
@@ -287,6 +296,7 @@ void PacRenderer::LoadVisualEntities(const VisualManifest& manifest,
             ApplyMaterialOverrides(proxy, entityData.render.material_overrides);
         }
     }
+    m_impl->entityCount = static_cast<uint32_t>(manifest.entities.size());
     std::printf("[PacRenderer] Loaded %zu entity proxies\n", manifest.entities.size());
 }
 
@@ -314,6 +324,7 @@ void PacRenderer::LoadStaticMeshes(const VisualManifest& manifest,
         }
         // Phase 2.5.1 — apply TRS from meshData.transform
     }
+    m_impl->staticMeshCount = static_cast<uint32_t>(manifest.static_meshes.size());
     std::printf("[PacRenderer] Loaded %zu static mesh proxies\n", manifest.static_meshes.size());
 }
 
