@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { 
   useListProjects, 
@@ -16,7 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Activity, Plus, FolderOpen, Play, Box, FileJson, Hash, Settings } from "lucide-react";
+import { Activity, FolderOpen, Play, Box, FileJson, Hash, Settings, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import JSZip from "jszip";
 
 /**
  * Try to split two concatenated JSON objects from a single string.
@@ -81,6 +82,78 @@ export default function Home() {
   const [importName, setImportName] = useState("");
   const [importWorldJson, setImportWorldJson] = useState("");
   const [importVisualJson, setImportVisualJson] = useState("");
+  const [zipStatus, setZipStatus] = useState<"idle" | "success" | "error">("idle");
+  const [zipError, setZipError] = useState<string>("");
+  const [zipFileName, setZipFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleZipUpload = async (file: File) => {
+    setZipStatus("idle");
+    setZipError("");
+    setZipFileName(file.name);
+
+    let zip: JSZip;
+    try {
+      zip = await JSZip.loadAsync(file);
+    } catch {
+      setZipStatus("error");
+      setZipError("Could not read file as a zip archive.");
+      return;
+    }
+
+    // Search by basename to handle archives with a top-level folder
+    const findByBasename = (name: string) => {
+      const entries = Object.values(zip.files).filter(
+        (f) => !f.dir && f.name.split("/").pop() === name
+      );
+      return entries[0] ?? null;
+    };
+
+    const worldFile = findByBasename("world.pacdata.json");
+    const visualFile = findByBasename("visual_manifest.json");
+
+    if (!worldFile) {
+      setZipStatus("error");
+      setZipError("world.pacdata.json not found in the archive.");
+      return;
+    }
+
+    if (!visualFile) {
+      setZipStatus("error");
+      setZipError("visual_manifest.json not found in the archive.");
+      return;
+    }
+
+    let worldText: string;
+    try {
+      worldText = await worldFile.async("string");
+      JSON.parse(worldText);
+    } catch {
+      setZipStatus("error");
+      setZipError("world.pacdata.json is present but contains invalid JSON.");
+      return;
+    }
+
+    let visualText: string;
+    try {
+      visualText = await visualFile.async("string");
+      JSON.parse(visualText);
+    } catch {
+      setZipStatus("error");
+      setZipError("visual_manifest.json is present but contains invalid JSON.");
+      return;
+    }
+
+    setImportWorldJson(worldText);
+    setImportVisualJson(visualText);
+
+    if (!importName) {
+      const baseName = file.name.replace(/\.(pacexport|zip)$/i, "");
+      if (baseName) setImportName(baseName);
+    }
+
+    setZipStatus("success");
+  };
   
   const [instantiateOpen, setInstantiateOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -126,6 +199,9 @@ export default function Home() {
         setImportName("");
         setImportWorldJson("");
         setImportVisualJson("");
+        setZipStatus("idle");
+        setZipError("");
+        setZipFileName("");
         toast({ title: "Import Successful", description: `Project ${data.project.name} imported.` });
         setLocation(`/projects/${data.project.id}`);
       },
@@ -195,10 +271,65 @@ export default function Home() {
                   <DialogHeader>
                     <DialogTitle>Import PacData v7 Export</DialogTitle>
                     <DialogDescription>
-                      Paste the <code className="text-xs bg-muted px-1 rounded">world.pacdata.json</code> and optionally the <code className="text-xs bg-muted px-1 rounded">visual_manifest.json</code> from your PacAI export package.
+                      Upload a <code className="text-xs bg-muted px-1 rounded">.pacexport</code> or <code className="text-xs bg-muted px-1 rounded">.zip</code> file, or paste the JSON manually below.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label>Upload Export File</Label>
+                      <div
+                        className="border-2 border-dashed border-border rounded-md p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                        onClick={() => fileInputRef.current?.click()}
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const file = e.dataTransfer.files[0];
+                          if (file) handleZipUpload(file);
+                        }}
+                      >
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".pacexport,.zip"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleZipUpload(file);
+                            e.target.value = "";
+                          }}
+                        />
+                        {zipStatus === "idle" && (
+                          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                            <Upload className="h-6 w-6" />
+                            <span className="text-xs">Click or drag a <strong>.pacexport</strong> / <strong>.zip</strong> file here</span>
+                          </div>
+                        )}
+                        {zipStatus === "success" && (
+                          <div className="flex items-center justify-center gap-2 text-green-600 text-xs">
+                            <CheckCircle2 className="h-4 w-4 shrink-0" />
+                            <span><strong>{zipFileName}</strong> — files extracted successfully</span>
+                          </div>
+                        )}
+                        {zipStatus === "error" && (
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="flex items-center gap-2 text-destructive text-xs">
+                              <AlertCircle className="h-4 w-4 shrink-0" />
+                              <span><strong>{zipFileName}</strong></span>
+                            </div>
+                            <p className="text-xs text-destructive">{zipError}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Click to try a different file</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="relative flex items-center gap-2">
+                      <div className="flex-1 border-t border-border" />
+                      <span className="text-xs text-muted-foreground shrink-0">or paste manually</span>
+                      <div className="flex-1 border-t border-border" />
+                    </div>
+
                     <div className="grid gap-2">
                       <Label htmlFor="name">Project Name</Label>
                       <Input id="name" value={importName} onChange={(e) => setImportName(e.target.value)} placeholder="e.g. my-imported-sim" />
@@ -211,7 +342,7 @@ export default function Home() {
                         id="world-json" 
                         value={importWorldJson} 
                         onChange={(e) => setImportWorldJson(e.target.value)} 
-                        className="font-mono text-xs h-[140px]" 
+                        className="font-mono text-xs h-[120px]" 
                         placeholder='{"format": "pacai_pacdata_v7", "entities": [...], ...}'
                       />
                     </div>
@@ -223,13 +354,13 @@ export default function Home() {
                         id="visual-json" 
                         value={importVisualJson} 
                         onChange={(e) => setImportVisualJson(e.target.value)} 
-                        className="font-mono text-xs h-[100px]" 
+                        className="font-mono text-xs h-[80px]" 
                         placeholder='{"visual_version": "1.0.0", "environment": {...}, ...}'
                       />
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => { setImportOpen(false); setImportName(""); setImportWorldJson(""); setImportVisualJson(""); }}>Cancel</Button>
+                    <Button variant="outline" onClick={() => { setImportOpen(false); setImportName(""); setImportWorldJson(""); setImportVisualJson(""); setZipStatus("idle"); setZipError(""); setZipFileName(""); }}>Cancel</Button>
                     <Button onClick={handleImport} disabled={importMutation.isPending}>
                       {importMutation.isPending ? "Importing..." : "Import Project"}
                     </Button>
