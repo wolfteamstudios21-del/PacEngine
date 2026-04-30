@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include "render_types.h"
 #include "VisualManifest.h"
+#include "PacDataWorld.h"
 
 namespace pac::render {
 
@@ -13,6 +14,9 @@ class RenderProxy;
 
 // Top-level renderer. Owns the backend (Vulkan) context and the RenderScene.
 // Lifecycle: Initialize → {BeginFrame, Render, EndFrame}* → Shutdown
+//
+// VISUAL ONLY — simulation data ownership lives in PacSimulation (Phase M3).
+// Use PacWorldImporter to drive the full import pipeline.
 class PacRenderer {
 public:
     PacRenderer();
@@ -27,17 +31,22 @@ public:
     void Render();
     void EndFrame();
 
-    // ── PacAi Import Pipeline (M2.5 core) ────────────────────────────────────
-    // exportFolderPath must contain visual_manifest.json.
-    // Missing assets are filled with placeholder stubs; returns false only on
-    // hard errors (folder not found, out-of-memory, etc.).
+    // ── Convenience wrapper — delegates to PacWorldImporter::Import() ─────────
+    // exportFolderPath must contain visual_manifest.json (world.pacdata.json optional).
+    // Prefer constructing PacWorldImporter directly when you also have a PacSimulation*.
     bool ImportPacAiExport(const std::string& exportFolderPath);
+
+    // ── Pure visual API ───────────────────────────────────────────────────────
+    // Apply a fully-parsed VisualManifest to the render scene.
+    // exportFolderPath is needed so sub-loaders can resolve relative asset paths.
+    // Returns false only on hard scene errors (scene not initialised).
+    bool ApplyVisualManifest(const VisualManifest& manifest,
+                             const std::string& exportFolderPath);
 
     // ── Simulation integration ────────────────────────────────────────────────
     // Called after every simulation tick (or at a fixed visual rate).
-    // worldStateOpaque is currently a type-erased pointer; cast to your
-    // PacDataWorld when linking against pacengine_runtime.
-    void UpdateSimulationState(const void* worldStateOpaque);
+    // Walks world.entities and updates proxy transforms / visibility.
+    void UpdateSimulationState(const PacDataWorld& world);
 
     // ── Camera ───────────────────────────────────────────────────────────────
     void SetCamera(const PacVec3& position, const PacVec3& target, float fovDeg = 60.f);
@@ -55,12 +64,6 @@ public:
     RenderScene* GetScene() const;
 
 private:
-    // ── Import sub-steps ─────────────────────────────────────────────────────
-
-    // Ensures assets/models/{agent,terrain/arena}.gltf stubs exist so the
-    // scene is never entirely empty on first import.
-    void CreatePlaceholderAssets(const std::filesystem::path& assetsDir);
-
     // Reads manifest.entities (vector of VisualEntityOverride) and creates /
     // populates a RenderProxy per entry.
     void LoadVisualEntities(const VisualManifest& manifest,

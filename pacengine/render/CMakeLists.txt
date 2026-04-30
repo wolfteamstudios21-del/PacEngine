@@ -29,6 +29,7 @@ set(RENDER_SOURCES
     core/Material.cpp
     core/VisualManifestLoader.cpp
     core/PacDataLoader.cpp
+    importer/PacWorldImporter.cpp
     assets/GltfLoader.cpp
     assets/TextureManager.cpp
     backend/VulkanContext.cpp

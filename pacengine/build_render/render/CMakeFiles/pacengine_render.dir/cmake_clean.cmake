@@ -17,6 +17,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/pacengine_render.dir/core/RenderScene.cpp.o.d"
   "CMakeFiles/pacengine_render.dir/core/VisualManifestLoader.cpp.o"
   "CMakeFiles/pacengine_render.dir/core/VisualManifestLoader.cpp.o.d"
+  "CMakeFiles/pacengine_render.dir/importer/PacWorldImporter.cpp.o"
+  "CMakeFiles/pacengine_render.dir/importer/PacWorldImporter.cpp.o.d"
   "libpacengine_render.a"
   "libpacengine_render.pdb"
 )

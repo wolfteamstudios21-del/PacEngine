@@ -17,6 +17,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/runner/workspace/pacengine/render/core/RenderProxy.cpp" "render/CMakeFiles/pacengine_render.dir/core/RenderProxy.cpp.o" "gcc" "render/CMakeFiles/pacengine_render.dir/core/RenderProxy.cpp.o.d"
   "/home/runner/workspace/pacengine/render/core/RenderScene.cpp" "render/CMakeFiles/pacengine_render.dir/core/RenderScene.cpp.o" "gcc" "render/CMakeFiles/pacengine_render.dir/core/RenderScene.cpp.o.d"
   "/home/runner/workspace/pacengine/render/core/VisualManifestLoader.cpp" "render/CMakeFiles/pacengine_render.dir/core/VisualManifestLoader.cpp.o" "gcc" "render/CMakeFiles/pacengine_render.dir/core/VisualManifestLoader.cpp.o.d"
+  "/home/runner/workspace/pacengine/render/importer/PacWorldImporter.cpp" "render/CMakeFiles/pacengine_render.dir/importer/PacWorldImporter.cpp.o" "gcc" "render/CMakeFiles/pacengine_render.dir/importer/PacWorldImporter.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

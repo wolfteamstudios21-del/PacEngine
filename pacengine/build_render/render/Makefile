@@ -346,6 +346,30 @@ core/VisualManifestLoader.cpp.s:
 	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/core/VisualManifestLoader.cpp.s
 .PHONY : core/VisualManifestLoader.cpp.s
 
+importer/PacWorldImporter.o: importer/PacWorldImporter.cpp.o
+.PHONY : importer/PacWorldImporter.o
+
+# target to build an object file
+importer/PacWorldImporter.cpp.o:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/importer/PacWorldImporter.cpp.o
+.PHONY : importer/PacWorldImporter.cpp.o
+
+importer/PacWorldImporter.i: importer/PacWorldImporter.cpp.i
+.PHONY : importer/PacWorldImporter.i
+
+# target to preprocess a source file
+importer/PacWorldImporter.cpp.i:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/importer/PacWorldImporter.cpp.i
+.PHONY : importer/PacWorldImporter.cpp.i
+
+importer/PacWorldImporter.s: importer/PacWorldImporter.cpp.s
+.PHONY : importer/PacWorldImporter.s
+
+# target to generate assembly for a file
+importer/PacWorldImporter.cpp.s:
+	cd /home/runner/workspace/pacengine/build_render && $(MAKE) $(MAKESILENT) -f render/CMakeFiles/pacengine_render.dir/build.make render/CMakeFiles/pacengine_render.dir/importer/PacWorldImporter.cpp.s
+.PHONY : importer/PacWorldImporter.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -382,6 +406,9 @@ help:
 	@echo "... core/VisualManifestLoader.o"
 	@echo "... core/VisualManifestLoader.i"
 	@echo "... core/VisualManifestLoader.s"
+	@echo "... importer/PacWorldImporter.o"
+	@echo "... importer/PacWorldImporter.i"
+	@echo "... importer/PacWorldImporter.s"
 .PHONY : help
 
 
