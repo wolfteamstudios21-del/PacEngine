@@ -26,6 +26,20 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 
+## Required Environment Secrets
+
+The following secrets must be configured (Replit Secrets) before the API server starts:
+
+| Secret | Purpose |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string (auto-provisioned by Replit) |
+| `JWT_SECRET` | Long random string (64+ chars) used to sign session tokens |
+| `ADMIN_PASSWORD` | Password for the seeded admin account |
+| `ADMIN_USERNAME` | *(optional)* Admin account username — defaults to `WolfTeam19` if not set |
+| `SESSION_SECRET` | Express session secret (legacy, kept for compatibility) |
+
+On first startup the API server creates the admin account (role: `admin`) using `ADMIN_USERNAME` / `ADMIN_PASSWORD` if it does not already exist. Migration SQL is in `lib/db/drizzle/`.
+
 ## PacEngine (C++)
 
 A native Pac runtime lives alongside the TS workspace at `pacengine/`. It is a

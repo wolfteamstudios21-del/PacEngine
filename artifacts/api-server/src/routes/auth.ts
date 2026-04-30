@@ -49,7 +49,17 @@ router.post("/auth/register", authLimiter, async (req: Request, res: Response) =
 
   const passwordHash = await bcrypt.hash(password, 12);
   const id = randomUUID();
-  await db.insert(usersTable).values({ id, username, passwordHash, role: "user" });
+  try {
+    await db.insert(usersTable).values({ id, username, passwordHash, role: "user" });
+  } catch (err) {
+    // Unique constraint violation — another request registered the same username concurrently
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("unique") || msg.includes("duplicate") || msg.includes("users_username_unique")) {
+      res.status(409).json({ error: "Username already taken" });
+      return;
+    }
+    throw err;
+  }
 
   const user = { id, username, role: "user" as const };
   const token = signToken(user);
