@@ -3,23 +3,19 @@
   "format": "pacai_pacdata_v7",
   "pacCoreVersion": "3.5",
   "project": {
-    "id": "shooter_test_001",
-    "name": "PacEngine Shooter Test",
+    "id": "tiny_world",
+    "name": "Shooter_Test_Arena",
     "syncKey": null
   },
-
-  "seed": 112233,
-
+  "seed": 445566,
   "world": {
     "name": "Shooter_Test_Arena",
     "biome": "urban_training_ground",
     "size": { "x": 200, "y": 200 }
   },
-
   "conflictSim": {
-    "enabled": true,
+    "enabled": false,
     "tick_rate": 20,
-
     "factions": [
       {
         "id": "blue_team",
@@ -34,11 +30,9 @@
         "territory": ["south_pad"]
       }
     ],
-
     "activeConflicts": [],
-    "directorState": { "pacing": "medium" }
+    "directorState": { "pacing": "none" }
   },
-
   "entities": [
     {
       "id": "blue_01",
@@ -56,7 +50,6 @@
       "rotation": { "x": 0, "y": 180, "z": 0 },
       "stats": { "health": 100, "morale": 1.0 }
     },
-
     {
       "id": "red_01",
       "type": "soldier",
@@ -74,16 +67,14 @@
       "stats": { "health": 100, "morale": 1.0 }
     }
   ],
-
   "motionAbstraction": {
     "stance": "combat_ready",
     "tempo": "fast",
     "energy": "aggressive"
   },
-
   "metadata": {
     "deterministic": true,
-    "created_at": "2026-04-29T03:00:00Z",
+    "created_at": "2026-04-29T22:44:00Z",
     "assetsOnlyMode": false
   }
 }

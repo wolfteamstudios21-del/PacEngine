@@ -1,0 +1,338 @@
+⭐ PACENGINE v7 — CAPABILITY MAP
+The complete picture of what PacEngine becomes at maturity.
+1. CORE SIMULATION LAYER (PacCore v3.5 → v7)
+✔ Deterministic Simulation (bit‑exact)
+Every tick reproducible
+
+Replayable, diffable, debuggable
+
+Zero float drift
+
+Zero nondeterministic branches
+
+Multi‑worker deterministic scheduling
+
+✔ Multi‑Realm Simulation
+Independent realms (shards)
+
+Cross‑realm messaging
+
+Realm‑local ConflictSim
+
+Realm‑local BehaviorGraph
+
+Realm‑local Director pacing
+
+Realm‑local NPC memory
+
+✔ ConflictSim v3+
+Multi‑layer conflict modeling
+
+Tactical + strategic layers
+
+Faction intent propagation
+
+Escalation + de‑escalation logic
+
+Deterministic outcomes
+
+✔ BehaviorGraph v4+
+Node‑based behavior logic
+
+Deterministic decision trees
+
+MotionProfile integration
+
+Memory‑aware behavior
+
+Director‑aware pacing
+
+✔ Director v3
+Global pacing
+
+Encounter shaping
+
+Narrative beats
+
+Realm‑aware tension curves
+
+✔ NPC Memory v3
+Long‑term memory
+
+Short‑term memory
+
+Faction memory
+
+Player‑impact memory
+
+2. DATA + IMPORT PIPELINE (PacAi → PacCore → PacEngine)
+✔ PacData v2.0 Schema
+Entities
+
+Factions
+
+Zones
+
+Shards
+
+Behavior graphs
+
+Motion profiles
+
+Conflict layers
+
+Director state
+
+NPC memory
+
+Visual manifest
+
+✔ PEXP (PacEngine Export Package)
+world.pacdata.json
+
+visual_manifest.json
+
+assets/ (glTF, textures, animations)
+
+Deterministic metadata
+
+✔ PacWorldImporter v3
+Full hydration of PacCore worlds
+
+Asset validation
+
+BehaviorGraph linking
+
+ConflictSim linking
+
+Realm creation
+
+Visual proxy creation
+
+✔ Hot Reload / Instant Preview
+Import → Simulate → Visualize in seconds
+
+Zero broken references
+
+Zero manual scene setup
+
+3. RENDERING LAYER (Vulkan)
+✔ Vulkan Renderer v3
+Forward+
+
+PBR materials
+
+GPU buffer streaming
+
+Instancing
+
+Atmospheric sky
+
+Directional + point lights
+
+Shadow cascades (optional)
+
+GI probes (optional)
+
+✔ Animation System v1
+Skeletal animation
+
+Blend trees
+
+Deterministic animation stepping
+
+✔ RenderGraph v1
+Declarative passes
+
+Deterministic frame graph
+
+GPU resource lifetime management
+
+✔ Visual Manifest Integration
+Environment
+
+Fog
+
+Sun
+
+Post‑processing
+
+Material overrides
+
+4. EDITOR LAYER (TS/React)
+✔ UE‑style 4‑pane layout
+Outliner
+
+Inspector
+
+Viewport
+
+Timeline
+
+✔ Determinism Suite
+Replay viewer
+
+Diff viewer
+
+Tick scrubber
+
+Run comparison
+
+Multi‑realm diff
+
+✔ Multi‑Realm Visualization
+Realm selector
+
+Realm overlays
+
+Realm transitions
+
+Cross‑realm event visualization
+
+✔ BehaviorGraph Viewer
+Node graph
+
+Live tick stepping
+
+Decision tracing
+
+Memory inspection
+
+✔ ConflictSim Viewer
+Conflict layers
+
+Influence maps
+
+Faction borders
+
+Escalation timelines
+
+✔ PacData Inspector
+Entities
+
+Factions
+
+Zones
+
+Director state
+
+NPC memory
+
+✔ Asset Viewer
+glTF preview
+
+Material inspector
+
+Animation preview
+
+5. TRACE + DEBUGGING LAYER
+✔ Trace v3
+Component deltas
+
+Event logs
+
+Realm‑aware frames
+
+BehaviorGraph decisions
+
+ConflictSim events
+
+Director pacing events
+
+✔ Replay v2
+Multi‑realm replay
+
+BehaviorGraph replay
+
+ConflictSim replay
+
+Animation replay
+
+✔ Diff v2
+Realm‑aware diff
+
+Behavior diff
+
+Conflict diff
+
+Entity diff
+
+Faction diff
+
+✔ Deterministic Bug Reports
+“Attach trace” button
+
+Reproduce any bug exactly
+
+Zero guesswork
+
+6. PERFORMANCE + SCALING
+✔ Multi‑Worker Simulation
+Realm‑per‑worker
+
+Deterministic scheduling
+
+Zero race conditions
+
+✔ GPU‑accelerated rendering
+Instancing
+
+Batched draw calls
+
+Efficient buffer reuse
+
+✔ Large‑World Support
+Thousands of entities
+
+Dozens of factions
+
+Multiple realms
+
+Stable 60–120 FPS
+
+7. PLATFORM + ECOSYSTEM
+✔ Free Engine Licensing
+PacEngine free forever
+
+No royalties
+
+No paywalls
+
+✔ PacAi + PacCore Licensing
+Studio tier
+
+Enterprise tier
+
+Custom integrations
+
+✔ Modding Support
+PacData mod packs
+
+BehaviorGraph mods
+
+ConflictSim mods
+
+Asset packs
+
+Realm packs
+
+✔ WTS Game Integration
+Vanguard
+
+Realms Unbound
+
+Earth’s Finest
+
+Future WTS titles
+
+⭐ FINAL SUMMARY — What PacEngine v7 is
+PacEngine v7 becomes:
+
+A deterministic, AI‑driven, multi‑realm simulation engine with a modern Vulkan renderer, a professional editor, a schema‑driven import pipeline, and a full replay/diff debugging suite — free, scalable, and built for systemic games.
+
+This is not Unity.
+This is not Unreal.
+This is not Godot.
+
+This is a new category of engine —
+the first engine built for AI‑generated, deterministic, systemic worlds.
