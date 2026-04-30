@@ -65,9 +65,9 @@ export function usePacRenderer({ canvasRef, enabled = true }: UsePacRendererOpti
       })
       .catch((err: unknown) => console.warn("[usePacRenderer] initialize failed:", err));
 
-    // rAF loop: drives BeginFrame→Render→EndFrame at ~30 Hz via POST /renderer/frame,
+    // rAF loop: drives BeginFrame→Render→EndFrame at ~60 Hz via POST /renderer/frame,
     // and polls status at 5 s intervals to keep isReady/isNative current.
-    const FRAME_INTERVAL_MS = 1000 / 30;
+    const FRAME_INTERVAL_MS = 1000 / 60;
     const POLL_INTERVAL_MS  = 5_000;
 
     const tick = (nowMs: number) => {

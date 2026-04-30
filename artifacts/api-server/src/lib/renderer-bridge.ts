@@ -1,4 +1,5 @@
 import path from "node:path";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { logger } from "./logger";
@@ -6,11 +7,24 @@ import { logger } from "./logger";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const _require   = createRequire(import.meta.url);
 
-// dist/ → api-server/ → artifacts/ → workspace root
-export const WORKSPACE_ROOT = path.resolve(__dirname, "../../..");
+// Resolve the napi package directory robustly across dev (tsx src/lib/) and
+// production (compiled dist/lib/).  process.cwd() is the api-server package
+// root when launched by pnpm; __dirname varies by build mode.
+function resolveNapiDir(): string {
+  const candidates = [
+    path.resolve(process.cwd(), "pacengine/napi"),            // cwd = workspace root
+    path.resolve(process.cwd(), "../../pacengine/napi"),      // cwd = api-server pkg
+    path.resolve(__dirname, "../../../pacengine/napi"),        // dist/lib/ → 3 up
+    path.resolve(__dirname, "../../../../pacengine/napi"),     // src/lib/ → 4 up
+  ];
+  for (const dir of candidates) {
+    if (existsSync(path.join(dir, "index.js"))) return dir;
+  }
+  return candidates[1]; // best guess fallback
+}
 
-// Path from workspace root to the napi package
-const NAPI_DIR = path.join(WORKSPACE_ROOT, "pacengine/napi");
+const NAPI_DIR = resolveNapiDir();
+export const WORKSPACE_ROOT = path.resolve(NAPI_DIR, "../..");
 
 interface ImportExportResult {
   success: boolean;
@@ -53,21 +67,20 @@ let _addon: NativeAddon = stubAddon;
 
 try {
   const mod = _require(path.join(NAPI_DIR, "index.js")) as { addon: NativeAddon; isNative: boolean };
-  _addon     = mod.addon;
-  _isNative  = mod.isNative;
-  logger.info(_isNative
-    ? "[renderer-bridge] native pacrenderer.node loaded"
-    : "[renderer-bridge] pacrenderer.node not compiled — stub mode");
+  _addon    = mod.addon;
+  _isNative = mod.isNative;
+  logger.info({ napiDir: NAPI_DIR, native: _isNative },
+    _isNative ? "[renderer-bridge] native addon loaded" : "[renderer-bridge] stub mode");
 } catch (err) {
-  logger.warn({ err: err instanceof Error ? err.message : String(err) },
+  logger.warn({ err: err instanceof Error ? err.message : String(err), napiDir: NAPI_DIR },
     "[renderer-bridge] pacengine-napi not found — stub mode");
 }
 
 export const isNative = _isNative;
 export const addon    = _addon;
 
-// Server-side frame pump: keeps the frame triad running when no browser is connected.
-// The browser's rAF loop also drives /renderer/frame at ~30 Hz while connected.
+// Server-side frame pump (backup for when no browser viewport is connected).
+// Primary pump is the browser rAF loop calling POST /renderer/frame at 60 Hz.
 const FRAME_MS = Math.round(1000 / 60);
 let _pumpTimer: ReturnType<typeof setInterval> | null = null;
 
