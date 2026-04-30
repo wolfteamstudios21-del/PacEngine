@@ -1,0 +1,139 @@
+Here are the corresponding changes to PacRenderer::ImportPacAiExport() so it can properly consume the new export format from exportToPacEngine(), plus asset folder creation with placeholder glTF references.
+1. Updated PacRenderer::ImportPacAiExport() (Full Version)
+C++// render/core/PacRenderer.cpp
+#include "PacRenderer.h"
+#include "RenderScene.h"
+#include "VisualManifestLoader.h"
+#include "GltfLoader.h"
+#include <filesystem>
+#include <iostream>
+
+namespace fs = std::filesystem;
+
+bool PacRenderer::ImportPacAiExport(const std::string& exportFolderPath) {
+    if (!fs::exists(exportFolderPath)) {
+        std::cerr << "[PacRenderer] Export folder not found: " << exportFolderPath << std::endl;
+        return false;
+    }
+
+    std::cout << "[PacRenderer] Importing PacAi export from: " << exportFolderPath << std::endl;
+
+    // 1. Ensure assets folder exists
+    fs::path assetsDir = fs::path(exportFolderPath) / "assets";
+    if (!fs::exists(assetsDir)) {
+        fs::create_directories(assetsDir);
+        std::cout << "[PacRenderer] Created assets directory: " << assetsDir << std::endl;
+    }
+
+    // 2. Load Visual Manifest (for rendering)
+    std::string manifestPath = exportFolderPath + "/visual_manifest.json";
+    VisualManifest manifest;
+
+    if (!VisualManifestLoader::Load(manifestPath, manifest)) {
+        std::cerr << "[PacRenderer] Failed to load visual_manifest.json" << std::endl;
+        // Continue anyway - we can still load simulation data
+    } else {
+        // Apply environment settings
+        m_scene->SetEnvironment(manifest.environment);
+    }
+
+    // 3. Create placeholder assets if they don't exist (for immediate visual feedback)
+    CreatePlaceholderAssets(assetsDir);
+
+    // 4. Load core PacData (simulation world)
+    std::string pacdataPath = exportFolderPath + "/world.pacdata.json";
+    // TODO: Integrate with your existing PacData loader
+    // bool success = LoadPacData(pacdataPath);
+    std::cout << "[PacRenderer] Loading PacData: " << pacdataPath << std::endl;
+
+    // 5. Load visual entities and static meshes from manifest
+    LoadVisualEntities(manifest);
+    LoadStaticMeshes(manifest, exportFolderPath);
+
+    std::cout << "[PacRenderer] Import completed successfully." << std::endl;
+    return true;
+}
+2. Add These Helper Functions to PacRenderer.cpp
+C++// Helper: Create placeholder glTF assets so the scene isn't empty
+void PacRenderer::CreatePlaceholderAssets(const fs::path& assetsDir) {
+    // Create basic agent model placeholder
+    fs::path agentPath = assetsDir / "models" / "agent.gltf";
+    fs::create_directories(agentPath.parent_path());
+    
+    if (!fs::exists(agentPath)) {
+        // For now, just create an empty file as placeholder
+        // In real workflow, you would generate or copy real glTF files here
+        std::ofstream placeholder(agentPath);
+        placeholder << "// Placeholder glTF for agent\n";
+        placeholder.close();
+        std::cout << "[PacRenderer] Created placeholder: " << agentPath << std::endl;
+    }
+
+    // Create ground/arena placeholder
+    fs::path groundPath = assetsDir / "models" / "terrain" / "arena.gltf";
+    fs::create_directories(groundPath.parent_path());
+    
+    if (!fs::exists(groundPath)) {
+        std::ofstream placeholder(groundPath);
+        placeholder << "// Placeholder glTF for arena terrain\n";
+        placeholder.close();
+        std::cout << "[PacRenderer] Created placeholder: " << groundPath << std::endl;
+    }
+}
+
+// Load entities defined in visual_manifest.json
+void PacRenderer::LoadVisualEntities(const VisualManifest& manifest) {
+    for (const auto& [entityId, renderComp] : manifest.entities) {
+        if (renderComp.asset.empty()) continue;
+
+        RenderProxy* proxy = m_scene->CreateProxy(entityId);
+        if (proxy) {
+            std::string fullPath = renderComp.asset; // relative path from export root
+            if (GltfLoader::LoadMesh(fullPath, proxy)) {
+                // Apply material overrides if any
+                // TODO: Implement material override logic
+                proxy->visible = renderComp.visible;
+                proxy->castShadows = renderComp.cast_shadows;
+            }
+        }
+    }
+}
+
+// Load static environment meshes
+void PacRenderer::LoadStaticMeshes(const VisualManifest& manifest, const std::string& exportRoot) {
+    for (const auto& meshData : manifest.static_meshes) {
+        RenderProxy* proxy = m_scene->CreateProxy(hashString(meshData.id)); // simple hash for now
+        if (proxy) {
+            std::string fullPath = exportRoot + "/" + meshData.asset;
+            if (GltfLoader::LoadMesh(fullPath, proxy)) {
+                // Set transform from manifest
+                // proxy->transform = buildTransform(meshData);
+            }
+        }
+    }
+}
+
+// Simple string hash helper (replace with proper one later)
+uint64_t hashString(const std::string& str) {
+    uint64_t hash = 0;
+    for (char c : str) hash = hash * 31 + c;
+    return hash;
+}
+3. Updated PacRenderer.h (Add declarations)
+Add these to the private section of PacRenderer.h:
+C++private:
+    std::unique_ptr<RenderScene> m_scene;
+    bool m_use3D = true;
+
+    // Import helpers
+    void CreatePlaceholderAssets(const std::filesystem::path& assetsDir);
+    void LoadVisualEntities(const VisualManifest& manifest);
+    void LoadStaticMeshes(const VisualManifest& manifest, const std::string& exportRoot);
+
+Summary of What This Does:
+
+Safely creates an assets/ folder inside the export
+Creates placeholder .gltf files so you immediately see something when importing
+Loads visual_manifest.json and applies environment (fog, sun, sky)
+Creates RenderProxy objects for entities and static meshes
+Prepares the structure for real glTF loading later

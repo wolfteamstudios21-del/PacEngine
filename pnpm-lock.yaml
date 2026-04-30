@@ -637,6 +637,12 @@ importers:
         specifier: ^0.31.9
         version: 0.31.9
 
+  lib/pacengine-export:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.3.5
+
   scripts:
     devDependencies:
       '@types/node':
