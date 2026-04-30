@@ -225,4 +225,18 @@ pacengine/render/
 
 **Art Library integration:** `artLibraryMeshes` prop (from `visualManifest.art_library_meshes`) is passed to `Viewport3D`. Each entry is loaded as a GLTF model (`/api/storage/object/<storageKey>`) and placed in the scene using `useGLTF` + `Suspense`.
 
+### Visual Manifest Editor
+
+`src/components/VisualManifestEditor.tsx` — live-editable form that replaces the read-only Visual Properties panel in the Details sidebar when a `visual_manifest.json` sidecar exists.
+
+| Section | Controls |
+|---------|----------|
+| Environment | Sky type dropdown, sun intensity slider, ambient intensity slider, sun color picker, fog toggle, fog density slider, fog color picker |
+| Global Illumination | GI type dropdown, probe density dropdown |
+| Post-Processing | Tonemap dropdown, exposure/bloom/contrast/saturation sliders |
+
+**Live 3D feedback:** every slider/picker change calls `onDraftChange` which updates `liveManifest` in `editor.tsx`. This prop flows to `Viewport3D` → `SceneContent` where it drives directional light intensity/position, ambient light intensity, tone mapping exposure, and fog density/color in real time — before the user hits Save.
+
+**Save:** calls `PATCH /api/pacengine/projects/:id/visual-manifest` → `writeVisualManifest()` → persists to `<id>.visual_manifest.json`. On success, `getGetProjectQueryKey` is invalidated so the query cache refreshes.
+
 **Data flow (Phase 2.5.3):** C++ `PacRenderer` exposed via `window.__pacRenderer` → `usePacRenderer` resolves real bridge → each simulation tick sends delta to `updateSimulationState()` → dirty proxies rebuilt → frame rendered to canvas (will replace R3F layer).

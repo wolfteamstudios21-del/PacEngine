@@ -60,6 +60,7 @@ import type {
   SimulationTickControlResponse,
   TemplateListResponse,
   TraceDiffResponse,
+  VisualManifest,
   WorkspaceStats,
 } from "./api.schemas";
 
@@ -310,6 +311,93 @@ export function useGetProject<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Save edited visual manifest fields for a project
+ */
+export const getUpdateVisualManifestUrl = (projectId: string) => {
+  return `/api/pacengine/projects/${projectId}/visual-manifest`;
+};
+
+export const updateVisualManifest = async (
+  projectId: string,
+  visualManifest: VisualManifest,
+  options?: RequestInit,
+): Promise<VisualManifest> => {
+  return customFetch<VisualManifest>(getUpdateVisualManifestUrl(projectId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(visualManifest),
+  });
+};
+
+export const getUpdateVisualManifestMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVisualManifest>>,
+    TError,
+    { projectId: string; data: BodyType<VisualManifest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateVisualManifest>>,
+  TError,
+  { projectId: string; data: BodyType<VisualManifest> },
+  TContext
+> => {
+  const mutationKey = ["updateVisualManifest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateVisualManifest>>,
+    { projectId: string; data: BodyType<VisualManifest> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return updateVisualManifest(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateVisualManifestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateVisualManifest>>
+>;
+export type UpdateVisualManifestMutationBody = BodyType<VisualManifest>;
+export type UpdateVisualManifestMutationError = ErrorType<void>;
+
+/**
+ * @summary Save edited visual manifest fields for a project
+ */
+export const useUpdateVisualManifest = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVisualManifest>>,
+    TError,
+    { projectId: string; data: BodyType<VisualManifest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateVisualManifest>>,
+  TError,
+  { projectId: string; data: BodyType<VisualManifest> },
+  TContext
+> => {
+  return useMutation(getUpdateVisualManifestMutationOptions(options));
+};
 
 /**
  * @summary Append a model mesh reference to a project's visual manifest

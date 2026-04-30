@@ -29,6 +29,9 @@ import {
   AddProjectMeshParams,
   AddProjectMeshBody,
   AddProjectMeshResponse,
+  UpdateVisualManifestParams,
+  UpdateVisualManifestBody,
+  UpdateVisualManifestResponse,
 } from "@workspace/api-zod";
 import { parseVisualManifest, VisualManifestParseError, writeVisualManifest, loadVisualManifest } from "../lib/visual-manifest";
 import {
@@ -475,6 +478,27 @@ router.post(
         meshCount: updated.length,
       }),
     );
+  },
+);
+
+// ─── PATCH /projects/:projectId/visual-manifest ──────────────────────────────
+
+router.patch(
+  "/projects/:projectId/visual-manifest",
+  async (req, res) => {
+    const { projectId } = UpdateVisualManifestParams.parse(req.params);
+
+    const project = await loadProjectById(projectId);
+    if (!project) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+
+    const body = UpdateVisualManifestBody.parse(req.body);
+
+    await writeVisualManifest(projectId, body as any);
+
+    res.json(UpdateVisualManifestResponse.parse(body));
   },
 );
 

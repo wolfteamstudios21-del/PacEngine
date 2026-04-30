@@ -366,6 +366,559 @@ export const GetProjectResponse = zod.object({
 });
 
 /**
+ * @summary Save edited visual manifest fields for a project
+ */
+export const UpdateVisualManifestParams = zod.object({
+  projectId: zod.coerce.string(),
+});
+
+export const updateVisualManifestBodyEnvironmentSkyTypeDefault = `physical`;
+export const updateVisualManifestBodyEnvironmentSunDirectionMin = 3;
+export const updateVisualManifestBodyEnvironmentSunDirectionMax = 3;
+
+export const updateVisualManifestBodyEnvironmentSunColorMin = 3;
+export const updateVisualManifestBodyEnvironmentSunColorMax = 3;
+
+export const updateVisualManifestBodyEnvironmentFogColorMin = 3;
+export const updateVisualManifestBodyEnvironmentFogColorMax = 3;
+
+export const updateVisualManifestBodyGlobalIlluminationGiTypeDefault = `probe_grid`;
+export const updateVisualManifestBodyGlobalIlluminationProbeDensityTwoMin = 3;
+export const updateVisualManifestBodyGlobalIlluminationProbeDensityTwoMax = 3;
+
+export const updateVisualManifestBodyEntitiesItemRenderMaterialOverridesBaseColorFactorMin = 4;
+export const updateVisualManifestBodyEntitiesItemRenderMaterialOverridesBaseColorFactorMax = 4;
+
+export const updateVisualManifestBodyStaticMeshesItemTransformPositionMin = 3;
+export const updateVisualManifestBodyStaticMeshesItemTransformPositionMax = 3;
+
+export const updateVisualManifestBodyStaticMeshesItemTransformRotationMin = 4;
+export const updateVisualManifestBodyStaticMeshesItemTransformRotationMax = 4;
+
+export const updateVisualManifestBodyStaticMeshesItemTransformScaleMin = 3;
+export const updateVisualManifestBodyStaticMeshesItemTransformScaleMax = 3;
+
+export const updateVisualManifestBodyLightsItemPositionMin = 3;
+export const updateVisualManifestBodyLightsItemPositionMax = 3;
+
+export const updateVisualManifestBodyLightsItemDirectionMin = 3;
+export const updateVisualManifestBodyLightsItemDirectionMax = 3;
+
+export const updateVisualManifestBodyLightsItemColorMin = 3;
+export const updateVisualManifestBodyLightsItemColorMax = 3;
+
+export const updateVisualManifestBodyCameraDefaultPositionMin = 3;
+export const updateVisualManifestBodyCameraDefaultPositionMax = 3;
+
+export const updateVisualManifestBodyCameraDefaultTargetMin = 3;
+export const updateVisualManifestBodyCameraDefaultTargetMax = 3;
+
+export const UpdateVisualManifestBody = zod
+  .object({
+    visual_version: zod
+      .string()
+      .optional()
+      .describe(
+        'Visual manifest schema version (e.g. \"1.0.0\"). Optional because v7 files use the \"version\" alias which is normalized on ingest.\n',
+      ),
+    pacdata_version: zod
+      .string()
+      .optional()
+      .describe("PacData format version this manifest was authored for"),
+    environment: zod
+      .object({
+        sky_type: zod
+          .enum(["physical", "hdr_cubemap", "procedural", "simple"])
+          .default(updateVisualManifestBodyEnvironmentSkyTypeDefault),
+        sun_direction: zod
+          .array(zod.number())
+          .min(updateVisualManifestBodyEnvironmentSunDirectionMin)
+          .max(updateVisualManifestBodyEnvironmentSunDirectionMax)
+          .optional(),
+        sun_intensity: zod.number().optional(),
+        sun_color: zod
+          .array(zod.number())
+          .min(updateVisualManifestBodyEnvironmentSunColorMin)
+          .max(updateVisualManifestBodyEnvironmentSunColorMax)
+          .optional(),
+        ambient_intensity: zod.number().optional(),
+        fog_enabled: zod.boolean().optional(),
+        fog_density: zod.number().optional(),
+        fog_color: zod
+          .array(zod.number())
+          .min(updateVisualManifestBodyEnvironmentFogColorMin)
+          .max(updateVisualManifestBodyEnvironmentFogColorMax)
+          .optional(),
+        fog_height_falloff: zod.number().optional(),
+      })
+      .optional()
+      .describe(
+        "Atmospheric and sky settings. Optional; v7 manifests may omit this block or use nested sky\/fog sub-objects (normalized on ingest).\n",
+      ),
+    global_illumination: zod
+      .object({
+        gi_type: zod
+          .enum(["none", "probe_grid", "voxel", "hybrid"])
+          .default(updateVisualManifestBodyGlobalIlluminationGiTypeDefault),
+        probe_density: zod
+          .union([
+            zod.enum(["low", "medium", "high"]),
+            zod
+              .array(zod.number())
+              .min(updateVisualManifestBodyGlobalIlluminationProbeDensityTwoMin)
+              .max(
+                updateVisualManifestBodyGlobalIlluminationProbeDensityTwoMax,
+              ),
+          ])
+          .optional()
+          .describe(
+            "Probe density setting. Accepts the string shorthand (low\/medium\/high) or a [x, y, z] numeric array as used in v7 visual manifests.\n",
+          ),
+      })
+      .optional()
+      .describe("Global illumination settings."),
+    entities: zod
+      .array(
+        zod
+          .object({
+            id: zod
+              .union([zod.number(), zod.string()])
+              .describe(
+                "Entity identifier. Integer slot index in classic manifests; string entity ID in v7 manifests.\n",
+              ),
+            render: zod
+              .object({
+                asset: zod
+                  .string()
+                  .describe("Relative path to glTF asset file"),
+                material_overrides: zod
+                  .record(
+                    zod.string(),
+                    zod
+                      .object({
+                        baseColorFactor: zod
+                          .array(zod.number())
+                          .min(
+                            updateVisualManifestBodyEntitiesItemRenderMaterialOverridesBaseColorFactorMin,
+                          )
+                          .max(
+                            updateVisualManifestBodyEntitiesItemRenderMaterialOverridesBaseColorFactorMax,
+                          )
+                          .optional(),
+                        metallicFactor: zod.number().optional(),
+                        roughnessFactor: zod.number().optional(),
+                      })
+                      .describe(
+                        "PBR material channel overrides for a single material slot.",
+                      ),
+                  )
+                  .optional()
+                  .describe(
+                    "Material slot index (as string key) → override properties",
+                  ),
+                cast_shadows: zod.boolean().optional(),
+                receive_shadows: zod.boolean().optional(),
+                visible: zod.boolean().optional(),
+              })
+              .optional()
+              .describe("Per-entity rendering configuration."),
+          })
+          .describe(
+            "Visual override for a single simulation entity. id may be an integer slot index (classic) or a string entity ID (v7). render is optional; v7 manifests may use mesh\/material\/animation_profile fields instead.\n",
+          ),
+      )
+      .optional()
+      .describe("Per-entity visual overrides keyed by integer slot index"),
+    static_meshes: zod
+      .array(
+        zod
+          .object({
+            id: zod.string(),
+            asset: zod.string().describe("Relative path to glTF asset file"),
+            transform: zod
+              .object({
+                position: zod
+                  .array(zod.number())
+                  .min(
+                    updateVisualManifestBodyStaticMeshesItemTransformPositionMin,
+                  )
+                  .max(
+                    updateVisualManifestBodyStaticMeshesItemTransformPositionMax,
+                  )
+                  .optional(),
+                rotation: zod
+                  .array(zod.number())
+                  .min(
+                    updateVisualManifestBodyStaticMeshesItemTransformRotationMin,
+                  )
+                  .max(
+                    updateVisualManifestBodyStaticMeshesItemTransformRotationMax,
+                  )
+                  .optional()
+                  .describe("Quaternion (x, y, z, w)"),
+                scale: zod
+                  .array(zod.number())
+                  .min(
+                    updateVisualManifestBodyStaticMeshesItemTransformScaleMin,
+                  )
+                  .max(
+                    updateVisualManifestBodyStaticMeshesItemTransformScaleMax,
+                  )
+                  .optional(),
+              })
+              .optional()
+              .describe("World-space transform for a static mesh."),
+            material_intent: zod
+              .string()
+              .optional()
+              .describe(
+                "Semantic hint to the renderer (e.g. rock_rough, grass, concrete)",
+              ),
+          })
+          .describe("Non-simulated decorative mesh in the scene."),
+      )
+      .optional(),
+    lights: zod
+      .array(
+        zod
+          .object({
+            type: zod.enum(["directional", "point", "spot"]).optional(),
+            position: zod
+              .array(zod.number())
+              .min(updateVisualManifestBodyLightsItemPositionMin)
+              .max(updateVisualManifestBodyLightsItemPositionMax)
+              .optional(),
+            direction: zod
+              .array(zod.number())
+              .min(updateVisualManifestBodyLightsItemDirectionMin)
+              .max(updateVisualManifestBodyLightsItemDirectionMax)
+              .optional(),
+            color: zod
+              .array(zod.number())
+              .min(updateVisualManifestBodyLightsItemColorMin)
+              .max(updateVisualManifestBodyLightsItemColorMax)
+              .optional(),
+            intensity: zod.number().optional(),
+            range: zod.number().optional(),
+          })
+          .describe("A light placed in the scene."),
+      )
+      .optional(),
+    post_processing: zod
+      .object({
+        tonemap: zod.string().optional().describe("aces | filmic | linear"),
+        exposure: zod.number().optional(),
+        bloom_intensity: zod.number().optional(),
+        contrast: zod.number().optional(),
+        saturation: zod.number().optional(),
+      })
+      .optional()
+      .describe("Camera post-processing stack."),
+    camera_default: zod
+      .object({
+        position: zod
+          .array(zod.number())
+          .min(updateVisualManifestBodyCameraDefaultPositionMin)
+          .max(updateVisualManifestBodyCameraDefaultPositionMax)
+          .optional(),
+        target: zod
+          .array(zod.number())
+          .min(updateVisualManifestBodyCameraDefaultTargetMin)
+          .max(updateVisualManifestBodyCameraDefaultTargetMax)
+          .optional(),
+      })
+      .optional()
+      .describe("Default camera pose for the scene."),
+    art_library_meshes: zod
+      .array(
+        zod.object({
+          modelId: zod.string(),
+          storageKey: zod.string(),
+          name: zod.string(),
+        }),
+      )
+      .optional()
+      .describe("Models added from the Art Library to this project scene"),
+  })
+  .describe(
+    'Optional companion document to a PacData file that carries visual \/ rendering properties. Persisted as <projectId>.visual_manifest.json alongside the .pacdata.json sidecar. Not required for headless runs. v7 manifests use \"version\" instead of \"visual_version\", \"postfx\" instead of \"post_processing\", \"camera_defaults\" instead of \"camera_default\", and may omit the environment block entirely.\n',
+  );
+
+export const updateVisualManifestResponseEnvironmentSkyTypeDefault = `physical`;
+export const updateVisualManifestResponseEnvironmentSunDirectionMin = 3;
+export const updateVisualManifestResponseEnvironmentSunDirectionMax = 3;
+
+export const updateVisualManifestResponseEnvironmentSunColorMin = 3;
+export const updateVisualManifestResponseEnvironmentSunColorMax = 3;
+
+export const updateVisualManifestResponseEnvironmentFogColorMin = 3;
+export const updateVisualManifestResponseEnvironmentFogColorMax = 3;
+
+export const updateVisualManifestResponseGlobalIlluminationGiTypeDefault = `probe_grid`;
+export const updateVisualManifestResponseGlobalIlluminationProbeDensityTwoMin = 3;
+export const updateVisualManifestResponseGlobalIlluminationProbeDensityTwoMax = 3;
+
+export const updateVisualManifestResponseEntitiesItemRenderMaterialOverridesBaseColorFactorMin = 4;
+export const updateVisualManifestResponseEntitiesItemRenderMaterialOverridesBaseColorFactorMax = 4;
+
+export const updateVisualManifestResponseStaticMeshesItemTransformPositionMin = 3;
+export const updateVisualManifestResponseStaticMeshesItemTransformPositionMax = 3;
+
+export const updateVisualManifestResponseStaticMeshesItemTransformRotationMin = 4;
+export const updateVisualManifestResponseStaticMeshesItemTransformRotationMax = 4;
+
+export const updateVisualManifestResponseStaticMeshesItemTransformScaleMin = 3;
+export const updateVisualManifestResponseStaticMeshesItemTransformScaleMax = 3;
+
+export const updateVisualManifestResponseLightsItemPositionMin = 3;
+export const updateVisualManifestResponseLightsItemPositionMax = 3;
+
+export const updateVisualManifestResponseLightsItemDirectionMin = 3;
+export const updateVisualManifestResponseLightsItemDirectionMax = 3;
+
+export const updateVisualManifestResponseLightsItemColorMin = 3;
+export const updateVisualManifestResponseLightsItemColorMax = 3;
+
+export const updateVisualManifestResponseCameraDefaultPositionMin = 3;
+export const updateVisualManifestResponseCameraDefaultPositionMax = 3;
+
+export const updateVisualManifestResponseCameraDefaultTargetMin = 3;
+export const updateVisualManifestResponseCameraDefaultTargetMax = 3;
+
+export const UpdateVisualManifestResponse = zod
+  .object({
+    visual_version: zod
+      .string()
+      .optional()
+      .describe(
+        'Visual manifest schema version (e.g. \"1.0.0\"). Optional because v7 files use the \"version\" alias which is normalized on ingest.\n',
+      ),
+    pacdata_version: zod
+      .string()
+      .optional()
+      .describe("PacData format version this manifest was authored for"),
+    environment: zod
+      .object({
+        sky_type: zod
+          .enum(["physical", "hdr_cubemap", "procedural", "simple"])
+          .default(updateVisualManifestResponseEnvironmentSkyTypeDefault),
+        sun_direction: zod
+          .array(zod.number())
+          .min(updateVisualManifestResponseEnvironmentSunDirectionMin)
+          .max(updateVisualManifestResponseEnvironmentSunDirectionMax)
+          .optional(),
+        sun_intensity: zod.number().optional(),
+        sun_color: zod
+          .array(zod.number())
+          .min(updateVisualManifestResponseEnvironmentSunColorMin)
+          .max(updateVisualManifestResponseEnvironmentSunColorMax)
+          .optional(),
+        ambient_intensity: zod.number().optional(),
+        fog_enabled: zod.boolean().optional(),
+        fog_density: zod.number().optional(),
+        fog_color: zod
+          .array(zod.number())
+          .min(updateVisualManifestResponseEnvironmentFogColorMin)
+          .max(updateVisualManifestResponseEnvironmentFogColorMax)
+          .optional(),
+        fog_height_falloff: zod.number().optional(),
+      })
+      .optional()
+      .describe(
+        "Atmospheric and sky settings. Optional; v7 manifests may omit this block or use nested sky\/fog sub-objects (normalized on ingest).\n",
+      ),
+    global_illumination: zod
+      .object({
+        gi_type: zod
+          .enum(["none", "probe_grid", "voxel", "hybrid"])
+          .default(updateVisualManifestResponseGlobalIlluminationGiTypeDefault),
+        probe_density: zod
+          .union([
+            zod.enum(["low", "medium", "high"]),
+            zod
+              .array(zod.number())
+              .min(
+                updateVisualManifestResponseGlobalIlluminationProbeDensityTwoMin,
+              )
+              .max(
+                updateVisualManifestResponseGlobalIlluminationProbeDensityTwoMax,
+              ),
+          ])
+          .optional()
+          .describe(
+            "Probe density setting. Accepts the string shorthand (low\/medium\/high) or a [x, y, z] numeric array as used in v7 visual manifests.\n",
+          ),
+      })
+      .optional()
+      .describe("Global illumination settings."),
+    entities: zod
+      .array(
+        zod
+          .object({
+            id: zod
+              .union([zod.number(), zod.string()])
+              .describe(
+                "Entity identifier. Integer slot index in classic manifests; string entity ID in v7 manifests.\n",
+              ),
+            render: zod
+              .object({
+                asset: zod
+                  .string()
+                  .describe("Relative path to glTF asset file"),
+                material_overrides: zod
+                  .record(
+                    zod.string(),
+                    zod
+                      .object({
+                        baseColorFactor: zod
+                          .array(zod.number())
+                          .min(
+                            updateVisualManifestResponseEntitiesItemRenderMaterialOverridesBaseColorFactorMin,
+                          )
+                          .max(
+                            updateVisualManifestResponseEntitiesItemRenderMaterialOverridesBaseColorFactorMax,
+                          )
+                          .optional(),
+                        metallicFactor: zod.number().optional(),
+                        roughnessFactor: zod.number().optional(),
+                      })
+                      .describe(
+                        "PBR material channel overrides for a single material slot.",
+                      ),
+                  )
+                  .optional()
+                  .describe(
+                    "Material slot index (as string key) → override properties",
+                  ),
+                cast_shadows: zod.boolean().optional(),
+                receive_shadows: zod.boolean().optional(),
+                visible: zod.boolean().optional(),
+              })
+              .optional()
+              .describe("Per-entity rendering configuration."),
+          })
+          .describe(
+            "Visual override for a single simulation entity. id may be an integer slot index (classic) or a string entity ID (v7). render is optional; v7 manifests may use mesh\/material\/animation_profile fields instead.\n",
+          ),
+      )
+      .optional()
+      .describe("Per-entity visual overrides keyed by integer slot index"),
+    static_meshes: zod
+      .array(
+        zod
+          .object({
+            id: zod.string(),
+            asset: zod.string().describe("Relative path to glTF asset file"),
+            transform: zod
+              .object({
+                position: zod
+                  .array(zod.number())
+                  .min(
+                    updateVisualManifestResponseStaticMeshesItemTransformPositionMin,
+                  )
+                  .max(
+                    updateVisualManifestResponseStaticMeshesItemTransformPositionMax,
+                  )
+                  .optional(),
+                rotation: zod
+                  .array(zod.number())
+                  .min(
+                    updateVisualManifestResponseStaticMeshesItemTransformRotationMin,
+                  )
+                  .max(
+                    updateVisualManifestResponseStaticMeshesItemTransformRotationMax,
+                  )
+                  .optional()
+                  .describe("Quaternion (x, y, z, w)"),
+                scale: zod
+                  .array(zod.number())
+                  .min(
+                    updateVisualManifestResponseStaticMeshesItemTransformScaleMin,
+                  )
+                  .max(
+                    updateVisualManifestResponseStaticMeshesItemTransformScaleMax,
+                  )
+                  .optional(),
+              })
+              .optional()
+              .describe("World-space transform for a static mesh."),
+            material_intent: zod
+              .string()
+              .optional()
+              .describe(
+                "Semantic hint to the renderer (e.g. rock_rough, grass, concrete)",
+              ),
+          })
+          .describe("Non-simulated decorative mesh in the scene."),
+      )
+      .optional(),
+    lights: zod
+      .array(
+        zod
+          .object({
+            type: zod.enum(["directional", "point", "spot"]).optional(),
+            position: zod
+              .array(zod.number())
+              .min(updateVisualManifestResponseLightsItemPositionMin)
+              .max(updateVisualManifestResponseLightsItemPositionMax)
+              .optional(),
+            direction: zod
+              .array(zod.number())
+              .min(updateVisualManifestResponseLightsItemDirectionMin)
+              .max(updateVisualManifestResponseLightsItemDirectionMax)
+              .optional(),
+            color: zod
+              .array(zod.number())
+              .min(updateVisualManifestResponseLightsItemColorMin)
+              .max(updateVisualManifestResponseLightsItemColorMax)
+              .optional(),
+            intensity: zod.number().optional(),
+            range: zod.number().optional(),
+          })
+          .describe("A light placed in the scene."),
+      )
+      .optional(),
+    post_processing: zod
+      .object({
+        tonemap: zod.string().optional().describe("aces | filmic | linear"),
+        exposure: zod.number().optional(),
+        bloom_intensity: zod.number().optional(),
+        contrast: zod.number().optional(),
+        saturation: zod.number().optional(),
+      })
+      .optional()
+      .describe("Camera post-processing stack."),
+    camera_default: zod
+      .object({
+        position: zod
+          .array(zod.number())
+          .min(updateVisualManifestResponseCameraDefaultPositionMin)
+          .max(updateVisualManifestResponseCameraDefaultPositionMax)
+          .optional(),
+        target: zod
+          .array(zod.number())
+          .min(updateVisualManifestResponseCameraDefaultTargetMin)
+          .max(updateVisualManifestResponseCameraDefaultTargetMax)
+          .optional(),
+      })
+      .optional()
+      .describe("Default camera pose for the scene."),
+    art_library_meshes: zod
+      .array(
+        zod.object({
+          modelId: zod.string(),
+          storageKey: zod.string(),
+          name: zod.string(),
+        }),
+      )
+      .optional()
+      .describe("Models added from the Art Library to this project scene"),
+  })
+  .describe(
+    'Optional companion document to a PacData file that carries visual \/ rendering properties. Persisted as <projectId>.visual_manifest.json alongside the .pacdata.json sidecar. Not required for headless runs. v7 manifests use \"version\" instead of \"visual_version\", \"postfx\" instead of \"post_processing\", \"camera_defaults\" instead of \"camera_default\", and may omit the environment block entirely.\n',
+  );
+
+/**
  * @summary Append a model mesh reference to a project's visual manifest
  */
 export const AddProjectMeshParams = zod.object({

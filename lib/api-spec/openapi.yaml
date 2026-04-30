@@ -72,6 +72,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /pacengine/projects/{projectId}/visual-manifest:
+    patch:
+      operationId: updateVisualManifest
+      tags: [pacengine]
+      summary: Save edited visual manifest fields for a project
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VisualManifest"
+      responses:
+        "200":
+          description: Saved visual manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisualManifest"
+        "404":
+          description: Project not found
+        "400":
+          description: Invalid manifest data
+
   /pacengine/projects/{projectId}/meshes:
     post:
       operationId: addProjectMesh

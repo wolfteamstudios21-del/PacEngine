@@ -11,6 +11,7 @@ import {
 import * as THREE from "three";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import type { VisualManifest } from "@workspace/api-client-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,7 @@ export interface Viewport3DProps {
   onSelectEntity: (index: number) => void;
   worldBounds: { min: number; max: number };
   artLibraryMeshes?: ArtLibraryMesh[];
+  visualManifest?: VisualManifest;
 }
 
 // ─── Entity colours ───────────────────────────────────────────────────────────
@@ -208,17 +210,37 @@ function SceneContent({
   onSelectEntity,
   worldBounds,
   artLibraryMeshes = [],
+  visualManifest,
 }: Viewport3DProps) {
   const range   = Math.max(worldBounds.max - worldBounds.min, 1);
   const scale   = 10 / range;
   const getTrail = useEntityTrails(currentFrameEntities ?? [], worldBounds);
 
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   useEffect(() => {
     camera.position.set(0, 6, 12);
     camera.lookAt(0, 0, 0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Resolve visual manifest values with sensible defaults
+  const env = visualManifest?.environment as any;
+  const pp  = visualManifest?.post_processing as any;
+
+  const sunDir: [number, number, number] = env?.sun_direction
+    ? [env.sun_direction[0], env.sun_direction[1], env.sun_direction[2]]
+    : [0.72, 0.22, -0.5];
+  const sunIntensity  = env?.sun_intensity  ?? 1.8;
+  const ambientInt    = env?.ambient_intensity ?? 0.5;
+  const fogEnabled    = env?.fog_enabled ?? false;
+  const fogDensity    = env?.fog_density ?? 0.02;
+  const fogColorArr: number[] = env?.fog_color ?? [0.72, 0.84, 0.94];
+  const fogHex        = `rgb(${fogColorArr.map((v: number) => Math.round(v * 255)).join(",")})`;
+  const exposure      = pp?.exposure ?? 1.0;
+
+  useEffect(() => {
+    gl.toneMappingExposure = exposure;
+  }, [gl, exposure]);
 
   // Compute entity world positions
   const entityPositions = useMemo(() => {
@@ -240,10 +262,10 @@ function SceneContent({
   return (
     <>
       {/* Lights */}
-      <ambientLight intensity={0.6} />
+      <ambientLight intensity={ambientInt} />
       <directionalLight
-        position={[8, 14, 6]}
-        intensity={1.8}
+        position={sunDir}
+        intensity={sunIntensity}
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-camera-far={50}
@@ -257,7 +279,7 @@ function SceneContent({
       {/* Sky */}
       <Sky
         distance={450000}
-        sunPosition={[0.72, 0.22, -0.5]}
+        sunPosition={sunDir}
         inclination={0.49}
         azimuth={0.25}
         turbidity={6}
@@ -265,7 +287,8 @@ function SceneContent({
       />
 
       {/* Atmosphere fog */}
-      <fog attach="fog" args={["#b8d4f0", 18, 60]} />
+      {fogEnabled && <fog attach="fog" args={[fogHex, 18 / Math.max(fogDensity * 50, 0.01), 60]} />}
+      {!fogEnabled && <fog attach="fog" args={["#b8d4f0", 60, 200]} />}
 
       {/* Ground */}
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>

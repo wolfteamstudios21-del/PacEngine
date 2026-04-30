@@ -60,6 +60,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Viewport3D from "@/components/Viewport3D";
 import ArtLibrary from "@/components/ArtLibrary";
+import VisualManifestEditor from "@/components/VisualManifestEditor";
 import { 
   Dialog, 
   DialogContent, 
@@ -151,6 +152,14 @@ export default function Editor() {
   // Import .pacexport dialog state
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showArtLibrary, setShowArtLibrary] = useState(false);
+  const [liveManifest, setLiveManifest] = useState<VisualManifest | null>(null);
+
+  // Sync liveManifest from server data whenever the project refreshes
+  useEffect(() => {
+    const vm = (project as any)?.visualManifest as VisualManifest | undefined;
+    if (vm) setLiveManifest(vm);
+  }, [(project as any)?.visualManifest]);
+
   const [importName, setImportName] = useState("");
   const [importPacdataJson, setImportPacdataJson] = useState("");
   const [importVisualJson, setImportVisualJson] = useState("");
@@ -537,7 +546,8 @@ export default function Editor() {
                   selectedEntityIndex={selectedEntityIndex}
                   onSelectEntity={setSelectedEntityIndex}
                   worldBounds={worldBounds}
-                  artLibraryMeshes={(project as any).visualManifest?.art_library_meshes ?? []}
+                  artLibraryMeshes={(liveManifest ?? (project as any).visualManifest)?.art_library_meshes ?? []}
+                  visualManifest={liveManifest ?? undefined}
                 />
               )}
 
@@ -725,9 +735,14 @@ export default function Editor() {
                       )}
                     </div>
 
-                    {/* Visual Properties — only shown when a visual_manifest.json sidecar exists */}
-                    {(project as any).visualManifest ? (
-                      <VisualPropertiesPanel manifest={(project as any).visualManifest as VisualManifest} />
+                    {/* Visual Properties — editable when a visual_manifest.json sidecar exists */}
+                    {liveManifest ? (
+                      <VisualManifestEditor
+                        manifest={liveManifest}
+                        projectId={projectId ?? ""}
+                        onSaved={(saved) => setLiveManifest(saved)}
+                        onDraftChange={(draft) => setLiveManifest(draft)}
+                      />
                     ) : (
                       <div>
                         <h3 className="text-sm font-medium mb-2 border-b border-border pb-1 flex items-center gap-2">
@@ -1065,7 +1080,7 @@ export default function Editor() {
 
 // ─── Visual Properties Panel ────────────────────────────────────────────────
 
-function VisualPropertiesPanel({ manifest }: { manifest: VisualManifest }) {
+function _VisualPropertiesPanel_unused({ manifest }: { manifest: VisualManifest }) {
   const env = manifest.environment;
   const gi = manifest.global_illumination;
   const pp = manifest.post_processing;
