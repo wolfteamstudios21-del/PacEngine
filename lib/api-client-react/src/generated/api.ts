@@ -28,11 +28,14 @@ import type {
   InstantiateTemplateRequest,
   ProjectDetail,
   ProjectListResponse,
+  RendererFrameResponse,
   RendererImportRequest,
   RendererImportResponse,
   RendererInitRequest,
   RendererInitResponse,
+  RendererSetCameraBody,
   RendererStatusResponse,
+  RendererUpdateStateBody,
   RunFramesResponse,
   RunMetadata,
   RunRequest,
@@ -1632,4 +1635,257 @@ export const useRendererResize = <
   TContext
 > => {
   return useMutation(getRendererResizeMutationOptions(options));
+};
+
+/**
+ * @summary Drive one BeginFrame→Render→EndFrame cycle; returns updated frameCount
+ */
+export const getRendererFrameUrl = () => {
+  return `/api/renderer/frame`;
+};
+
+export const rendererFrame = async (
+  options?: RequestInit,
+): Promise<RendererFrameResponse> => {
+  return customFetch<RendererFrameResponse>(getRendererFrameUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRendererFrameMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rendererFrame>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rendererFrame>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["rendererFrame"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rendererFrame>>,
+    void
+  > = () => {
+    return rendererFrame(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RendererFrameMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rendererFrame>>
+>;
+
+export type RendererFrameMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Drive one BeginFrame→Render→EndFrame cycle; returns updated frameCount
+ */
+export const useRendererFrame = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rendererFrame>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rendererFrame>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getRendererFrameMutationOptions(options));
+};
+
+/**
+ * @summary Push simulation-state snapshot to the render scene (M2.5 stub; full entity data in M3)
+ */
+export const getRendererUpdateStateUrl = () => {
+  return `/api/renderer/update-state`;
+};
+
+export const rendererUpdateState = async (
+  rendererUpdateStateBody: RendererUpdateStateBody,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRendererUpdateStateUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(rendererUpdateStateBody),
+  });
+};
+
+export const getRendererUpdateStateMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rendererUpdateState>>,
+    TError,
+    { data: BodyType<RendererUpdateStateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rendererUpdateState>>,
+  TError,
+  { data: BodyType<RendererUpdateStateBody> },
+  TContext
+> => {
+  const mutationKey = ["rendererUpdateState"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rendererUpdateState>>,
+    { data: BodyType<RendererUpdateStateBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return rendererUpdateState(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RendererUpdateStateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rendererUpdateState>>
+>;
+export type RendererUpdateStateMutationBody = BodyType<RendererUpdateStateBody>;
+export type RendererUpdateStateMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Push simulation-state snapshot to the render scene (M2.5 stub; full entity data in M3)
+ */
+export const useRendererUpdateState = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rendererUpdateState>>,
+    TError,
+    { data: BodyType<RendererUpdateStateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rendererUpdateState>>,
+  TError,
+  { data: BodyType<RendererUpdateStateBody> },
+  TContext
+> => {
+  return useMutation(getRendererUpdateStateMutationOptions(options));
+};
+
+/**
+ * @summary Update the render camera position, target, and field-of-view
+ */
+export const getRendererSetCameraUrl = () => {
+  return `/api/renderer/set-camera`;
+};
+
+export const rendererSetCamera = async (
+  rendererSetCameraBody: RendererSetCameraBody,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRendererSetCameraUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(rendererSetCameraBody),
+  });
+};
+
+export const getRendererSetCameraMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rendererSetCamera>>,
+    TError,
+    { data: BodyType<RendererSetCameraBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rendererSetCamera>>,
+  TError,
+  { data: BodyType<RendererSetCameraBody> },
+  TContext
+> => {
+  const mutationKey = ["rendererSetCamera"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rendererSetCamera>>,
+    { data: BodyType<RendererSetCameraBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return rendererSetCamera(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RendererSetCameraMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rendererSetCamera>>
+>;
+export type RendererSetCameraMutationBody = BodyType<RendererSetCameraBody>;
+export type RendererSetCameraMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update the render camera position, target, and field-of-view
+ */
+export const useRendererSetCamera = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rendererSetCamera>>,
+    TError,
+    { data: BodyType<RendererSetCameraBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rendererSetCamera>>,
+  TError,
+  { data: BodyType<RendererSetCameraBody> },
+  TContext
+> => {
+  return useMutation(getRendererSetCameraMutationOptions(options));
 };

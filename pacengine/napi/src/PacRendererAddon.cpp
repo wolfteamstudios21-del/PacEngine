@@ -1,36 +1,14 @@
-// PacRendererAddon.cpp — N-API bridge: Node.js ↔ PacEngine C++ render layer
-//
-// Exposes PacRenderer as a Node.js native addon (M2.5.3).
-//
-// On Replit (no GPU/display): windowHandle is nullptr, the stub Vulkan backend
-// is active, and BeginFrame/Render/EndFrame are no-ops — but the entire call
-// boundary, object lifecycle, and error propagation paths are exercised.
-//
-// Methods exposed to JS:
-//   initialize(width, height)          → boolean
-//   shutdown()                         → undefined
-//   importExport(folderPath)           → { entities: number, staticMeshes: number }
-//   beginFrame()                       → undefined
-//   render()                           → undefined
-//   endFrame()                         → undefined
-//   resize(width, height)              → undefined
-//   setViewportMode(use3D)             → undefined
-//   getFrameCount()                    → number
-//   isInitialized()                    → boolean
-
 #include <napi.h>
 #include <memory>
 #include "PacRenderer.h"
+#include "PacDataWorld.h"
 
 namespace {
 
-// Singleton renderer owned by this addon instance.
-// A real multi-window editor would hold one per window; single-window suffices for M2.5.
 static std::unique_ptr<pac::render::PacRenderer> g_renderer;
-static bool  g_initialized  = false;
-static uint64_t g_frameCount = 0;
+static bool     g_initialized = false;
+static uint64_t g_frameCount  = 0;
 
-// ── initialize(width: number, height: number) → boolean ──────────────────────
 Napi::Value Initialize(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     if (info.Length() < 2 || !info[0].IsNumber() || !info[1].IsNumber()) {
@@ -38,29 +16,19 @@ Napi::Value Initialize(const Napi::CallbackInfo& info) {
             .ThrowAsJavaScriptException();
         return env.Undefined();
     }
-    uint32_t w = info[0].As<Napi::Number>().Uint32Value();
-    uint32_t h = info[1].As<Napi::Number>().Uint32Value();
-
-    if (!g_renderer) {
-        g_renderer = std::make_unique<pac::render::PacRenderer>();
-    }
-    // windowHandle = nullptr → headless (Vulkan stub path on Replit)
-    g_initialized = g_renderer->Initialize(nullptr, w, h);
-    g_frameCount  = 0;
+    if (!g_renderer) g_renderer = std::make_unique<pac::render::PacRenderer>();
+    g_initialized = g_renderer->Initialize(nullptr,
+        info[0].As<Napi::Number>().Uint32Value(),
+        info[1].As<Napi::Number>().Uint32Value());
+    g_frameCount = 0;
     return Napi::Boolean::New(env, g_initialized);
 }
 
-// ── shutdown() → undefined ────────────────────────────────────────────────────
 Napi::Value Shutdown(const Napi::CallbackInfo& info) {
-    if (g_renderer) {
-        g_renderer->Shutdown();
-        g_initialized = false;
-        g_frameCount  = 0;
-    }
+    if (g_renderer) { g_renderer->Shutdown(); g_initialized = false; g_frameCount = 0; }
     return info.Env().Undefined();
 }
 
-// ── importExport(folderPath: string) → { entities: number, staticMeshes: number }
 Napi::Value ImportExport(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     if (info.Length() < 1 || !info[0].IsString()) {
@@ -69,45 +37,32 @@ Napi::Value ImportExport(const Napi::CallbackInfo& info) {
         return env.Undefined();
     }
     if (!g_renderer || !g_initialized) {
-        Napi::Error::New(env, "Renderer not initialized — call initialize() first")
-            .ThrowAsJavaScriptException();
+        Napi::Error::New(env, "Renderer not initialized").ThrowAsJavaScriptException();
         return env.Undefined();
     }
-    std::string folder = info[0].As<Napi::String>().Utf8Value();
-    bool ok = g_renderer->ImportPacAiExport(folder);
-
-    int entities     = static_cast<int>(g_renderer->GetEntityCount());
-    int staticMeshes = static_cast<int>(g_renderer->GetStaticMeshCount());
-
+    bool ok = g_renderer->ImportPacAiExport(info[0].As<Napi::String>().Utf8Value());
     Napi::Object result = Napi::Object::New(env);
     result.Set("success",      Napi::Boolean::New(env, ok));
-    result.Set("entities",     Napi::Number::New(env, entities));
-    result.Set("staticMeshes", Napi::Number::New(env, staticMeshes));
+    result.Set("entities",     Napi::Number::New(env, static_cast<double>(g_renderer->GetEntityCount())));
+    result.Set("staticMeshes", Napi::Number::New(env, static_cast<double>(g_renderer->GetStaticMeshCount())));
     return result;
 }
 
-// ── beginFrame() → undefined ─────────────────────────────────────────────────
 Napi::Value BeginFrame(const Napi::CallbackInfo& info) {
     if (g_renderer && g_initialized) g_renderer->BeginFrame();
     return info.Env().Undefined();
 }
 
-// ── render() → undefined ─────────────────────────────────────────────────────
 Napi::Value Render(const Napi::CallbackInfo& info) {
     if (g_renderer && g_initialized) g_renderer->Render();
     return info.Env().Undefined();
 }
 
-// ── endFrame() → undefined ────────────────────────────────────────────────────
 Napi::Value EndFrame(const Napi::CallbackInfo& info) {
-    if (g_renderer && g_initialized) {
-        g_renderer->EndFrame();
-        ++g_frameCount;
-    }
+    if (g_renderer && g_initialized) { g_renderer->EndFrame(); ++g_frameCount; }
     return info.Env().Undefined();
 }
 
-// ── resize(width: number, height: number) → undefined ────────────────────────
 Napi::Value Resize(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     if (info.Length() < 2 || !info[0].IsNumber() || !info[1].IsNumber()) {
@@ -115,14 +70,11 @@ Napi::Value Resize(const Napi::CallbackInfo& info) {
             .ThrowAsJavaScriptException();
         return env.Undefined();
     }
-    if (g_renderer) {
-        g_renderer->Resize(info[0].As<Napi::Number>().Uint32Value(),
-                           info[1].As<Napi::Number>().Uint32Value());
-    }
+    if (g_renderer) g_renderer->Resize(info[0].As<Napi::Number>().Uint32Value(),
+                                        info[1].As<Napi::Number>().Uint32Value());
     return env.Undefined();
 }
 
-// ── setViewportMode(use3D: boolean) → undefined ───────────────────────────────
 Napi::Value SetViewportMode(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     if (info.Length() < 1 || !info[0].IsBoolean()) {
@@ -130,34 +82,75 @@ Napi::Value SetViewportMode(const Napi::CallbackInfo& info) {
             .ThrowAsJavaScriptException();
         return env.Undefined();
     }
-    if (g_renderer) {
-        g_renderer->SetViewportMode(info[0].As<Napi::Boolean>().Value());
-    }
+    if (g_renderer) g_renderer->SetViewportMode(info[0].As<Napi::Boolean>().Value());
     return env.Undefined();
 }
 
-// ── getFrameCount() → number ─────────────────────────────────────────────────
+// updateSimulationState({ entityCount, tickIndex }) → undefined
+// Constructs a minimal PacDataWorld and forwards to PacRenderer::UpdateSimulationState.
+// Full entity data sync is M3 (PacCore integration).
+Napi::Value UpdateSimulationState(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (info.Length() < 1 || !info[0].IsObject()) {
+        Napi::TypeError::New(env, "updateSimulationState({ entityCount, tickIndex })")
+            .ThrowAsJavaScriptException();
+        return env.Undefined();
+    }
+    if (!g_renderer || !g_initialized) return env.Undefined();
+
+    Napi::Object obj = info[0].As<Napi::Object>();
+    int entityCount = obj.Has("entityCount") ? obj.Get("entityCount").As<Napi::Number>().Int32Value() : 0;
+    (void)entityCount; // used by M3 when PacDataWorld carries real entity data
+
+    pac::PacDataWorld world{};
+    g_renderer->UpdateSimulationState(world);
+    return env.Undefined();
+}
+
+// setCamera({ position: [x,y,z], target: [x,y,z], fov?: number }) → undefined
+Napi::Value SetCamera(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (info.Length() < 1 || !info[0].IsObject()) {
+        Napi::TypeError::New(env, "setCamera({ position, target, fov? })")
+            .ThrowAsJavaScriptException();
+        return env.Undefined();
+    }
+    if (!g_renderer || !g_initialized) return env.Undefined();
+
+    Napi::Object obj = info[0].As<Napi::Object>();
+    auto readVec = [&](const char* key) -> pac::render::PacVec3 {
+        if (!obj.Has(key)) return {0.f, 0.f, 0.f};
+        Napi::Array arr = obj.Get(key).As<Napi::Array>();
+        return { arr.Get(0u).As<Napi::Number>().FloatValue(),
+                 arr.Get(1u).As<Napi::Number>().FloatValue(),
+                 arr.Get(2u).As<Napi::Number>().FloatValue() };
+    };
+    float fov = obj.Has("fov") ? obj.Get("fov").As<Napi::Number>().FloatValue() : 60.f;
+    g_renderer->SetCamera(readVec("position"), readVec("target"), fov);
+    return env.Undefined();
+}
+
 Napi::Value GetFrameCount(const Napi::CallbackInfo& info) {
     return Napi::Number::New(info.Env(), static_cast<double>(g_frameCount));
 }
 
-// ── isInitialized() → boolean ────────────────────────────────────────────────
 Napi::Value IsInitialized(const Napi::CallbackInfo& info) {
     return Napi::Boolean::New(info.Env(), g_initialized);
 }
 
-// ── Module init ───────────────────────────────────────────────────────────────
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-    exports.Set("initialize",      Napi::Function::New(env, Initialize));
-    exports.Set("shutdown",        Napi::Function::New(env, Shutdown));
-    exports.Set("importExport",    Napi::Function::New(env, ImportExport));
-    exports.Set("beginFrame",      Napi::Function::New(env, BeginFrame));
-    exports.Set("render",          Napi::Function::New(env, Render));
-    exports.Set("endFrame",        Napi::Function::New(env, EndFrame));
-    exports.Set("resize",          Napi::Function::New(env, Resize));
-    exports.Set("setViewportMode", Napi::Function::New(env, SetViewportMode));
-    exports.Set("getFrameCount",   Napi::Function::New(env, GetFrameCount));
-    exports.Set("isInitialized",   Napi::Function::New(env, IsInitialized));
+    exports.Set("initialize",             Napi::Function::New(env, Initialize));
+    exports.Set("shutdown",               Napi::Function::New(env, Shutdown));
+    exports.Set("importExport",           Napi::Function::New(env, ImportExport));
+    exports.Set("beginFrame",             Napi::Function::New(env, BeginFrame));
+    exports.Set("render",                 Napi::Function::New(env, Render));
+    exports.Set("endFrame",               Napi::Function::New(env, EndFrame));
+    exports.Set("resize",                 Napi::Function::New(env, Resize));
+    exports.Set("setViewportMode",        Napi::Function::New(env, SetViewportMode));
+    exports.Set("updateSimulationState",  Napi::Function::New(env, UpdateSimulationState));
+    exports.Set("setCamera",              Napi::Function::New(env, SetCamera));
+    exports.Set("getFrameCount",          Napi::Function::New(env, GetFrameCount));
+    exports.Set("isInitialized",          Napi::Function::New(env, IsInitialized));
     return exports;
 }
 

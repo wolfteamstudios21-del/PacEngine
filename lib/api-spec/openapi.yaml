@@ -435,6 +435,55 @@ paths:
         "204":
           description: Resize applied
 
+  /renderer/frame:
+    post:
+      operationId: rendererFrame
+      tags: [renderer]
+      summary: Drive one BeginFrame→Render→EndFrame cycle; returns updated frameCount
+      responses:
+        "200":
+          description: Frame executed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RendererFrameResponse"
+
+  /renderer/update-state:
+    post:
+      operationId: rendererUpdateState
+      tags: [renderer]
+      summary: Push simulation-state snapshot to the render scene (M2.5 stub; full entity data in M3)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RendererUpdateStateBody"
+      responses:
+        "204":
+          description: State applied
+        "409":
+          description: Renderer not initialized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /renderer/set-camera:
+    post:
+      operationId: rendererSetCamera
+      tags: [renderer]
+      summary: Update the render camera position, target, and field-of-view
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RendererSetCameraBody"
+      responses:
+        "204":
+          description: Camera updated
+
 components:
   schemas:
     HealthStatus:
@@ -1278,3 +1327,44 @@ components:
           type: integer
           description: Number of static mesh proxies loaded into the render scene
       required: [success, entities, staticMeshes]
+
+    RendererFrameResponse:
+      type: object
+      properties:
+        frameCount:
+          type: integer
+          description: Total frames rendered since last initialize
+      required: [frameCount]
+
+    RendererUpdateStateBody:
+      type: object
+      properties:
+        entityCount:
+          type: integer
+          description: Number of active entities in the simulation tick
+        tickIndex:
+          type: integer
+          description: Monotonically increasing simulation tick index
+      required: [entityCount, tickIndex]
+
+    RendererSetCameraBody:
+      type: object
+      properties:
+        position:
+          type: array
+          items:
+            type: number
+          minItems: 3
+          maxItems: 3
+          description: Camera world-space position [x, y, z]
+        target:
+          type: array
+          items:
+            type: number
+          minItems: 3
+          maxItems: 3
+          description: Camera look-at target [x, y, z]
+        fov:
+          type: number
+          description: Vertical field of view in degrees (default 60)
+      required: [position, target]

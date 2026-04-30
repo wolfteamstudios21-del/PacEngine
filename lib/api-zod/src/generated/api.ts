@@ -756,3 +756,50 @@ export const RendererResizeBody = zod.object({
   width: zod.number().min(1).describe("Viewport width in pixels"),
   height: zod.number().min(1).describe("Viewport height in pixels"),
 });
+
+/**
+ * @summary Drive one BeginFrame→Render→EndFrame cycle; returns updated frameCount
+ */
+export const RendererFrameResponse = zod.object({
+  frameCount: zod
+    .number()
+    .describe("Total frames rendered since last initialize"),
+});
+
+/**
+ * @summary Push simulation-state snapshot to the render scene (M2.5 stub; full entity data in M3)
+ */
+export const RendererUpdateStateBody = zod.object({
+  entityCount: zod
+    .number()
+    .describe("Number of active entities in the simulation tick"),
+  tickIndex: zod
+    .number()
+    .describe("Monotonically increasing simulation tick index"),
+});
+
+/**
+ * @summary Update the render camera position, target, and field-of-view
+ */
+export const rendererSetCameraBodyPositionMin = 3;
+export const rendererSetCameraBodyPositionMax = 3;
+
+export const rendererSetCameraBodyTargetMin = 3;
+export const rendererSetCameraBodyTargetMax = 3;
+
+export const RendererSetCameraBody = zod.object({
+  position: zod
+    .array(zod.number())
+    .min(rendererSetCameraBodyPositionMin)
+    .max(rendererSetCameraBodyPositionMax)
+    .describe("Camera world-space position [x, y, z]"),
+  target: zod
+    .array(zod.number())
+    .min(rendererSetCameraBodyTargetMin)
+    .max(rendererSetCameraBodyTargetMax)
+    .describe("Camera look-at target [x, y, z]"),
+  fov: zod
+    .number()
+    .optional()
+    .describe("Vertical field of view in degrees (default 60)"),
+});

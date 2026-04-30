@@ -1,22 +1,6 @@
-// usePacRenderer.ts — M2.5.3 HTTP bridge: React editor → C++ PacRenderer
-//
-// Architecture:
-//   Browser → HTTP API → @workspace/api-server → pacengine-napi (.node) → C++ PacRenderer
-//
-// The C++ PacRenderer lives in the API server process (Node.js), wrapped by the
-// N-API addon (pacengine/napi/).  On Replit it uses the stub Vulkan backend (no
-// GPU); on a developer machine with a Vulkan SDK it produces real GPU frames.
-//
-// Frame pump: runs server-side via setInterval at ~60 Hz once the renderer is
-// initialized.  The browser's requestAnimationFrame loop in this hook drives the
-// call-boundary timing check and status polling — Vulkan commands are issued
-// server-side.  GPU pixels are not yet surfaced to the browser (Phase 3.0).
-
 import { useRef, useCallback, useEffect, useState } from "react";
 
 export type ViewMode = "2D" | "3D";
-
-// ── Public types ──────────────────────────────────────────────────────────────
 
 export interface ImportExportResult {
   success:      boolean;
@@ -30,31 +14,16 @@ export interface UsePacRendererOptions {
 }
 
 export interface UsePacRendererResult {
-  /** True once the server-side PacRenderer::Initialize returned true. */
-  isReady: boolean;
-  /**
-   * True when the compiled .node native addon is active on the server.
-   * False in stub/fallback mode (addon not compiled or no GPU).
-   */
+  isReady:  boolean;
   isNative: boolean;
-  setCamera(
-    pos:    [number, number, number],
-    target: [number, number, number],
-    fov?: number
-  ): void;
+  setCamera(pos: [number, number, number], target: [number, number, number], fov?: number): void;
   importExport(folderPath: string): Promise<ImportExportResult>;
-  updateState(worldDelta: unknown): void;
+  updateState(entityCount: number, tickIndex: number): void;
 }
-
-// ── HTTP helpers ──────────────────────────────────────────────────────────────
 
 type FetchMethod = "GET" | "POST" | "DELETE";
 
-async function apiFetch<T>(
-  method: FetchMethod,
-  path: string,
-  body?: unknown
-): Promise<T> {
+async function apiFetch<T>(method: FetchMethod, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
     method,
     headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
@@ -68,75 +37,61 @@ async function apiFetch<T>(
   return res.json() as Promise<T>;
 }
 
-interface RendererStatusPayload {
-  initialized: boolean;
-  native:      boolean;
-  frameCount:  number;
-}
+interface RendererStatusPayload { initialized: boolean; native: boolean; frameCount: number }
+interface RendererInitPayload   { initialized: boolean; native: boolean }
 
-interface RendererInitPayload {
-  initialized: boolean;
-  native:      boolean;
-}
-
-// ── Hook ─────────────────────────────────────────────────────────────────────
-
-export function usePacRenderer({
-  canvasRef,
-  enabled = true,
-}: UsePacRendererOptions): UsePacRendererResult {
+export function usePacRenderer({ canvasRef, enabled = true }: UsePacRendererOptions): UsePacRendererResult {
   const [isReady,  setIsReady]  = useState(false);
   const [isNative, setIsNative] = useState(false);
 
-  const rafRef     = useRef<number>(0);
-  const mountedRef = useRef(true);
+  const rafRef      = useRef<number>(0);
+  const mountedRef  = useRef(true);
+  const lastFrameMs = useRef(0);
+  const lastPollMs  = useRef(0);
 
-  // ── Initialize on mount, shut down on unmount ────────────────────────────
   useEffect(() => {
     mountedRef.current = true;
     if (!enabled) return;
 
     const canvas = canvasRef.current;
-    const w = canvas?.clientWidth  || 1280;
-    const h = canvas?.clientHeight || 720;
+    const w = canvas?.clientWidth  ?? 1280;
+    const h = canvas?.clientHeight ?? 720;
 
     apiFetch<RendererInitPayload>("POST", "/renderer/initialize", { width: w, height: h })
       .then((data) => {
         if (!mountedRef.current) return;
         setIsReady(data.initialized);
         setIsNative(data.native);
-        if (!data.initialized) {
-          console.info(
-            "[usePacRenderer] Renderer not initialized — " +
-            "stub Vulkan backend active (headless / addon not compiled)"
-          );
-        }
       })
-      .catch((err: unknown) => {
-        console.warn("[usePacRenderer] initialize request failed:", err);
-      });
+      .catch((err: unknown) => console.warn("[usePacRenderer] initialize failed:", err));
 
-    // rAF loop — runs at 60 Hz to drive the call-boundary timing check.
-    // Every 5 s it also polls /renderer/status to keep isReady / isNative current.
-    // Actual BeginFrame → Render → EndFrame are issued server-side at ~60 Hz.
-    let lastPollMs = 0;
+    // rAF loop: drives BeginFrame→Render→EndFrame at ~30 Hz via POST /renderer/frame,
+    // and polls status at 5 s intervals to keep isReady/isNative current.
+    const FRAME_INTERVAL_MS = 1000 / 30;
+    const POLL_INTERVAL_MS  = 5_000;
+
     const tick = (nowMs: number) => {
       if (!mountedRef.current) return;
       rafRef.current = requestAnimationFrame(tick);
-      if (nowMs - lastPollMs > 5_000) {
-        lastPollMs = nowMs;
+
+      if (nowMs - lastFrameMs.current >= FRAME_INTERVAL_MS) {
+        lastFrameMs.current = nowMs;
+        apiFetch("POST", "/renderer/frame").catch(() => {});
+      }
+
+      if (nowMs - lastPollMs.current >= POLL_INTERVAL_MS) {
+        lastPollMs.current = nowMs;
         apiFetch<RendererStatusPayload>("GET", "/renderer/status")
           .then((s) => {
             if (!mountedRef.current) return;
             setIsReady(s.initialized);
             setIsNative(s.native);
           })
-          .catch(() => {/* server unreachable — keep current state */});
+          .catch(() => {});
       }
     };
     rafRef.current = requestAnimationFrame(tick);
 
-    // Resize observer → forward to server-side renderer
     const onResize = () => {
       if (!canvas) return;
       apiFetch("POST", "/renderer/resize", {
@@ -157,16 +112,9 @@ export function usePacRenderer({
     };
   }, [canvasRef, enabled]);
 
-  // ── Stable callbacks ─────────────────────────────────────────────────────
-
   const setCamera = useCallback(
-    (
-      _pos:    [number, number, number],
-      _target: [number, number, number],
-      _fov = 60
-    ) => {
-      // Camera state is applied locally in Viewport3D's 2D Canvas renderer.
-      // Phase 3.0 shared-surface will forward camera to the GPU pipeline.
+    (pos: [number, number, number], target: [number, number, number], fov = 60) => {
+      apiFetch("POST", "/renderer/set-camera", { position: pos, target, fov }).catch(() => {});
     },
     []
   );
@@ -177,8 +125,8 @@ export function usePacRenderer({
     []
   );
 
-  const updateState = useCallback((_worldDelta: unknown) => {
-    // Phase M3 — simulation-state sync via dedicated endpoint.
+  const updateState = useCallback((entityCount: number, tickIndex: number) => {
+    apiFetch("POST", "/renderer/update-state", { entityCount, tickIndex }).catch(() => {});
   }, []);
 
   return { isReady, isNative, setCamera, importExport, updateState };

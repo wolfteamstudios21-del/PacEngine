@@ -1,23 +1,16 @@
-// renderer-bridge.ts — server-side singleton wrapping @workspace/pacengine-napi
-//
-// Loads the compiled native addon when available; stubs all methods otherwise,
-// so the API server starts cleanly on Replit (or any environment where node-gyp
-// has not been run).
-//
-// The frame pump (BeginFrame → Render → EndFrame) runs on a server-side timer
-// at ~60 Hz once the renderer is initialised.  GPU pixels are not surfaced to
-// the browser in M2.5 (out of scope until Phase 3.0 shared surface).
-
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { logger } from "./logger";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// createRequire is needed in ESM to load CJS packages (the .node addon loader)
-const _require = createRequire(import.meta.url);
+const _require   = createRequire(import.meta.url);
 
-// ── Native addon types ────────────────────────────────────────────────────────
+// dist/ → api-server/ → artifacts/ → workspace root
+export const WORKSPACE_ROOT = path.resolve(__dirname, "../../..");
+
+// Path from workspace root to the napi package
+const NAPI_DIR = path.join(WORKSPACE_ROOT, "pacengine/napi");
 
 interface ImportExportResult {
   success: boolean;
@@ -34,70 +27,61 @@ interface NativeAddon {
   endFrame(): void;
   resize(width: number, height: number): void;
   setViewportMode(use3D: boolean): void;
+  updateSimulationState(state: { entityCount: number; tickIndex: number }): void;
+  setCamera(params: { position: [number, number, number]; target: [number, number, number]; fov?: number }): void;
   getFrameCount(): number;
   isInitialized(): boolean;
 }
 
-// ── Load addon (try/catch so server starts even without a compiled .node) ─────
-
-// __dirname resolves to artifacts/api-server/dist/ in the compiled bundle.
-// From dist/ → api-server/ → artifacts/ → workspace/ → pacengine/napi/
-const NAPI_DIR = path.resolve(__dirname, "../../../pacengine/napi");
+const stubAddon: NativeAddon = {
+  initialize:             () => false,
+  shutdown:               () => {},
+  importExport:           () => ({ success: false, entities: 0, staticMeshes: 0 }),
+  beginFrame:             () => {},
+  render:                 () => {},
+  endFrame:               () => {},
+  resize:                 () => {},
+  setViewportMode:        () => {},
+  updateSimulationState:  () => {},
+  setCamera:              () => {},
+  getFrameCount:          () => 0,
+  isInitialized:          () => false,
+};
 
 let _isNative = false;
-let _addon: NativeAddon;
+let _addon: NativeAddon = stubAddon;
 
 try {
-  const mod = _require(path.join(NAPI_DIR, "index.js")) as {
-    addon: NativeAddon;
-    isNative: boolean;
-  };
-  _addon = mod.addon;
-  _isNative = mod.isNative;
-  if (_isNative) {
-    logger.info("[renderer-bridge] Loaded native pacrenderer.node addon");
-  } else {
-    logger.info("[renderer-bridge] pacrenderer.node not compiled — stub mode");
-  }
+  const mod = _require(path.join(NAPI_DIR, "index.js")) as { addon: NativeAddon; isNative: boolean };
+  _addon     = mod.addon;
+  _isNative  = mod.isNative;
+  logger.info(_isNative
+    ? "[renderer-bridge] native pacrenderer.node loaded"
+    : "[renderer-bridge] pacrenderer.node not compiled — stub mode");
 } catch (err) {
-  logger.warn(
-    { err: err instanceof Error ? err.message : String(err) },
-    "[renderer-bridge] Failed to load pacengine-napi — stub mode"
-  );
-  _isNative = false;
-  _addon = {
-    initialize:      () => false,
-    shutdown:        () => {},
-    importExport:    () => ({ success: false, entities: 0, staticMeshes: 0 }),
-    beginFrame:      () => {},
-    render:          () => {},
-    endFrame:        () => {},
-    resize:          () => {},
-    setViewportMode: () => {},
-    getFrameCount:   () => 0,
-    isInitialized:   () => false,
-  };
+  logger.warn({ err: err instanceof Error ? err.message : String(err) },
+    "[renderer-bridge] pacengine-napi not found — stub mode");
 }
 
 export const isNative = _isNative;
 export const addon    = _addon;
 
-// ── Frame pump ────────────────────────────────────────────────────────────────
-
-const FRAME_INTERVAL_MS = Math.round(1000 / 60); // ~16.67 ms ≈ 60 Hz
+// Server-side frame pump: keeps the frame triad running when no browser is connected.
+// The browser's rAF loop also drives /renderer/frame at ~30 Hz while connected.
+const FRAME_MS = Math.round(1000 / 60);
 let _pumpTimer: ReturnType<typeof setInterval> | null = null;
 
-function startPump(): void {
+function startPump() {
   if (_pumpTimer !== null) return;
   _pumpTimer = setInterval(() => {
     if (!_addon.isInitialized()) return;
     _addon.beginFrame();
     _addon.render();
     _addon.endFrame();
-  }, FRAME_INTERVAL_MS);
+  }, FRAME_MS);
 }
 
-function stopPump(): void {
+function stopPump() {
   if (_pumpTimer === null) return;
   clearInterval(_pumpTimer);
   _pumpTimer = null;
@@ -105,41 +89,51 @@ function stopPump(): void {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export function rendererInitialize(
-  width: number,
-  height: number
-): { initialized: boolean; native: boolean } {
+export function rendererInitialize(width: number, height: number) {
   const initialized = _addon.initialize(width, height);
-  if (initialized) {
-    startPump();
-    logger.info({ width, height }, "[renderer-bridge] Renderer initialised");
-  }
+  if (initialized) startPump();
   return { initialized, native: _isNative };
 }
 
-export function rendererShutdown(): void {
+export function rendererShutdown() {
   stopPump();
   _addon.shutdown();
-  logger.info("[renderer-bridge] Renderer shut down");
+}
+
+export function rendererFrame(): { frameCount: number } {
+  if (_addon.isInitialized()) {
+    _addon.beginFrame();
+    _addon.render();
+    _addon.endFrame();
+  }
+  return { frameCount: _addon.getFrameCount() };
 }
 
 export function rendererImportExport(folderPath: string): ImportExportResult {
   return _addon.importExport(folderPath);
 }
 
-export function rendererResize(width: number, height: number): void {
+export function rendererResize(width: number, height: number) {
   _addon.resize(width, height);
 }
 
-export function rendererSetViewportMode(use3D: boolean): void {
+export function rendererSetViewportMode(use3D: boolean) {
   _addon.setViewportMode(use3D);
 }
 
-export function rendererStatus(): {
-  initialized: boolean;
-  native:      boolean;
-  frameCount:  number;
-} {
+export function rendererUpdateSimulationState(entityCount: number, tickIndex: number) {
+  _addon.updateSimulationState({ entityCount, tickIndex });
+}
+
+export function rendererSetCamera(
+  position: [number, number, number],
+  target: [number, number, number],
+  fov = 60
+) {
+  _addon.setCamera({ position, target, fov });
+}
+
+export function rendererStatus() {
   return {
     initialized: _addon.isInitialized(),
     native:      _isNative,

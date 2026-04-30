@@ -4,6 +4,17 @@ export interface ImportExportResult {
   staticMeshes: number;
 }
 
+export interface SimulationStateUpdate {
+  entityCount: number;
+  tickIndex: number;
+}
+
+export interface CameraParams {
+  position: [number, number, number];
+  target: [number, number, number];
+  fov?: number;
+}
+
 export interface NativeAddon {
   initialize(width: number, height: number): boolean;
   shutdown(): void;
@@ -13,6 +24,8 @@ export interface NativeAddon {
   endFrame(): void;
   resize(width: number, height: number): void;
   setViewportMode(use3D: boolean): void;
+  updateSimulationState(state: SimulationStateUpdate): void;
+  setCamera(params: CameraParams): void;
   getFrameCount(): number;
   isInitialized(): boolean;
 }

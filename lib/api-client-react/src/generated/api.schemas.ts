@@ -504,6 +504,35 @@ export interface RendererImportResponse {
   staticMeshes: number;
 }
 
+export interface RendererFrameResponse {
+  /** Total frames rendered since last initialize */
+  frameCount: number;
+}
+
+export interface RendererUpdateStateBody {
+  /** Number of active entities in the simulation tick */
+  entityCount: number;
+  /** Monotonically increasing simulation tick index */
+  tickIndex: number;
+}
+
+export interface RendererSetCameraBody {
+  /**
+   * Camera world-space position [x, y, z]
+   * @minItems 3
+   * @maxItems 3
+   */
+  position: number[];
+  /**
+   * Camera look-at target [x, y, z]
+   * @minItems 3
+   * @maxItems 3
+   */
+  target: number[];
+  /** Vertical field of view in degrees (default 60) */
+  fov?: number;
+}
+
 export type GetRunFramesParams = {
   /**
    * @minimum 0
