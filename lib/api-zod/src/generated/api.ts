@@ -356,6 +356,26 @@ export const GetProjectResponse = zod.object({
 });
 
 /**
+ * @summary Append a model mesh reference to a project's visual manifest
+ */
+export const AddProjectMeshParams = zod.object({
+  projectId: zod.coerce.string(),
+});
+
+export const AddProjectMeshBody = zod.object({
+  modelId: zod.string().describe("DB model ID to reference"),
+  storageKey: zod
+    .string()
+    .describe("Storage key (objectPath) of the .glb file"),
+  name: zod.string().optional(),
+});
+
+export const AddProjectMeshResponse = zod.object({
+  success: zod.boolean(),
+  meshCount: zod.number(),
+});
+
+/**
  * @summary Import a PacData document by raw JSON (e.g. PacAI export)
  */
 export const ImportProjectBody = zod.object({
@@ -804,52 +824,203 @@ export const RendererSetCameraBody = zod.object({
     .describe("Vertical field of view in degrees (default 60)"),
 });
 
-// ─── M3 Simulation tick bindings ──────────────────────────────────────────────
-
-/**
- * @summary Advance the PacSimulation by one tick
- */
-export const SimulationStepBody = zod.object({
-  dt: zod
-    .number()
-    .optional()
-    .describe("Delta-time in seconds (default 0.05 = 20 Hz)"),
-});
-
-export const SimulationStepResponse = zod.object({
-  tickCount: zod.number().describe("Total tick count since LoadWorld"),
-  elapsedSeconds: zod.number().describe("Elapsed simulation time in seconds"),
-  simLoaded: zod.boolean().describe("True when a world has been loaded into the simulation"),
-});
-
-/**
- * @summary Get current entity position snapshot from PacSimulation
- */
-export const EntityPositionSnapshot = zod.object({
-  id: zod.number().describe("Entity id (uint64 as JS number)"),
-  x: zod.number(),
-  y: zod.number(),
-  z: zod.number(),
-});
-
-export const SimulationSnapshotResponse = zod.object({
-  entities: zod.array(EntityPositionSnapshot).describe("Current entity positions"),
-  tickCount: zod.number(),
-  elapsedSeconds: zod.number(),
-  simLoaded: zod.boolean(),
-});
-
 /**
  * @summary Start the simulation tick loop
  */
-export const SimulationStartTickBody = zod.object({
+export const SimulationStartBody = zod.object({
   hz: zod
     .number()
     .optional()
-    .describe("Target tick frequency in Hz (default 20)"),
+    .describe("Simulation frequency in Hz (default 20)"),
 });
 
-export const SimulationTickControlResponse = zod.object({
-  running: zod.boolean().describe("True when the tick loop is running"),
-  hz: zod.number().optional().describe("Configured Hz (present when starting)"),
+export const SimulationStartResponse = zod.object({
+  running: zod.boolean(),
+  hz: zod.number().nullish(),
+});
+
+/**
+ * @summary Stop the simulation tick loop
+ */
+export const SimulationStopResponse = zod.object({
+  running: zod.boolean(),
+  hz: zod.number().nullish(),
+});
+
+/**
+ * @summary Advance simulation by one tick
+ */
+export const SimulationStepBody = zod.object({
+  dt: zod.number().optional().describe("Time delta in seconds (default 0.05)"),
+});
+
+export const SimulationStepResponse = zod.object({
+  ok: zod.boolean(),
+  ticks: zod.number().nullish(),
+  elapsedSeconds: zod.number().nullish(),
+});
+
+/**
+ * @summary Get current entity snapshot from simulation
+ */
+export const SimulationSnapshotResponse = zod.object({
+  entities: zod.array(
+    zod.object({
+      id: zod.string(),
+      x: zod.number(),
+      y: zod.number(),
+      z: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Request a presigned GCS upload URL
+ */
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string(),
+  size: zod.number(),
+  contentType: zod.string(),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string(),
+  objectPath: zod.string(),
+});
+
+/**
+ * @summary List the current user's model gallery
+ */
+export const ListModelsResponse = zod.object({
+  models: zod.array(
+    zod.object({
+      id: zod.string(),
+      userId: zod.string(),
+      name: zod.string(),
+      source: zod.enum(["meshy", "blendergpt", "upload"]),
+      storageKey: zod.string(),
+      thumbnailUrl: zod.string().nullish(),
+      meshyJobId: zod.string().nullish(),
+      blendergptJobId: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Register an uploaded model in the gallery after GCS upload
+ */
+export const RegisterModelBody = zod.object({
+  name: zod.string(),
+  storageKey: zod.string(),
+  thumbnailUrl: zod.string().optional(),
+});
+
+/**
+ * @summary Trigger a Meshy.ai text-to-3D generation job
+ */
+export const generateMeshyModelBodyArtStyleDefault = `realistic`;
+
+export const GenerateMeshyModelBody = zod.object({
+  prompt: zod.string(),
+  artStyle: zod
+    .enum(["realistic", "cartoon", "low-poly", "sculpture", "pbr"])
+    .default(generateMeshyModelBodyArtStyleDefault),
+  negativePrompt: zod.string().optional(),
+});
+
+/**
+ * @summary Poll a Meshy.ai job for completion
+ */
+export const PollMeshyJobParams = zod.object({
+  jobId: zod.coerce.string(),
+});
+
+export const PollMeshyJobResponse = zod.object({
+  jobId: zod.string(),
+  status: zod.enum([
+    "PENDING",
+    "IN_PROGRESS",
+    "SUCCEEDED",
+    "FAILED",
+    "EXPIRED",
+  ]),
+  progress: zod.number().optional().describe("Percentage 0-100"),
+  modelUrl: zod.string().nullish(),
+  thumbnailUrl: zod.string().nullish(),
+  model: zod
+    .object({
+      id: zod.string(),
+      userId: zod.string(),
+      name: zod.string(),
+      source: zod.enum(["meshy", "blendergpt", "upload"]),
+      storageKey: zod.string(),
+      thumbnailUrl: zod.string().nullish(),
+      meshyJobId: zod.string().nullish(),
+      blendergptJobId: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    })
+    .nullish(),
+});
+
+/**
+ * @summary Trigger a BlenderGPT 3D generation job
+ */
+export const GenerateBlendergptModelBody = zod.object({
+  prompt: zod.string(),
+});
+
+/**
+ * @summary Poll a BlenderGPT job for completion
+ */
+export const PollBlendergptJobParams = zod.object({
+  jobId: zod.coerce.string(),
+});
+
+export const PollBlendergptJobResponse = zod.object({
+  jobId: zod.string(),
+  status: zod.enum(["PENDING", "IN_PROGRESS", "SUCCEEDED", "FAILED"]),
+  progress: zod.number().nullish(),
+  modelUrl: zod.string().nullish(),
+  model: zod
+    .object({
+      id: zod.string(),
+      userId: zod.string(),
+      name: zod.string(),
+      source: zod.enum(["meshy", "blendergpt", "upload"]),
+      storageKey: zod.string(),
+      thumbnailUrl: zod.string().nullish(),
+      meshyJobId: zod.string().nullish(),
+      blendergptJobId: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    })
+    .nullish(),
+});
+
+/**
+ * @summary Get a single model by ID
+ */
+export const GetModelParams = zod.object({
+  modelId: zod.coerce.string(),
+});
+
+export const GetModelResponse = zod.object({
+  model: zod.object({
+    id: zod.string(),
+    userId: zod.string(),
+    name: zod.string(),
+    source: zod.enum(["meshy", "blendergpt", "upload"]),
+    storageKey: zod.string(),
+    thumbnailUrl: zod.string().nullish(),
+    meshyJobId: zod.string().nullish(),
+    blendergptJobId: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Delete a model from the gallery
+ */
+export const DeleteModelParams = zod.object({
+  modelId: zod.coerce.string(),
 });

@@ -11,6 +11,7 @@
     "test": "node --import tsx/esm --test src/lib/pacdata-parser.test.ts src/lib/visual-manifest.test.ts"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.19.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/pacengine-napi": "workspace:*",
@@ -20,6 +21,7 @@
     "drizzle-orm": "catalog:",
     "express": "^5",
     "express-rate-limit": "^8.4.1",
+    "google-auth-library": "^10.6.2",
     "jsonwebtoken": "^9.0.3",
     "pino": "^9",
     "pino-http": "^10",

@@ -12,8 +12,9 @@ import {
   SimulationStepBody,
   SimulationStepResponse,
   SimulationSnapshotResponse,
-  SimulationStartTickBody,
-  SimulationTickControlResponse,
+  SimulationStartBody,
+  SimulationStartResponse,
+  SimulationStopResponse,
 } from "@workspace/api-zod";
 import {
   rendererInitialize,
@@ -98,14 +99,14 @@ router.post("/renderer/set-camera", (req, res) => {
 // ─── M3 Simulation tick routes ────────────────────────────────────────────────
 
 router.post("/renderer/simulation/start", (req, res) => {
-  const body   = SimulationStartTickBody.parse(req.body);
+  const body   = SimulationStartBody.parse(req.body ?? {});
   const result = rendererStartTick(body.hz);
-  res.json(SimulationTickControlResponse.parse(result));
+  res.json(SimulationStartResponse.parse(result));
 });
 
 router.post("/renderer/simulation/stop", (_req, res) => {
   const result = rendererStopTick();
-  res.json(SimulationTickControlResponse.parse(result));
+  res.json(SimulationStopResponse.parse(result));
 });
 
 router.post("/renderer/simulation/step", (req, res) => {

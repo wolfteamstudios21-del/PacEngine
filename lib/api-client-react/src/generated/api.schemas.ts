@@ -14,6 +14,167 @@ export interface ErrorResponse {
   details?: string;
 }
 
+export interface AddProjectMeshBody {
+  /** DB model ID to reference */
+  modelId: string;
+  /** Storage key (objectPath) of the .glb file */
+  storageKey: string;
+  name?: string;
+}
+
+export interface AddProjectMeshResponse {
+  success: boolean;
+  meshCount: number;
+}
+
+export interface SimulationStartTickBody {
+  /** Simulation frequency in Hz (default 20) */
+  hz?: number;
+}
+
+export interface SimulationTickControlResponse {
+  running: boolean;
+  hz?: number | null;
+}
+
+export interface SimulationStepBody {
+  /** Time delta in seconds (default 0.05) */
+  dt?: number;
+}
+
+export interface SimulationStepResponse {
+  ok: boolean;
+  ticks?: number | null;
+  elapsedSeconds?: number | null;
+}
+
+export type SimulationSnapshotResponseEntitiesItem = {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+};
+
+export interface SimulationSnapshotResponse {
+  entities: SimulationSnapshotResponseEntitiesItem[];
+}
+
+export interface RequestUploadUrlBody {
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export interface RequestUploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+}
+
+export type ModelRecordSource =
+  (typeof ModelRecordSource)[keyof typeof ModelRecordSource];
+
+export const ModelRecordSource = {
+  meshy: "meshy",
+  blendergpt: "blendergpt",
+  upload: "upload",
+} as const;
+
+export interface ModelRecord {
+  id: string;
+  userId: string;
+  name: string;
+  source: ModelRecordSource;
+  storageKey: string;
+  thumbnailUrl?: string | null;
+  meshyJobId?: string | null;
+  blendergptJobId?: string | null;
+  createdAt: string;
+}
+
+export interface ModelListResponse {
+  models: ModelRecord[];
+}
+
+export interface ModelResponse {
+  model: ModelRecord;
+}
+
+export interface RegisterModelBody {
+  name: string;
+  storageKey: string;
+  thumbnailUrl?: string;
+}
+
+export type GenerateMeshyBodyArtStyle =
+  (typeof GenerateMeshyBodyArtStyle)[keyof typeof GenerateMeshyBodyArtStyle];
+
+export const GenerateMeshyBodyArtStyle = {
+  realistic: "realistic",
+  cartoon: "cartoon",
+  "low-poly": "low-poly",
+  sculpture: "sculpture",
+  pbr: "pbr",
+} as const;
+
+export interface GenerateMeshyBody {
+  prompt: string;
+  artStyle?: GenerateMeshyBodyArtStyle;
+  negativePrompt?: string;
+}
+
+export interface MeshyJobResponse {
+  jobId: string;
+  status: string;
+}
+
+export type MeshyJobStatusResponseStatus =
+  (typeof MeshyJobStatusResponseStatus)[keyof typeof MeshyJobStatusResponseStatus];
+
+export const MeshyJobStatusResponseStatus = {
+  PENDING: "PENDING",
+  IN_PROGRESS: "IN_PROGRESS",
+  SUCCEEDED: "SUCCEEDED",
+  FAILED: "FAILED",
+  EXPIRED: "EXPIRED",
+} as const;
+
+export interface MeshyJobStatusResponse {
+  jobId: string;
+  status: MeshyJobStatusResponseStatus;
+  /** Percentage 0-100 */
+  progress?: number;
+  modelUrl?: string | null;
+  thumbnailUrl?: string | null;
+  model?: ModelRecord | null;
+}
+
+export interface GenerateBlendergptBody {
+  prompt: string;
+}
+
+export interface BlendergptJobResponse {
+  jobId: string;
+  status: string;
+}
+
+export type BlendergptJobStatusResponseStatus =
+  (typeof BlendergptJobStatusResponseStatus)[keyof typeof BlendergptJobStatusResponseStatus];
+
+export const BlendergptJobStatusResponseStatus = {
+  PENDING: "PENDING",
+  IN_PROGRESS: "IN_PROGRESS",
+  SUCCEEDED: "SUCCEEDED",
+  FAILED: "FAILED",
+} as const;
+
+export interface BlendergptJobStatusResponse {
+  jobId: string;
+  status: BlendergptJobStatusResponseStatus;
+  progress?: number | null;
+  modelUrl?: string | null;
+  model?: ModelRecord | null;
+}
+
 export interface ProjectSummary {
   /** Filename-derived id, used in URLs */
   id: string;

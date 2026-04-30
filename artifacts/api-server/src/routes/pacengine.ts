@@ -26,8 +26,11 @@ import {
   GetRunFramesResponse,
   DiffRunsParams,
   DiffRunsResponse,
+  AddProjectMeshParams,
+  AddProjectMeshBody,
+  AddProjectMeshResponse,
 } from "@workspace/api-zod";
-import { parseVisualManifest, VisualManifestParseError } from "../lib/visual-manifest";
+import { parseVisualManifest, VisualManifestParseError, writeVisualManifest, loadVisualManifest } from "../lib/visual-manifest";
 import {
   loadAllProjects,
   loadProjectById,
@@ -421,6 +424,59 @@ function toRunResultPayload(a: EngineRunArtifacts) {
     eventLines: a.eventLines,
   };
 }
+
+router.post(
+  "/pacengine/projects/:projectId/meshes",
+  async (req: Request, res: Response) => {
+    const params = AddProjectMeshParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid projectId" });
+      return;
+    }
+    const body = AddProjectMeshBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: "Invalid request body", details: body.error.message });
+      return;
+    }
+    const { projectId } = params.data;
+    const { modelId, storageKey, name } = body.data;
+
+    const project = await loadProjectById(projectId);
+    if (!project) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+
+    const existingManifest = await loadVisualManifest(projectId);
+    const manifest = existingManifest ?? {
+      visual_version: "0.1",
+      environment: {},
+      global_illumination: {},
+      post_processing: {},
+      camera_default: {},
+    } as any;
+
+    const existing = (manifest as any).art_library_meshes ?? [];
+    const updated = [
+      ...existing,
+      {
+        model_id: modelId,
+        storage_key: storageKey,
+        name: name ?? modelId,
+        added_at: new Date().toISOString(),
+      },
+    ];
+
+    await writeVisualManifest(projectId, { ...manifest, art_library_meshes: updated } as any);
+
+    res.json(
+      AddProjectMeshResponse.parse({
+        success: true,
+        meshCount: updated.length,
+      }),
+    );
+  },
+);
 
 function clampInt(v: number, lo: number, hi: number): number {
   const n = Math.floor(v);

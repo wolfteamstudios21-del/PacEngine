@@ -59,6 +59,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Viewport3D from "@/components/Viewport3D";
+import ArtLibrary from "@/components/ArtLibrary";
 import { 
   Dialog, 
   DialogContent, 
@@ -149,6 +150,7 @@ export default function Editor() {
 
   // Import .pacexport dialog state
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showArtLibrary, setShowArtLibrary] = useState(false);
   const [importName, setImportName] = useState("");
   const [importPacdataJson, setImportPacdataJson] = useState("");
   const [importVisualJson, setImportVisualJson] = useState("");
@@ -398,6 +400,9 @@ export default function Editor() {
           <div className="w-px h-4 bg-border mx-1" />
           <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 hover:text-purple-400 hover:bg-purple-400/10" onClick={() => setShowImportDialog(true)}>
             <Upload className="h-3 w-3" /> Import .pacexport
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 hover:text-violet-400 hover:bg-violet-400/10" onClick={() => setShowArtLibrary(true)}>
+            <Box className="h-3 w-3" /> Art Library
           </Button>
           {authData?.user && (
             <>
@@ -1037,6 +1042,13 @@ export default function Editor() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Art Library */}
+      <ArtLibrary
+        open={showArtLibrary}
+        onOpenChange={setShowArtLibrary}
+        projectId={projectId}
+      />
 
       {/* Footer */}
       <footer className="h-6 bg-card border-t border-border flex items-center px-4 justify-between text-[10px] text-muted-foreground shrink-0 font-mono">

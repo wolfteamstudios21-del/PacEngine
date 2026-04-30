@@ -14,6 +14,10 @@ tags:
     description: PacEngine project + run management
   - name: renderer
     description: PacEngine C++ render layer lifecycle (M2.5 N-API bridge)
+  - name: models
+    description: 3D model art library (gallery, upload, AI generation)
+  - name: storage
+    description: Object storage presigned URL management
 paths:
   /healthz:
     get:
@@ -67,6 +71,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /pacengine/projects/{projectId}/meshes:
+    post:
+      operationId: addProjectMesh
+      tags: [pacengine]
+      summary: Append a model mesh reference to a project's visual manifest
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddProjectMeshBody"
+      responses:
+        "200":
+          description: Updated project summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddProjectMeshResponse"
 
   /pacengine/projects/import:
     post:
@@ -484,6 +513,229 @@ paths:
         "204":
           description: Camera updated
 
+  /renderer/simulation/start:
+    post:
+      operationId: simulationStart
+      tags: [renderer]
+      summary: Start the simulation tick loop
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulationStartTickBody"
+      responses:
+        "200":
+          description: Tick loop started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationTickControlResponse"
+
+  /renderer/simulation/stop:
+    post:
+      operationId: simulationStop
+      tags: [renderer]
+      summary: Stop the simulation tick loop
+      responses:
+        "200":
+          description: Tick loop stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationTickControlResponse"
+
+  /renderer/simulation/step:
+    post:
+      operationId: simulationStep
+      tags: [renderer]
+      summary: Advance simulation by one tick
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulationStepBody"
+      responses:
+        "200":
+          description: Step result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationStepResponse"
+
+  /renderer/simulation/snapshot:
+    get:
+      operationId: simulationSnapshot
+      tags: [renderer]
+      summary: Get current entity snapshot from simulation
+      responses:
+        "200":
+          description: Entity snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationSnapshotResponse"
+
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned GCS upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestUploadUrlBody"
+      responses:
+        "200":
+          description: Presigned URL and object path
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestUploadUrlResponse"
+
+  /models:
+    get:
+      operationId: listModels
+      tags: [models]
+      summary: List the current user's model gallery
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelListResponse"
+
+  /models/register:
+    post:
+      operationId: registerModel
+      tags: [models]
+      summary: Register an uploaded model in the gallery after GCS upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterModelBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelResponse"
+
+  /models/generate/meshy:
+    post:
+      operationId: generateMeshyModel
+      tags: [models]
+      summary: Trigger a Meshy.ai text-to-3D generation job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateMeshyBody"
+      responses:
+        "202":
+          description: Job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeshyJobResponse"
+
+  /models/generate/meshy/{jobId}:
+    get:
+      operationId: pollMeshyJob
+      tags: [models]
+      summary: Poll a Meshy.ai job for completion
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeshyJobStatusResponse"
+
+  /models/generate/blendergpt:
+    post:
+      operationId: generateBlendergptModel
+      tags: [models]
+      summary: Trigger a BlenderGPT 3D generation job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateBlendergptBody"
+      responses:
+        "202":
+          description: Job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlendergptJobResponse"
+
+  /models/generate/blendergpt/{jobId}:
+    get:
+      operationId: pollBlendergptJob
+      tags: [models]
+      summary: Poll a BlenderGPT job for completion
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlendergptJobStatusResponse"
+
+  /models/{modelId}:
+    get:
+      operationId: getModel
+      tags: [models]
+      summary: Get a single model by ID
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelResponse"
+    delete:
+      operationId: deleteModel
+      tags: [models]
+      summary: Delete a model from the gallery
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     HealthStatus:
@@ -501,6 +753,238 @@ components:
         details:
           type: string
       required: [error]
+
+    AddProjectMeshBody:
+      type: object
+      properties:
+        modelId:
+          type: string
+          description: DB model ID to reference
+        storageKey:
+          type: string
+          description: Storage key (objectPath) of the .glb file
+        name:
+          type: string
+      required: [modelId, storageKey]
+
+    AddProjectMeshResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        meshCount:
+          type: integer
+      required: [success, meshCount]
+
+    SimulationStartTickBody:
+      type: object
+      properties:
+        hz:
+          type: number
+          description: Simulation frequency in Hz (default 20)
+
+    SimulationTickControlResponse:
+      type: object
+      properties:
+        running:
+          type: boolean
+        hz:
+          type: number
+          nullable: true
+      required: [running]
+
+    SimulationStepBody:
+      type: object
+      properties:
+        dt:
+          type: number
+          description: Time delta in seconds (default 0.05)
+
+    SimulationStepResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        ticks:
+          type: integer
+          nullable: true
+        elapsedSeconds:
+          type: number
+          nullable: true
+      required: [ok]
+
+    SimulationSnapshotResponse:
+      type: object
+      properties:
+        entities:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              x:
+                type: number
+              y:
+                type: number
+              z:
+                type: number
+            required: [id, x, y, z]
+      required: [entities]
+
+    RequestUploadUrlBody:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+      required: [name, size, contentType]
+
+    RequestUploadUrlResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+      required: [uploadURL, objectPath]
+
+    ModelRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        source:
+          type: string
+          enum: [meshy, blendergpt, upload]
+        storageKey:
+          type: string
+        thumbnailUrl:
+          type: string
+          nullable: true
+        meshyJobId:
+          type: string
+          nullable: true
+        blendergptJobId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, userId, name, source, storageKey, createdAt]
+
+    ModelListResponse:
+      type: object
+      properties:
+        models:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelRecord"
+      required: [models]
+
+    ModelResponse:
+      type: object
+      properties:
+        model:
+          $ref: "#/components/schemas/ModelRecord"
+      required: [model]
+
+    RegisterModelBody:
+      type: object
+      properties:
+        name:
+          type: string
+        storageKey:
+          type: string
+        thumbnailUrl:
+          type: string
+      required: [name, storageKey]
+
+    GenerateMeshyBody:
+      type: object
+      properties:
+        prompt:
+          type: string
+        artStyle:
+          type: string
+          enum: [realistic, cartoon, low-poly, sculpture, pbr]
+          default: realistic
+        negativePrompt:
+          type: string
+      required: [prompt]
+
+    MeshyJobResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+      required: [jobId, status]
+
+    MeshyJobStatusResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, SUCCEEDED, FAILED, EXPIRED]
+        progress:
+          type: integer
+          description: Percentage 0-100
+        modelUrl:
+          type: string
+          nullable: true
+        thumbnailUrl:
+          type: string
+          nullable: true
+        model:
+          $ref: "#/components/schemas/ModelRecord"
+          nullable: true
+      required: [jobId, status]
+
+    GenerateBlendergptBody:
+      type: object
+      properties:
+        prompt:
+          type: string
+      required: [prompt]
+
+    BlendergptJobResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+      required: [jobId, status]
+
+    BlendergptJobStatusResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, SUCCEEDED, FAILED]
+        progress:
+          type: integer
+          nullable: true
+        modelUrl:
+          type: string
+          nullable: true
+        model:
+          $ref: "#/components/schemas/ModelRecord"
+          nullable: true
+      required: [jobId, status]
 
     ProjectSummary:
       type: object

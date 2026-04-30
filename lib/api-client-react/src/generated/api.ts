@@ -17,17 +17,28 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AddProjectMeshBody,
+  AddProjectMeshResponse,
+  BlendergptJobResponse,
+  BlendergptJobStatusResponse,
   DeterminismCheckResult,
   EngineInfo,
   ErrorResponse,
+  GenerateBlendergptBody,
+  GenerateMeshyBody,
   GetRunFramesParams,
   HealthStatus,
   ImportPacExportRequest,
   ImportProjectRequest,
   ImportedProject,
   InstantiateTemplateRequest,
+  MeshyJobResponse,
+  MeshyJobStatusResponse,
+  ModelListResponse,
+  ModelResponse,
   ProjectDetail,
   ProjectListResponse,
+  RegisterModelBody,
   RendererFrameResponse,
   RendererImportRequest,
   RendererImportResponse,
@@ -36,10 +47,17 @@ import type {
   RendererSetCameraBody,
   RendererStatusResponse,
   RendererUpdateStateBody,
+  RequestUploadUrlBody,
+  RequestUploadUrlResponse,
   RunFramesResponse,
   RunMetadata,
   RunRequest,
   RunResult,
+  SimulationSnapshotResponse,
+  SimulationStartTickBody,
+  SimulationStepBody,
+  SimulationStepResponse,
+  SimulationTickControlResponse,
   TemplateListResponse,
   TraceDiffResponse,
   WorkspaceStats,
@@ -292,6 +310,93 @@ export function useGetProject<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Append a model mesh reference to a project's visual manifest
+ */
+export const getAddProjectMeshUrl = (projectId: string) => {
+  return `/api/pacengine/projects/${projectId}/meshes`;
+};
+
+export const addProjectMesh = async (
+  projectId: string,
+  addProjectMeshBody: AddProjectMeshBody,
+  options?: RequestInit,
+): Promise<AddProjectMeshResponse> => {
+  return customFetch<AddProjectMeshResponse>(getAddProjectMeshUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(addProjectMeshBody),
+  });
+};
+
+export const getAddProjectMeshMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addProjectMesh>>,
+    TError,
+    { projectId: string; data: BodyType<AddProjectMeshBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addProjectMesh>>,
+  TError,
+  { projectId: string; data: BodyType<AddProjectMeshBody> },
+  TContext
+> => {
+  const mutationKey = ["addProjectMesh"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addProjectMesh>>,
+    { projectId: string; data: BodyType<AddProjectMeshBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return addProjectMesh(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddProjectMeshMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addProjectMesh>>
+>;
+export type AddProjectMeshMutationBody = BodyType<AddProjectMeshBody>;
+export type AddProjectMeshMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Append a model mesh reference to a project's visual manifest
+ */
+export const useAddProjectMesh = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addProjectMesh>>,
+    TError,
+    { projectId: string; data: BodyType<AddProjectMeshBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addProjectMesh>>,
+  TError,
+  { projectId: string; data: BodyType<AddProjectMeshBody> },
+  TContext
+> => {
+  return useMutation(getAddProjectMeshMutationOptions(options));
+};
 
 /**
  * @summary Import a PacData document by raw JSON (e.g. PacAI export)
@@ -1888,4 +1993,1099 @@ export const useRendererSetCamera = <
   TContext
 > => {
   return useMutation(getRendererSetCameraMutationOptions(options));
+};
+
+/**
+ * @summary Start the simulation tick loop
+ */
+export const getSimulationStartUrl = () => {
+  return `/api/renderer/simulation/start`;
+};
+
+export const simulationStart = async (
+  simulationStartTickBody?: SimulationStartTickBody,
+  options?: RequestInit,
+): Promise<SimulationTickControlResponse> => {
+  return customFetch<SimulationTickControlResponse>(getSimulationStartUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(simulationStartTickBody),
+  });
+};
+
+export const getSimulationStartMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof simulationStart>>,
+    TError,
+    { data: BodyType<SimulationStartTickBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof simulationStart>>,
+  TError,
+  { data: BodyType<SimulationStartTickBody> },
+  TContext
+> => {
+  const mutationKey = ["simulationStart"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof simulationStart>>,
+    { data: BodyType<SimulationStartTickBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return simulationStart(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SimulationStartMutationResult = NonNullable<
+  Awaited<ReturnType<typeof simulationStart>>
+>;
+export type SimulationStartMutationBody = BodyType<SimulationStartTickBody>;
+export type SimulationStartMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Start the simulation tick loop
+ */
+export const useSimulationStart = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof simulationStart>>,
+    TError,
+    { data: BodyType<SimulationStartTickBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof simulationStart>>,
+  TError,
+  { data: BodyType<SimulationStartTickBody> },
+  TContext
+> => {
+  return useMutation(getSimulationStartMutationOptions(options));
+};
+
+/**
+ * @summary Stop the simulation tick loop
+ */
+export const getSimulationStopUrl = () => {
+  return `/api/renderer/simulation/stop`;
+};
+
+export const simulationStop = async (
+  options?: RequestInit,
+): Promise<SimulationTickControlResponse> => {
+  return customFetch<SimulationTickControlResponse>(getSimulationStopUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getSimulationStopMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof simulationStop>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof simulationStop>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["simulationStop"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof simulationStop>>,
+    void
+  > = () => {
+    return simulationStop(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SimulationStopMutationResult = NonNullable<
+  Awaited<ReturnType<typeof simulationStop>>
+>;
+
+export type SimulationStopMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Stop the simulation tick loop
+ */
+export const useSimulationStop = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof simulationStop>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof simulationStop>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getSimulationStopMutationOptions(options));
+};
+
+/**
+ * @summary Advance simulation by one tick
+ */
+export const getSimulationStepUrl = () => {
+  return `/api/renderer/simulation/step`;
+};
+
+export const simulationStep = async (
+  simulationStepBody?: SimulationStepBody,
+  options?: RequestInit,
+): Promise<SimulationStepResponse> => {
+  return customFetch<SimulationStepResponse>(getSimulationStepUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(simulationStepBody),
+  });
+};
+
+export const getSimulationStepMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof simulationStep>>,
+    TError,
+    { data: BodyType<SimulationStepBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof simulationStep>>,
+  TError,
+  { data: BodyType<SimulationStepBody> },
+  TContext
+> => {
+  const mutationKey = ["simulationStep"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof simulationStep>>,
+    { data: BodyType<SimulationStepBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return simulationStep(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SimulationStepMutationResult = NonNullable<
+  Awaited<ReturnType<typeof simulationStep>>
+>;
+export type SimulationStepMutationBody = BodyType<SimulationStepBody>;
+export type SimulationStepMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Advance simulation by one tick
+ */
+export const useSimulationStep = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof simulationStep>>,
+    TError,
+    { data: BodyType<SimulationStepBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof simulationStep>>,
+  TError,
+  { data: BodyType<SimulationStepBody> },
+  TContext
+> => {
+  return useMutation(getSimulationStepMutationOptions(options));
+};
+
+/**
+ * @summary Get current entity snapshot from simulation
+ */
+export const getSimulationSnapshotUrl = () => {
+  return `/api/renderer/simulation/snapshot`;
+};
+
+export const simulationSnapshot = async (
+  options?: RequestInit,
+): Promise<SimulationSnapshotResponse> => {
+  return customFetch<SimulationSnapshotResponse>(getSimulationSnapshotUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getSimulationSnapshotQueryKey = () => {
+  return [`/api/renderer/simulation/snapshot`] as const;
+};
+
+export const getSimulationSnapshotQueryOptions = <
+  TData = Awaited<ReturnType<typeof simulationSnapshot>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof simulationSnapshot>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getSimulationSnapshotQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof simulationSnapshot>>
+  > = ({ signal }) => simulationSnapshot({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof simulationSnapshot>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SimulationSnapshotQueryResult = NonNullable<
+  Awaited<ReturnType<typeof simulationSnapshot>>
+>;
+export type SimulationSnapshotQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get current entity snapshot from simulation
+ */
+
+export function useSimulationSnapshot<
+  TData = Awaited<ReturnType<typeof simulationSnapshot>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof simulationSnapshot>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSimulationSnapshotQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Request a presigned GCS upload URL
+ */
+export const getRequestUploadUrlUrl = () => {
+  return `/api/storage/uploads/request-url`;
+};
+
+export const requestUploadUrl = async (
+  requestUploadUrlBody: RequestUploadUrlBody,
+  options?: RequestInit,
+): Promise<RequestUploadUrlResponse> => {
+  return customFetch<RequestUploadUrlResponse>(getRequestUploadUrlUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(requestUploadUrlBody),
+  });
+};
+
+export const getRequestUploadUrlMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<RequestUploadUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<RequestUploadUrlBody> },
+  TContext
+> => {
+  const mutationKey = ["requestUploadUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    { data: BodyType<RequestUploadUrlBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestUploadUrl(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestUploadUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestUploadUrl>>
+>;
+export type RequestUploadUrlMutationBody = BodyType<RequestUploadUrlBody>;
+export type RequestUploadUrlMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Request a presigned GCS upload URL
+ */
+export const useRequestUploadUrl = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<RequestUploadUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<RequestUploadUrlBody> },
+  TContext
+> => {
+  return useMutation(getRequestUploadUrlMutationOptions(options));
+};
+
+/**
+ * @summary List the current user's model gallery
+ */
+export const getListModelsUrl = () => {
+  return `/api/models`;
+};
+
+export const listModels = async (
+  options?: RequestInit,
+): Promise<ModelListResponse> => {
+  return customFetch<ModelListResponse>(getListModelsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListModelsQueryKey = () => {
+  return [`/api/models`] as const;
+};
+
+export const getListModelsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listModels>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listModels>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListModelsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listModels>>> = ({
+    signal,
+  }) => listModels({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listModels>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListModelsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listModels>>
+>;
+export type ListModelsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List the current user's model gallery
+ */
+
+export function useListModels<
+  TData = Awaited<ReturnType<typeof listModels>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listModels>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListModelsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Register an uploaded model in the gallery after GCS upload
+ */
+export const getRegisterModelUrl = () => {
+  return `/api/models/register`;
+};
+
+export const registerModel = async (
+  registerModelBody: RegisterModelBody,
+  options?: RequestInit,
+): Promise<ModelResponse> => {
+  return customFetch<ModelResponse>(getRegisterModelUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(registerModelBody),
+  });
+};
+
+export const getRegisterModelMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerModel>>,
+    TError,
+    { data: BodyType<RegisterModelBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registerModel>>,
+  TError,
+  { data: BodyType<RegisterModelBody> },
+  TContext
+> => {
+  const mutationKey = ["registerModel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registerModel>>,
+    { data: BodyType<RegisterModelBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return registerModel(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegisterModelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registerModel>>
+>;
+export type RegisterModelMutationBody = BodyType<RegisterModelBody>;
+export type RegisterModelMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Register an uploaded model in the gallery after GCS upload
+ */
+export const useRegisterModel = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerModel>>,
+    TError,
+    { data: BodyType<RegisterModelBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof registerModel>>,
+  TError,
+  { data: BodyType<RegisterModelBody> },
+  TContext
+> => {
+  return useMutation(getRegisterModelMutationOptions(options));
+};
+
+/**
+ * @summary Trigger a Meshy.ai text-to-3D generation job
+ */
+export const getGenerateMeshyModelUrl = () => {
+  return `/api/models/generate/meshy`;
+};
+
+export const generateMeshyModel = async (
+  generateMeshyBody: GenerateMeshyBody,
+  options?: RequestInit,
+): Promise<MeshyJobResponse> => {
+  return customFetch<MeshyJobResponse>(getGenerateMeshyModelUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(generateMeshyBody),
+  });
+};
+
+export const getGenerateMeshyModelMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateMeshyModel>>,
+    TError,
+    { data: BodyType<GenerateMeshyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateMeshyModel>>,
+  TError,
+  { data: BodyType<GenerateMeshyBody> },
+  TContext
+> => {
+  const mutationKey = ["generateMeshyModel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateMeshyModel>>,
+    { data: BodyType<GenerateMeshyBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return generateMeshyModel(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateMeshyModelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateMeshyModel>>
+>;
+export type GenerateMeshyModelMutationBody = BodyType<GenerateMeshyBody>;
+export type GenerateMeshyModelMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Trigger a Meshy.ai text-to-3D generation job
+ */
+export const useGenerateMeshyModel = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateMeshyModel>>,
+    TError,
+    { data: BodyType<GenerateMeshyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateMeshyModel>>,
+  TError,
+  { data: BodyType<GenerateMeshyBody> },
+  TContext
+> => {
+  return useMutation(getGenerateMeshyModelMutationOptions(options));
+};
+
+/**
+ * @summary Poll a Meshy.ai job for completion
+ */
+export const getPollMeshyJobUrl = (jobId: string) => {
+  return `/api/models/generate/meshy/${jobId}`;
+};
+
+export const pollMeshyJob = async (
+  jobId: string,
+  options?: RequestInit,
+): Promise<MeshyJobStatusResponse> => {
+  return customFetch<MeshyJobStatusResponse>(getPollMeshyJobUrl(jobId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getPollMeshyJobQueryKey = (jobId: string) => {
+  return [`/api/models/generate/meshy/${jobId}`] as const;
+};
+
+export const getPollMeshyJobQueryOptions = <
+  TData = Awaited<ReturnType<typeof pollMeshyJob>>,
+  TError = ErrorType<unknown>,
+>(
+  jobId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof pollMeshyJob>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getPollMeshyJobQueryKey(jobId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof pollMeshyJob>>> = ({
+    signal,
+  }) => pollMeshyJob(jobId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!jobId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof pollMeshyJob>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type PollMeshyJobQueryResult = NonNullable<
+  Awaited<ReturnType<typeof pollMeshyJob>>
+>;
+export type PollMeshyJobQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Poll a Meshy.ai job for completion
+ */
+
+export function usePollMeshyJob<
+  TData = Awaited<ReturnType<typeof pollMeshyJob>>,
+  TError = ErrorType<unknown>,
+>(
+  jobId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof pollMeshyJob>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getPollMeshyJobQueryOptions(jobId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Trigger a BlenderGPT 3D generation job
+ */
+export const getGenerateBlendergptModelUrl = () => {
+  return `/api/models/generate/blendergpt`;
+};
+
+export const generateBlendergptModel = async (
+  generateBlendergptBody: GenerateBlendergptBody,
+  options?: RequestInit,
+): Promise<BlendergptJobResponse> => {
+  return customFetch<BlendergptJobResponse>(getGenerateBlendergptModelUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(generateBlendergptBody),
+  });
+};
+
+export const getGenerateBlendergptModelMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateBlendergptModel>>,
+    TError,
+    { data: BodyType<GenerateBlendergptBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateBlendergptModel>>,
+  TError,
+  { data: BodyType<GenerateBlendergptBody> },
+  TContext
+> => {
+  const mutationKey = ["generateBlendergptModel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateBlendergptModel>>,
+    { data: BodyType<GenerateBlendergptBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return generateBlendergptModel(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateBlendergptModelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateBlendergptModel>>
+>;
+export type GenerateBlendergptModelMutationBody =
+  BodyType<GenerateBlendergptBody>;
+export type GenerateBlendergptModelMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Trigger a BlenderGPT 3D generation job
+ */
+export const useGenerateBlendergptModel = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateBlendergptModel>>,
+    TError,
+    { data: BodyType<GenerateBlendergptBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateBlendergptModel>>,
+  TError,
+  { data: BodyType<GenerateBlendergptBody> },
+  TContext
+> => {
+  return useMutation(getGenerateBlendergptModelMutationOptions(options));
+};
+
+/**
+ * @summary Poll a BlenderGPT job for completion
+ */
+export const getPollBlendergptJobUrl = (jobId: string) => {
+  return `/api/models/generate/blendergpt/${jobId}`;
+};
+
+export const pollBlendergptJob = async (
+  jobId: string,
+  options?: RequestInit,
+): Promise<BlendergptJobStatusResponse> => {
+  return customFetch<BlendergptJobStatusResponse>(
+    getPollBlendergptJobUrl(jobId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getPollBlendergptJobQueryKey = (jobId: string) => {
+  return [`/api/models/generate/blendergpt/${jobId}`] as const;
+};
+
+export const getPollBlendergptJobQueryOptions = <
+  TData = Awaited<ReturnType<typeof pollBlendergptJob>>,
+  TError = ErrorType<unknown>,
+>(
+  jobId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof pollBlendergptJob>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getPollBlendergptJobQueryKey(jobId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof pollBlendergptJob>>
+  > = ({ signal }) => pollBlendergptJob(jobId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!jobId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof pollBlendergptJob>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type PollBlendergptJobQueryResult = NonNullable<
+  Awaited<ReturnType<typeof pollBlendergptJob>>
+>;
+export type PollBlendergptJobQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Poll a BlenderGPT job for completion
+ */
+
+export function usePollBlendergptJob<
+  TData = Awaited<ReturnType<typeof pollBlendergptJob>>,
+  TError = ErrorType<unknown>,
+>(
+  jobId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof pollBlendergptJob>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getPollBlendergptJobQueryOptions(jobId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a single model by ID
+ */
+export const getGetModelUrl = (modelId: string) => {
+  return `/api/models/${modelId}`;
+};
+
+export const getModel = async (
+  modelId: string,
+  options?: RequestInit,
+): Promise<ModelResponse> => {
+  return customFetch<ModelResponse>(getGetModelUrl(modelId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetModelQueryKey = (modelId: string) => {
+  return [`/api/models/${modelId}`] as const;
+};
+
+export const getGetModelQueryOptions = <
+  TData = Awaited<ReturnType<typeof getModel>>,
+  TError = ErrorType<unknown>,
+>(
+  modelId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getModel>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetModelQueryKey(modelId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getModel>>> = ({
+    signal,
+  }) => getModel(modelId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!modelId,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getModel>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetModelQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getModel>>
+>;
+export type GetModelQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get a single model by ID
+ */
+
+export function useGetModel<
+  TData = Awaited<ReturnType<typeof getModel>>,
+  TError = ErrorType<unknown>,
+>(
+  modelId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getModel>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetModelQueryOptions(modelId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete a model from the gallery
+ */
+export const getDeleteModelUrl = (modelId: string) => {
+  return `/api/models/${modelId}`;
+};
+
+export const deleteModel = async (
+  modelId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteModelUrl(modelId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteModelMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteModel>>,
+    TError,
+    { modelId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteModel>>,
+  TError,
+  { modelId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteModel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteModel>>,
+    { modelId: string }
+  > = (props) => {
+    const { modelId } = props ?? {};
+
+    return deleteModel(modelId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteModelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteModel>>
+>;
+
+export type DeleteModelMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a model from the gallery
+ */
+export const useDeleteModel = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteModel>>,
+    TError,
+    { modelId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteModel>>,
+  TError,
+  { modelId: string },
+  TContext
+> => {
+  return useMutation(getDeleteModelMutationOptions(options));
 };

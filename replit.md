@@ -37,6 +37,11 @@ The following secrets must be configured (Replit Secrets) before the API server 
 | `ADMIN_PASSWORD` | Password for the seeded admin account |
 | `ADMIN_USERNAME` | *(optional)* Admin account username — defaults to `WolfTeam19` if not set |
 | `SESSION_SECRET` | Express session secret (legacy, kept for compatibility) |
+| `DEFAULT_OBJECT_STORAGE_BUCKET_ID` | GCS bucket ID for model/asset storage (auto-provisioned) |
+| `PUBLIC_OBJECT_SEARCH_PATHS` | Comma-separated public path prefixes in GCS (auto-provisioned) |
+| `PRIVATE_OBJECT_DIR` | Base directory for private GCS objects (auto-provisioned) |
+| `MESHY_API_KEY` | *(optional)* API key for Meshy.ai text-to-3D generation |
+| `BLENDERGPT_API_KEY` | *(optional)* API key for BlenderGPT model generation |
 
 On first startup the API server creates the admin account (role: `admin`) using `ADMIN_USERNAME` / `ADMIN_PASSWORD` if it does not already exist. Migration SQL is in `lib/db/drizzle/`.
 
@@ -99,6 +104,35 @@ The shared `@workspace/api-zod` package exports Zod schemas at the package root
 (only — the types re-export was stripped in `patch-index.mjs` run during codegen
 to avoid TS2308 name collisions) and TypeScript interfaces under the
 `./types/*` subpath (e.g. `@workspace/api-zod/types/traceFrame`).
+
+## 3D Model Art Library
+
+Accessed via the **Art Library** button in the editor toolbar.
+
+### Features
+- **My Gallery tab**: Upload `.glb`/`.gltf` files via pre-signed GCS URLs, view a thumbnail grid of stored models, add any model to the current project's visual manifest, delete models.
+- **Meshy.ai tab**: Enter a text prompt → calls `POST /api/models/generate/meshy` → polls `GET /api/models/generate/meshy/:jobId` every 3 seconds until `SUCCEEDED`/`FAILED`/`EXPIRED`. On success, saves the model to GCS and registers it in the DB.
+- **BlenderGPT tab**: Same flow using `POST /api/models/generate/blendergpt` → `GET /api/models/generate/blendergpt/:jobId`.
+
+### API Surface (`/api/models/*`)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/models` | List current user's models |
+| POST | `/api/models/upload-url` | Request a pre-signed GCS upload URL |
+| POST | `/api/models/register` | Register an uploaded model in the DB |
+| POST | `/api/models/generate/meshy` | Kick off Meshy.ai text-to-3D job |
+| GET | `/api/models/generate/meshy/:jobId` | Poll Meshy job status |
+| POST | `/api/models/generate/blendergpt` | Kick off BlenderGPT job |
+| GET | `/api/models/generate/blendergpt/:jobId` | Poll BlenderGPT job status |
+| GET | `/api/models/:id` | Get a single model record |
+| DELETE | `/api/models/:id` | Delete a model (DB + GCS object) |
+
+### DB Schema
+`modelsTable` in `lib/db/src/schema/index.ts`:
+- `id`, `userId` (FK → users), `name`, `source` (enum: `upload | meshy | blendergpt`), `storageKey`, `thumbnailUrl`, `meshyJobId`, `blendergptJobId`, `createdAt`
+
+### Add to Project
+`POST /api/pacengine/projects/:id/meshes` → writes an entry to the project's `visual_manifest.json` under `art_library_meshes`.
 
 ## .pacexport Import Format
 
