@@ -48,13 +48,13 @@ router.post("/renderer/frame", (_req, res) => {
 });
 
 router.post("/renderer/import-export", (req, res) => {
-  if (!rendererStatus().initialized) {
-    res.status(409).json({ error: "Renderer not initialized", details: "Call POST /renderer/initialize first" });
-    return;
-  }
   const body = RendererImportExportBody.parse(req.body);
   if (!isAllowedFolderPath(body.folderPath)) {
     res.status(400).json({ error: "Invalid folderPath", details: "Path must be within the workspace" });
+    return;
+  }
+  if (!rendererStatus().initialized) {
+    res.status(409).json({ error: "Renderer not initialized", details: "Call POST /renderer/initialize first" });
     return;
   }
   const result = rendererImportExport(body.folderPath);

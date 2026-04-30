@@ -1,0 +1,80 @@
+{
+  "version": "1.0.0",
+  "format": "pacai_pacdata_v7",
+  "pacCoreVersion": "3.5",
+  "project": {
+    "id": "tiny_world",
+    "name": "Shooter_Test_Arena",
+    "syncKey": null
+  },
+  "seed": 445566,
+  "world": {
+    "name": "Shooter_Test_Arena",
+    "biome": "urban_training_ground",
+    "size": { "x": 200, "y": 200 }
+  },
+  "conflictSim": {
+    "enabled": false,
+    "tick_rate": 20,
+    "factions": [
+      {
+        "id": "blue_team",
+        "name": "Blue Team",
+        "aggression": 0.5,
+        "territory": ["north_pad"]
+      },
+      {
+        "id": "red_team",
+        "name": "Red Team",
+        "aggression": 0.5,
+        "territory": ["south_pad"]
+      }
+    ],
+    "activeConflicts": [],
+    "directorState": { "pacing": "none" }
+  },
+  "entities": [
+    {
+      "id": "blue_01",
+      "type": "soldier",
+      "faction": "blue_team",
+      "position": { "x": 10, "y": 0, "z": 40 },
+      "rotation": { "x": 0, "y": 180, "z": 0 },
+      "stats": { "health": 100, "morale": 1.0 }
+    },
+    {
+      "id": "blue_02",
+      "type": "soldier",
+      "faction": "blue_team",
+      "position": { "x": -10, "y": 0, "z": 40 },
+      "rotation": { "x": 0, "y": 180, "z": 0 },
+      "stats": { "health": 100, "morale": 1.0 }
+    },
+    {
+      "id": "red_01",
+      "type": "soldier",
+      "faction": "red_team",
+      "position": { "x": 10, "y": 0, "z": -40 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "stats": { "health": 100, "morale": 1.0 }
+    },
+    {
+      "id": "red_02",
+      "type": "soldier",
+      "faction": "red_team",
+      "position": { "x": -10, "y": 0, "z": -40 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "stats": { "health": 100, "morale": 1.0 }
+    }
+  ],
+  "motionAbstraction": {
+    "stance": "combat_ready",
+    "tempo": "fast",
+    "energy": "aggressive"
+  },
+  "metadata": {
+    "deterministic": true,
+    "created_at": "2026-04-29T22:44:00Z",
+    "assetsOnlyMode": false
+  }
+}

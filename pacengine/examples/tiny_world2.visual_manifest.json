@@ -1,0 +1,157 @@
+{
+  "visual_version": "1.0",
+  "environment": {
+    "sky_type": "physical",
+    "sun_direction": [
+      0.25,
+      -1,
+      0.15
+    ],
+    "sun_intensity": 1,
+    "sun_color": [
+      1,
+      0.95,
+      0.85
+    ],
+    "fog_enabled": false,
+    "sky": {
+      "type": "physical",
+      "sun_intensity": 1,
+      "sun_color": [
+        1,
+        0.95,
+        0.85
+      ],
+      "sun_direction": [
+        0.25,
+        -1,
+        0.15
+      ]
+    },
+    "fog": {
+      "enabled": false
+    },
+    "ambient_light": {
+      "intensity": 0.45,
+      "color": [
+        1,
+        1,
+        1
+      ]
+    }
+  },
+  "global_illumination": {
+    "probe_density": [
+      4,
+      2,
+      4
+    ],
+    "type": "probe_grid",
+    "intensity": 1
+  },
+  "entities": [
+    {
+      "id": "blue_01",
+      "mesh": "assets/characters/soldier_blue.glb",
+      "material": "assets/materials/soldier_blue.json",
+      "animation_profile": "assets/animations/humanoid_basic.json"
+    },
+    {
+      "id": "blue_02",
+      "mesh": "assets/characters/soldier_blue.glb",
+      "material": "assets/materials/soldier_blue.json",
+      "animation_profile": "assets/animations/humanoid_basic.json"
+    },
+    {
+      "id": "red_01",
+      "mesh": "assets/characters/soldier_red.glb",
+      "material": "assets/materials/soldier_red.json",
+      "animation_profile": "assets/animations/humanoid_basic.json"
+    },
+    {
+      "id": "red_02",
+      "mesh": "assets/characters/soldier_red.glb",
+      "material": "assets/materials/soldier_red.json",
+      "animation_profile": "assets/animations/humanoid_basic.json"
+    }
+  ],
+  "lights": [
+    {
+      "type": "directional",
+      "direction": [
+        0.25,
+        -1,
+        0.15
+      ],
+      "color": [
+        1,
+        0.95,
+        0.85
+      ],
+      "intensity": 1,
+      "shadows": {
+        "enabled": true,
+        "cascade_count": 3
+      }
+    }
+  ],
+  "post_processing": {
+    "bloom": {
+      "enabled": false
+    },
+    "vignette": {
+      "enabled": false
+    },
+    "color_grading": {
+      "enabled": false
+    }
+  },
+  "camera_default": {
+    "position": [
+      0,
+      15,
+      60
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ]
+  },
+  "version": "1.0",
+  "engine": "PacEngine-v5",
+  "render_profile": "default_atmospheric",
+  "terrain": {
+    "heightmap": "assets/terrain/flat_heightmap.png",
+    "albedo": "assets/terrain/concrete_albedo.png",
+    "normal": "assets/terrain/concrete_normal.png",
+    "scale": [
+      200,
+      1,
+      200
+    ]
+  },
+  "postfx": {
+    "bloom": {
+      "enabled": false
+    },
+    "vignette": {
+      "enabled": false
+    },
+    "color_grading": {
+      "enabled": false
+    }
+  },
+  "camera_defaults": {
+    "position": [
+      0,
+      15,
+      60
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ]
+  }
+}
