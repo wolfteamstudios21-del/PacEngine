@@ -88,7 +88,7 @@ export default function Home() {
   const [importError, setImportError] = useState<{ message: string; details?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const resetImportDialog = () => {
+  const resetImportDialog = useCallback(() => {
     setImportName("");
     setImportWorldJson("");
     setImportVisualJson("");
@@ -96,9 +96,9 @@ export default function Home() {
     setZipError("");
     setZipFileName("");
     setImportError(null);
-  };
+  }, []);
 
-  const handleZipUpload = async (file: File) => {
+  const handleZipUpload = useCallback(async (file: File) => {
     setZipStatus("idle");
     setZipError("");
     setZipFileName(file.name);
@@ -164,7 +164,7 @@ export default function Home() {
     }
 
     setZipStatus("success");
-  };
+  }, [importName]);
   
   const [instantiateOpen, setInstantiateOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -205,8 +205,7 @@ export default function Home() {
     resetImportDialog();
     setImportOpen(true);
     await handleZipUpload(file);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleZipUpload, resetImportDialog]);
 
   const handleImport = () => {
     setImportError(null);
@@ -295,7 +294,7 @@ export default function Home() {
         <div className="absolute inset-0 z-50 bg-primary/10 border-4 border-primary border-dashed rounded-lg flex items-center justify-center pointer-events-none">
           <div className="flex flex-col items-center gap-3 text-primary bg-background/90 rounded-xl px-8 py-6 shadow-lg">
             <Upload className="h-10 w-10" />
-            <p className="text-base font-semibold">Drop to import .pacexport</p>
+            <p className="text-base font-semibold">Drop to import .pacexport or .zip</p>
             <p className="text-xs text-muted-foreground">Release to open the import dialog</p>
           </div>
         </div>
