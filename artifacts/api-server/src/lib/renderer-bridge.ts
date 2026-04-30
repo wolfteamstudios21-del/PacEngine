@@ -79,37 +79,16 @@ try {
 export const isNative = _isNative;
 export const addon    = _addon;
 
-// Server-side frame pump (backup for when no browser viewport is connected).
-// Primary pump is the browser rAF loop calling POST /renderer/frame at 60 Hz.
-const FRAME_MS = Math.round(1000 / 60);
-let _pumpTimer: ReturnType<typeof setInterval> | null = null;
-
-function startPump() {
-  if (_pumpTimer !== null) return;
-  _pumpTimer = setInterval(() => {
-    if (!_addon.isInitialized()) return;
-    _addon.beginFrame();
-    _addon.render();
-    _addon.endFrame();
-  }, FRAME_MS);
-}
-
-function stopPump() {
-  if (_pumpTimer === null) return;
-  clearInterval(_pumpTimer);
-  _pumpTimer = null;
-}
-
 // ── Public API ────────────────────────────────────────────────────────────────
+// Frame pump is driven exclusively by the browser's rAF loop via POST /renderer/frame
+// at 60 Hz. There is no server-side interval pump to prevent double-cycle conflicts.
 
 export function rendererInitialize(width: number, height: number) {
   const initialized = _addon.initialize(width, height);
-  if (initialized) startPump();
   return { initialized, native: _isNative };
 }
 
 export function rendererShutdown() {
-  stopPump();
   _addon.shutdown();
 }
 

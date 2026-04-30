@@ -527,6 +527,9 @@ importers:
       '@workspace/api-client-react':
         specifier: workspace:*
         version: link:../../lib/api-client-react
+      '@workspace/pacengine-napi':
+        specifier: workspace:*
+        version: link:../../pacengine/napi
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1

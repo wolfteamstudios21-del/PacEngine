@@ -8,6 +8,7 @@ import {
   RendererImportExportResponse,
   RendererResizeBody,
   RendererUpdateStateBody,
+  RendererSetCameraBody,
 } from "@workspace/api-zod";
 import {
   rendererInitialize,
@@ -78,12 +79,10 @@ router.post("/renderer/update-state", (req, res) => {
 });
 
 router.post("/renderer/set-camera", (req, res) => {
-  const { position, target, fov } = req.body as {
-    position: [number, number, number];
-    target: [number, number, number];
-    fov?: number;
-  };
-  rendererSetCamera(position, target, fov);
+  const body = RendererSetCameraBody.parse(req.body);
+  const pos    = body.position as [number, number, number];
+  const target = body.target   as [number, number, number];
+  rendererSetCamera(pos, target, body.fov ?? 60);
   res.status(204).end();
 });
 

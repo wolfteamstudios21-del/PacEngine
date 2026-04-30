@@ -1,12 +1,8 @@
 import { useRef, useCallback, useEffect, useState } from "react";
+import { rendererBridge, type ImportExportResult } from "../lib/renderer-bridge";
 
 export type ViewMode = "2D" | "3D";
-
-export interface ImportExportResult {
-  success:      boolean;
-  entities:     number;
-  staticMeshes: number;
-}
+export type { ImportExportResult };
 
 export interface UsePacRendererOptions {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -20,25 +16,6 @@ export interface UsePacRendererResult {
   importExport(folderPath: string): Promise<ImportExportResult>;
   updateState(entityCount: number, tickIndex: number): void;
 }
-
-type FetchMethod = "GET" | "POST" | "DELETE";
-
-async function apiFetch<T>(method: FetchMethod, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`/api${path}`, {
-    method,
-    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
-    body:    body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  if (res.status === 204) return undefined as T;
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`[usePacRenderer] ${method} ${path} → ${res.status}: ${text}`);
-  }
-  return res.json() as Promise<T>;
-}
-
-interface RendererStatusPayload { initialized: boolean; native: boolean; frameCount: number }
-interface RendererInitPayload   { initialized: boolean; native: boolean }
 
 export function usePacRenderer({ canvasRef, enabled = true }: UsePacRendererOptions): UsePacRendererResult {
   const [isReady,  setIsReady]  = useState(false);
@@ -57,7 +34,7 @@ export function usePacRenderer({ canvasRef, enabled = true }: UsePacRendererOpti
     const w = canvas?.clientWidth  ?? 1280;
     const h = canvas?.clientHeight ?? 720;
 
-    apiFetch<RendererInitPayload>("POST", "/renderer/initialize", { width: w, height: h })
+    rendererBridge.initialize(w, h)
       .then((data) => {
         if (!mountedRef.current) return;
         setIsReady(data.initialized);
@@ -65,23 +42,23 @@ export function usePacRenderer({ canvasRef, enabled = true }: UsePacRendererOpti
       })
       .catch((err: unknown) => console.warn("[usePacRenderer] initialize failed:", err));
 
-    // rAF loop: drives BeginFrame→Render→EndFrame at ~60 Hz via POST /renderer/frame,
-    // and polls status at 5 s intervals to keep isReady/isNative current.
-    const FRAME_INTERVAL_MS = 1000 / 60;
-    const POLL_INTERVAL_MS  = 5_000;
+    // rAF loop: drives BeginFrame→Render→EndFrame at ~60 Hz via POST /renderer/frame.
+    // Status is polled every 5 s to keep isReady/isNative current.
+    const FRAME_MS = 1000 / 60;
+    const POLL_MS  = 5_000;
 
     const tick = (nowMs: number) => {
       if (!mountedRef.current) return;
       rafRef.current = requestAnimationFrame(tick);
 
-      if (nowMs - lastFrameMs.current >= FRAME_INTERVAL_MS) {
+      if (nowMs - lastFrameMs.current >= FRAME_MS) {
         lastFrameMs.current = nowMs;
-        apiFetch("POST", "/renderer/frame").catch(() => {});
+        rendererBridge.frame().catch(() => {});
       }
 
-      if (nowMs - lastPollMs.current >= POLL_INTERVAL_MS) {
+      if (nowMs - lastPollMs.current >= POLL_MS) {
         lastPollMs.current = nowMs;
-        apiFetch<RendererStatusPayload>("GET", "/renderer/status")
+        rendererBridge.status()
           .then((s) => {
             if (!mountedRef.current) return;
             setIsReady(s.initialized);
@@ -94,10 +71,7 @@ export function usePacRenderer({ canvasRef, enabled = true }: UsePacRendererOpti
 
     const onResize = () => {
       if (!canvas) return;
-      apiFetch("POST", "/renderer/resize", {
-        width:  canvas.clientWidth,
-        height: canvas.clientHeight,
-      }).catch(() => {});
+      rendererBridge.resize(canvas.clientWidth, canvas.clientHeight).catch(() => {});
     };
     const ro = new ResizeObserver(onResize);
     if (canvas) ro.observe(canvas);
@@ -106,7 +80,7 @@ export function usePacRenderer({ canvasRef, enabled = true }: UsePacRendererOpti
       mountedRef.current = false;
       cancelAnimationFrame(rafRef.current);
       ro.disconnect();
-      apiFetch("DELETE", "/renderer/shutdown").catch(() => {});
+      rendererBridge.shutdown().catch(() => {});
       setIsReady(false);
       setIsNative(false);
     };
@@ -114,19 +88,18 @@ export function usePacRenderer({ canvasRef, enabled = true }: UsePacRendererOpti
 
   const setCamera = useCallback(
     (pos: [number, number, number], target: [number, number, number], fov = 60) => {
-      apiFetch("POST", "/renderer/set-camera", { position: pos, target, fov }).catch(() => {});
+      rendererBridge.setCamera(pos, target, fov).catch(() => {});
     },
     []
   );
 
   const importExport = useCallback(
-    (folderPath: string): Promise<ImportExportResult> =>
-      apiFetch<ImportExportResult>("POST", "/renderer/import-export", { folderPath }),
+    (folderPath: string): Promise<ImportExportResult> => rendererBridge.importExport(folderPath),
     []
   );
 
   const updateState = useCallback((entityCount: number, tickIndex: number) => {
-    apiFetch("POST", "/renderer/update-state", { entityCount, tickIndex }).catch(() => {});
+    rendererBridge.updateSimulationState(entityCount, tickIndex).catch(() => {});
   }, []);
 
   return { isReady, isNative, setCamera, importExport, updateState };
