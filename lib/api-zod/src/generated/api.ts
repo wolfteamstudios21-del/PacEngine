@@ -63,7 +63,9 @@ export const getProjectResponseVisualManifestEnvironmentFogColorMin = 3;
 export const getProjectResponseVisualManifestEnvironmentFogColorMax = 3;
 
 export const getProjectResponseVisualManifestGlobalIlluminationGiTypeDefault = `probe_grid`;
-export const getProjectResponseVisualManifestGlobalIlluminationProbeDensityDefault = `medium`;
+export const getProjectResponseVisualManifestGlobalIlluminationProbeDensityTwoMin = 3;
+export const getProjectResponseVisualManifestGlobalIlluminationProbeDensityTwoMax = 3;
+
 export const getProjectResponseVisualManifestEntitiesItemRenderMaterialOverridesBaseColorFactorMin = 4;
 export const getProjectResponseVisualManifestEntitiesItemRenderMaterialOverridesBaseColorFactorMax = 4;
 
@@ -130,7 +132,10 @@ export const GetProjectResponse = zod.object({
     .object({
       visual_version: zod
         .string()
-        .describe('visual_manifest schema version (currently \"1.0.0\")'),
+        .optional()
+        .describe(
+          'Visual manifest schema version (e.g. \"1.0.0\"). Optional because v7 files use the \"version\" alias which is normalized on ingest.\n',
+        ),
       pacdata_version: zod
         .string()
         .optional()
@@ -161,7 +166,10 @@ export const GetProjectResponse = zod.object({
             .optional(),
           fog_height_falloff: zod.number().optional(),
         })
-        .describe("Atmospheric and sky settings for the scene."),
+        .optional()
+        .describe(
+          "Atmospheric and sky settings. Optional; v7 manifests may omit this block or use nested sky\/fog sub-objects (normalized on ingest).\n",
+        ),
       global_illumination: zod
         .object({
           gi_type: zod
@@ -170,9 +178,20 @@ export const GetProjectResponse = zod.object({
               getProjectResponseVisualManifestGlobalIlluminationGiTypeDefault,
             ),
           probe_density: zod
-            .enum(["low", "medium", "high"])
-            .default(
-              getProjectResponseVisualManifestGlobalIlluminationProbeDensityDefault,
+            .union([
+              zod.enum(["low", "medium", "high"]),
+              zod
+                .array(zod.number())
+                .min(
+                  getProjectResponseVisualManifestGlobalIlluminationProbeDensityTwoMin,
+                )
+                .max(
+                  getProjectResponseVisualManifestGlobalIlluminationProbeDensityTwoMax,
+                ),
+            ])
+            .optional()
+            .describe(
+              "Probe density setting. Accepts the string shorthand (low\/medium\/high) or a [x, y, z] numeric array as used in v7 visual manifests.\n",
             ),
         })
         .optional()
@@ -182,9 +201,9 @@ export const GetProjectResponse = zod.object({
           zod
             .object({
               id: zod
-                .number()
+                .union([zod.number(), zod.string()])
                 .describe(
-                  "Entity slot index matching PacData entity order (0-based)",
+                  "Entity identifier. Integer slot index in classic manifests; string entity ID in v7 manifests.\n",
                 ),
               render: zod
                 .object({
@@ -220,9 +239,12 @@ export const GetProjectResponse = zod.object({
                   receive_shadows: zod.boolean().optional(),
                   visible: zod.boolean().optional(),
                 })
+                .optional()
                 .describe("Per-entity rendering configuration."),
             })
-            .describe("Visual override for a single simulation entity."),
+            .describe(
+              "Visual override for a single simulation entity. id may be an integer slot index (classic) or a string entity ID (v7). render is optional; v7 manifests may use mesh\/material\/animation_profile fields instead.\n",
+            ),
         )
         .optional()
         .describe("Per-entity visual overrides keyed by integer slot index"),

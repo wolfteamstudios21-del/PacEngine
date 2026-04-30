@@ -42,33 +42,72 @@ export function parsePacData(raw: string): PacDataDocument {
   }
   const root = json as Record<string, unknown>;
 
-  const pacdataVersion = stringField(root, "pacdata_version", "");
-  const paccoreVersion = stringField(root, "paccore_version", "");
+  // Accept pacdata_version, version, or format (v7 uses "format": "pacai_pacdata_v7")
+  const pacdataVersion =
+    stringField(root, "pacdata_version", "") ||
+    stringField(root, "version", "") ||
+    stringField(root, "format", "");
 
-  const world = (root["world"] ?? {}) as Record<string, unknown>;
-  if (typeof world !== "object" || world === null) {
-    const e = new Error("PacData.world must be an object") as PacDataParseError;
-    e.detail = "world key is missing or not an object";
-    throw e;
-  }
+  // Accept paccore_version (snake_case) or pacCoreVersion (camelCase, v7)
+  const paccoreVersion =
+    stringField(root, "paccore_version", "") ||
+    stringField(root, "pacCoreVersion", "");
+
+  // world block is optional in v7 (entities/conflictSim may be top-level)
+  const worldRaw = root["world"];
+  const world =
+    worldRaw && typeof worldRaw === "object" && !Array.isArray(worldRaw)
+      ? (worldRaw as Record<string, unknown>)
+      : {};
+
   const worldName = stringField(world, "name", "");
 
-  const rawEntities = Array.isArray(world["entities"]) ? world["entities"] : [];
+  // Entities: look under world.entities first, then top-level entities (v7)
+  const hasWorldEntities = Array.isArray(world["entities"]);
+  const hasRootEntities = Array.isArray(root["entities"]);
+  if (!hasWorldEntities && !hasRootEntities) {
+    const e = new Error(
+      "Expected world.entities or top-level entities array",
+    ) as PacDataParseError;
+    e.detail =
+      'No "entities" array found at world.entities or at the document root';
+    throw e;
+  }
+  const rawEntities = hasWorldEntities
+    ? (world["entities"] as unknown[])
+    : (root["entities"] as unknown[]);
+
   const entities: PacDataEntity[] = [];
-  for (const item of rawEntities) {
+  for (let idx = 0; idx < rawEntities.length; idx++) {
+    const item = rawEntities[idx];
     if (!item || typeof item !== "object") continue;
     const obj = item as Record<string, unknown>;
     const idVal = obj["id"];
     let id: string;
-    if (typeof idVal === "string") id = idVal;
-    else if (typeof idVal === "number") id = String(idVal);
-    else continue;
+    if (typeof idVal === "string") {
+      id = idVal;
+    } else if (typeof idVal === "number") {
+      id = String(idVal);
+    } else {
+      const e = new Error("Entity id must be a string or number") as PacDataParseError;
+      e.detail = `entities[${idx}].id is ${idVal === undefined ? "missing" : `of type ${typeof idVal}`}`;
+      throw e;
+    }
     const typeVal = obj["type"];
     const type = typeof typeVal === "string" ? typeVal : "entity";
     entities.push({ id, type });
   }
 
-  const rawConflict = (world["conflict_sim"] ?? {}) as Record<string, unknown>;
+  // conflictSim: look under world.conflict_sim (snake_case) OR top-level conflictSim (camelCase, v7)
+  let rawConflict: Record<string, unknown> = {};
+  if (world["conflict_sim"] && typeof world["conflict_sim"] === "object") {
+    rawConflict = world["conflict_sim"] as Record<string, unknown>;
+  } else if (root["conflictSim"] && typeof root["conflictSim"] === "object") {
+    const cs = root["conflictSim"] as Record<string, unknown>;
+    // camelCase scenarios array is the same field name
+    rawConflict = cs;
+  }
+
   const enabled = rawConflict["enabled"] === true;
   const rawScenarios = Array.isArray(rawConflict["scenarios"])
     ? rawConflict["scenarios"]

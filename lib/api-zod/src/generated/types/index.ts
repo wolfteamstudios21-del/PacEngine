@@ -44,7 +44,6 @@ export * from "./visualEnvironment";
 export * from "./visualEnvironmentSkyType";
 export * from "./visualGI";
 export * from "./visualGIGiType";
-export * from "./visualGIProbeDensity";
 export * from "./visualLight";
 export * from "./visualLightType";
 export * from "./visualManifest";

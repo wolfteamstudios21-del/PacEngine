@@ -6,12 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { VisualGIGiType } from "./visualGIGiType";
-import type { VisualGIProbeDensity } from "./visualGIProbeDensity";
 
 /**
  * Global illumination settings.
  */
 export interface VisualGI {
   gi_type?: VisualGIGiType;
-  probe_density?: VisualGIProbeDensity;
+  /** Probe density setting. Accepts the string shorthand (low/medium/high) or a [x, y, z] numeric array as used in v7 visual manifests.
+   */
+  probe_density?: "low" | "medium" | "high" | number[];
 }

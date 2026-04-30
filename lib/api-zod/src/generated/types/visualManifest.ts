@@ -14,15 +14,18 @@ import type { VisualPostProcessing } from "./visualPostProcessing";
 import type { VisualStaticMesh } from "./visualStaticMesh";
 
 /**
- * Optional companion document to a PacData file that carries visual / rendering properties. Persisted as <projectId>.visual_manifest.json alongside the .pacdata.json sidecar. Not required for headless runs.
+ * Optional companion document to a PacData file that carries visual / rendering properties. Persisted as <projectId>.visual_manifest.json alongside the .pacdata.json sidecar. Not required for headless runs. v7 manifests use "version" instead of "visual_version", "postfx" instead of "post_processing", "camera_defaults" instead of "camera_default", and may omit the environment block entirely.
 
  */
 export interface VisualManifest {
-  /** visual_manifest schema version (currently "1.0.0") */
-  visual_version: string;
+  /** Visual manifest schema version (e.g. "1.0.0"). Optional because v7 files use the "version" alias which is normalized on ingest.
+   */
+  visual_version?: string;
   /** PacData format version this manifest was authored for */
   pacdata_version?: string;
-  environment: VisualEnvironment;
+  /** Atmospheric and sky settings. Optional; v7 manifests may omit this block or use nested sky/fog sub-objects (normalized on ingest).
+   */
+  environment?: VisualEnvironment;
   global_illumination?: VisualGI;
   /** Per-entity visual overrides keyed by integer slot index */
   entities?: VisualEntityOverride[];

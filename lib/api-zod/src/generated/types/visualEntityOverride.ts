@@ -8,10 +8,12 @@
 import type { VisualEntityRender } from "./visualEntityRender";
 
 /**
- * Visual override for a single simulation entity.
+ * Visual override for a single simulation entity. id may be an integer slot index (classic) or a string entity ID (v7). render is optional; v7 manifests may use mesh/material/animation_profile fields instead.
+
  */
 export interface VisualEntityOverride {
-  /** Entity slot index matching PacData entity order (0-based) */
-  id: number;
-  render: VisualEntityRender;
+  /** Entity identifier. Integer slot index in classic manifests; string entity ID in v7 manifests.
+   */
+  id: number | string;
+  render?: VisualEntityRender;
 }

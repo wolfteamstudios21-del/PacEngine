@@ -570,9 +570,18 @@ components:
           enum: [none, probe_grid, voxel, hybrid]
           default: probe_grid
         probe_density:
-          type: string
-          enum: [low, medium, high]
-          default: medium
+          description: >
+            Probe density setting. Accepts the string shorthand (low/medium/high)
+            or a [x, y, z] numeric array as used in v7 visual manifests.
+          oneOf:
+            - type: string
+              enum: [low, medium, high]
+            - type: array
+              items:
+                type: number
+                format: float
+              minItems: 3
+              maxItems: 3
 
     VisualPostProcessing:
       type: object
@@ -634,12 +643,19 @@ components:
 
     VisualEntityOverride:
       type: object
-      description: Visual override for a single simulation entity.
-      required: [id, render]
+      description: >
+        Visual override for a single simulation entity. id may be an integer
+        slot index (classic) or a string entity ID (v7). render is optional;
+        v7 manifests may use mesh/material/animation_profile fields instead.
+      required: [id]
       properties:
         id:
-          type: integer
-          description: Entity slot index matching PacData entity order (0-based)
+          description: >
+            Entity identifier. Integer slot index in classic manifests;
+            string entity ID in v7 manifests.
+          oneOf:
+            - type: integer
+            - type: string
         render:
           $ref: "#/components/schemas/VisualEntityRender"
 
@@ -746,16 +762,23 @@ components:
         Optional companion document to a PacData file that carries visual /
         rendering properties. Persisted as <projectId>.visual_manifest.json
         alongside the .pacdata.json sidecar. Not required for headless runs.
-      required: [visual_version, environment]
+        v7 manifests use "version" instead of "visual_version", "postfx" instead
+        of "post_processing", "camera_defaults" instead of "camera_default", and
+        may omit the environment block entirely.
       properties:
         visual_version:
           type: string
-          description: visual_manifest schema version (currently "1.0.0")
+          description: >
+            Visual manifest schema version (e.g. "1.0.0"). Optional because v7
+            files use the "version" alias which is normalized on ingest.
         pacdata_version:
           type: string
           description: PacData format version this manifest was authored for
         environment:
           $ref: "#/components/schemas/VisualEnvironment"
+          description: >
+            Atmospheric and sky settings. Optional; v7 manifests may omit this
+            block or use nested sky/fog sub-objects (normalized on ingest).
         global_illumination:
           $ref: "#/components/schemas/VisualGI"
         entities:

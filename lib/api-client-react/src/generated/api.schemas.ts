@@ -99,21 +99,14 @@ export const VisualGIGiType = {
   hybrid: "hybrid",
 } as const;
 
-export type VisualGIProbeDensity =
-  (typeof VisualGIProbeDensity)[keyof typeof VisualGIProbeDensity];
-
-export const VisualGIProbeDensity = {
-  low: "low",
-  medium: "medium",
-  high: "high",
-} as const;
-
 /**
  * Global illumination settings.
  */
 export interface VisualGI {
   gi_type?: VisualGIGiType;
-  probe_density?: VisualGIProbeDensity;
+  /** Probe density setting. Accepts the string shorthand (low/medium/high) or a [x, y, z] numeric array as used in v7 visual manifests.
+   */
+  probe_density?: "low" | "medium" | "high" | number[];
 }
 
 /**
@@ -150,12 +143,14 @@ export interface VisualEntityRender {
 }
 
 /**
- * Visual override for a single simulation entity.
+ * Visual override for a single simulation entity. id may be an integer slot index (classic) or a string entity ID (v7). render is optional; v7 manifests may use mesh/material/animation_profile fields instead.
+
  */
 export interface VisualEntityOverride {
-  /** Entity slot index matching PacData entity order (0-based) */
-  id: number;
-  render: VisualEntityRender;
+  /** Entity identifier. Integer slot index in classic manifests; string entity ID in v7 manifests.
+   */
+  id: number | string;
+  render?: VisualEntityRender;
 }
 
 /**
@@ -254,15 +249,18 @@ export interface VisualCameraDefault {
 }
 
 /**
- * Optional companion document to a PacData file that carries visual / rendering properties. Persisted as <projectId>.visual_manifest.json alongside the .pacdata.json sidecar. Not required for headless runs.
+ * Optional companion document to a PacData file that carries visual / rendering properties. Persisted as <projectId>.visual_manifest.json alongside the .pacdata.json sidecar. Not required for headless runs. v7 manifests use "version" instead of "visual_version", "postfx" instead of "post_processing", "camera_defaults" instead of "camera_default", and may omit the environment block entirely.
 
  */
 export interface VisualManifest {
-  /** visual_manifest schema version (currently "1.0.0") */
-  visual_version: string;
+  /** Visual manifest schema version (e.g. "1.0.0"). Optional because v7 files use the "version" alias which is normalized on ingest.
+   */
+  visual_version?: string;
   /** PacData format version this manifest was authored for */
   pacdata_version?: string;
-  environment: VisualEnvironment;
+  /** Atmospheric and sky settings. Optional; v7 manifests may omit this block or use nested sky/fog sub-objects (normalized on ingest).
+   */
+  environment?: VisualEnvironment;
   global_illumination?: VisualGI;
   /** Per-entity visual overrides keyed by integer slot index */
   entities?: VisualEntityOverride[];

@@ -4,7 +4,7 @@ import {
   useListProjects, 
   useListTemplates, 
   useGetStats, 
-  useImportProject,
+  useImportPacExport,
   useInstantiateTemplate
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -18,6 +18,54 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Activity, Plus, FolderOpen, Play, Box, FileJson, Hash, Settings } from "lucide-react";
 
+/**
+ * Try to split two concatenated JSON objects from a single string.
+ * Returns [firstDoc, secondDoc] if two root-level objects are found,
+ * or [input, ""] if the text is a single valid JSON object,
+ * or null if the text cannot be parsed at all.
+ */
+function trySplitConcatenatedJson(text: string): [string, string] | null {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{")) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let splitAt = -1;
+
+  for (let i = 0; i < trimmed.length; i++) {
+    const ch = trimmed[i];
+    if (escape) { escape = false; continue; }
+    if (ch === "\\" && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{" || ch === "[") depth++;
+    else if (ch === "}" || ch === "]") {
+      depth--;
+      if (depth === 0) { splitAt = i + 1; break; }
+    }
+  }
+
+  if (splitAt === -1) return null;
+
+  const first = trimmed.slice(0, splitAt);
+  const rest = trimmed.slice(splitAt).trim();
+
+  if (rest === "") return [first, ""];
+
+  // Check if remainder is a valid JSON object (the visual manifest)
+  if (rest.startsWith("{")) {
+    try {
+      JSON.parse(rest);
+      return [first, rest];
+    } catch {
+      // rest is not valid JSON — treat whole text as one doc
+    }
+  }
+
+  return [first, ""];
+}
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -26,34 +74,71 @@ export default function Home() {
   const { data: templatesData, isLoading: loadingTemplates } = useListTemplates();
   const { data: statsData, isLoading: loadingStats } = useGetStats();
   
-  const importMutation = useImportProject();
+  const importMutation = useImportPacExport();
   const instantiateMutation = useInstantiateTemplate();
   
   const [importOpen, setImportOpen] = useState(false);
   const [importName, setImportName] = useState("");
-  const [importJson, setImportJson] = useState("");
+  const [importWorldJson, setImportWorldJson] = useState("");
+  const [importVisualJson, setImportVisualJson] = useState("");
   
   const [instantiateOpen, setInstantiateOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("");
 
   const handleImport = () => {
-    if (!importName || !importJson) {
-      toast({ title: "Validation Error", description: "Name and JSON are required.", variant: "destructive" });
+    if (!importName || !importWorldJson) {
+      toast({ title: "Validation Error", description: "Name and world pacdata JSON are required.", variant: "destructive" });
       return;
     }
+
+    // Detect concatenated JSON documents pasted into the world field and split them.
+    let worldJson = importWorldJson;
+    let visualJson = importVisualJson;
+
+    if (!visualJson.trim()) {
+      const split = trySplitConcatenatedJson(importWorldJson);
+      if (split === null) {
+        toast({ title: "Validation Error", description: "World PacData JSON is not valid JSON.", variant: "destructive" });
+        return;
+      }
+      const [first, second] = split;
+      worldJson = first;
+      if (second) {
+        visualJson = second;
+        setImportWorldJson(first);
+        setImportVisualJson(second);
+        toast({ title: "Auto-split detected", description: "Found two JSON documents — split into pacdata and visual manifest automatically." });
+      }
+    }
+
+    const payload: { name: string; worldPacdataJson: string; visualManifestJson?: string } = {
+      name: importName,
+      worldPacdataJson: worldJson,
+    };
+    if (visualJson.trim()) {
+      payload.visualManifestJson = visualJson;
+    }
     
-    importMutation.mutate({ data: { name: importName, rawJson: importJson } }, {
+    importMutation.mutate({ data: payload }, {
       onSuccess: (data) => {
         setImportOpen(false);
         setImportName("");
-        setImportJson("");
+        setImportWorldJson("");
+        setImportVisualJson("");
         toast({ title: "Import Successful", description: `Project ${data.project.name} imported.` });
         setLocation(`/projects/${data.project.id}`);
       },
-      onError: (err: any) => {
-        const errorMsg = (err as { error?: string })?.error || "Unknown error";
-        toast({ title: "Import Failed", description: errorMsg, variant: "destructive" });
+      onError: (err: unknown) => {
+        // ApiError stores the parsed response body in .data
+        const apiData = (err as { data?: { error?: string; details?: string } })?.data;
+        const errorMsg = apiData?.error ?? (err instanceof Error ? err.message : "Unknown error");
+        const details = apiData?.details;
+        toast({
+          title: "Import Failed",
+          description: details ? `${errorMsg}: ${details}` : errorMsg,
+          variant: "destructive",
+        });
       }
     });
   };
@@ -106,10 +191,12 @@ export default function Home() {
                     <FileJson className="h-4 w-4" /> Import PacData
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[560px]">
                   <DialogHeader>
-                    <DialogTitle>Import PacData</DialogTitle>
-                    <DialogDescription>Paste PacData JSON from PacAI or an external source.</DialogDescription>
+                    <DialogTitle>Import PacData v7 Export</DialogTitle>
+                    <DialogDescription>
+                      Paste the <code className="text-xs bg-muted px-1 rounded">world.pacdata.json</code> and optionally the <code className="text-xs bg-muted px-1 rounded">visual_manifest.json</code> from your PacAI export package.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
@@ -117,18 +204,32 @@ export default function Home() {
                       <Input id="name" value={importName} onChange={(e) => setImportName(e.target.value)} placeholder="e.g. my-imported-sim" />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="json">Raw JSON</Label>
+                      <Label htmlFor="world-json">
+                        World PacData JSON <span className="text-destructive">*</span>
+                      </Label>
                       <Textarea 
-                        id="json" 
-                        value={importJson} 
-                        onChange={(e) => setImportJson(e.target.value)} 
-                        className="font-mono text-xs h-[200px]" 
-                        placeholder='{"pacdata_version": "1.0", ...}'
+                        id="world-json" 
+                        value={importWorldJson} 
+                        onChange={(e) => setImportWorldJson(e.target.value)} 
+                        className="font-mono text-xs h-[140px]" 
+                        placeholder='{"format": "pacai_pacdata_v7", "entities": [...], ...}'
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="visual-json">
+                        Visual Manifest JSON <span className="text-muted-foreground text-xs">(optional)</span>
+                      </Label>
+                      <Textarea 
+                        id="visual-json" 
+                        value={importVisualJson} 
+                        onChange={(e) => setImportVisualJson(e.target.value)} 
+                        className="font-mono text-xs h-[100px]" 
+                        placeholder='{"visual_version": "1.0.0", "environment": {...}, ...}'
                       />
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setImportOpen(false)}>Cancel</Button>
+                    <Button variant="outline" onClick={() => { setImportOpen(false); setImportName(""); setImportWorldJson(""); setImportVisualJson(""); }}>Cancel</Button>
                     <Button onClick={handleImport} disabled={importMutation.isPending}>
                       {importMutation.isPending ? "Importing..." : "Import Project"}
                     </Button>
