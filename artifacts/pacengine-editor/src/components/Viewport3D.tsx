@@ -322,14 +322,14 @@ export default function Viewport3D({
           variant="outline"
           className={cn(
             "text-[9px] h-4 font-mono",
-            isNative
+            isNative && isReady
               ? "bg-green-500/10 text-green-400 border-green-500/30"
               : isReady
               ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
               : "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"
           )}
         >
-          {isNative ? "Renderer: M2.5 native" : isReady ? "Renderer: M2.5 bridge" : "Renderer: M2.5 stub"}
+          {isNative && isReady ? "Renderer: M2.5 native" : isReady ? "Renderer: M2.5 bridge" : "Renderer: M2.5 stub"}
         </Badge>
       </div>
 

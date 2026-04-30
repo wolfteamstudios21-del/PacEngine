@@ -53,7 +53,9 @@ export function usePacRenderer({ canvasRef, enabled = true }: UsePacRendererOpti
 
       if (nowMs - lastFrameMs.current >= FRAME_MS) {
         lastFrameMs.current = nowMs;
-        rendererBridge.frame().catch(() => {});
+        rendererBridge.frame().catch((err: unknown) => {
+          console.debug("[usePacRenderer] frame tick failed:", err);
+        });
       }
 
       if (nowMs - lastPollMs.current >= POLL_MS) {
