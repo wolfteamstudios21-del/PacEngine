@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
+import { useAuth, useLogout } from "@/hooks/useAuth";
 import { 
   useGetProject, 
   useRunProject, 
@@ -49,6 +50,9 @@ import {
   Lightbulb,
   Sparkles,
   Image as ImageIcon,
+  LogOut,
+  User,
+  ShieldCheck,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -65,8 +69,11 @@ import { Textarea } from "@/components/ui/textarea";
 
 export default function Editor() {
   const { projectId } = useParams();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: authData } = useAuth();
+  const logoutMutation = useLogout();
   
   const [ticks, setTicks] = useState("100");
   const [activeTab, setActiveTab] = useState("console");
@@ -304,6 +311,31 @@ export default function Editor() {
           <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 hover:text-purple-400 hover:bg-purple-400/10" onClick={() => setShowImportDialog(true)}>
             <Upload className="h-3 w-3" /> Import .pacexport
           </Button>
+          {authData?.user && (
+            <>
+              <div className="w-px h-4 bg-border mx-1" />
+              {authData.user.role === "admin" && (
+                <Link href="/admin">
+                  <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 hover:text-primary hover:bg-primary/10">
+                    <ShieldCheck className="h-3 w-3" />
+                  </Button>
+                </Link>
+              )}
+              <div className="flex items-center gap-1 text-xs text-muted-foreground font-mono">
+                <User className="h-3 w-3" />
+                {authData.user.username}
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs gap-1 hover:text-destructive hover:bg-destructive/10"
+                title="Sign out"
+                onClick={() => logoutMutation.mutate(undefined, { onSuccess: () => setLocation("/login") })}
+              >
+                <LogOut className="h-3 w-3" />
+              </Button>
+            </>
+          )}
         </div>
       </header>
 

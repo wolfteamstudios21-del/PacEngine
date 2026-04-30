@@ -7,6 +7,7 @@ import {
   useImportPacExport,
   useInstantiateTemplate
 } from "@workspace/api-client-react";
+import { useAuth, useLogout } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Activity, FolderOpen, Play, Box, FileJson, Hash, Settings, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { Activity, FolderOpen, Play, Box, FileJson, Hash, Settings, Upload, CheckCircle2, AlertCircle, LogOut, ShieldCheck, User } from "lucide-react";
 import JSZip from "jszip";
 
 /**
@@ -70,6 +71,8 @@ function trySplitConcatenatedJson(text: string): [string, string] | null {
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { data: authData } = useAuth();
+  const logoutMutation = useLogout();
   
   const { data: projectsData, isLoading: loadingProjects } = useListProjects();
   const { data: templatesData, isLoading: loadingTemplates } = useListTemplates();
@@ -309,6 +312,24 @@ export default function Home() {
           <Link href="/engine" className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1">
             <Settings className="h-4 w-4" /> Engine Status
           </Link>
+          {authData?.user?.role === "admin" && (
+            <Link href="/admin" className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1">
+              <ShieldCheck className="h-4 w-4" /> Admin
+            </Link>
+          )}
+          {authData?.user && (
+            <div className="flex items-center gap-2 pl-2 border-l border-border">
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground font-mono">{authData.user.username}</span>
+              <button
+                onClick={() => logoutMutation.mutate(undefined, { onSuccess: () => setLocation("/login") })}
+                className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
