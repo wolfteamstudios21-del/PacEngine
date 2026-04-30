@@ -13,9 +13,13 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <string>
 
 #include "core/PacRenderer.h"
+#include "core/RenderScene.h"
+#include "core/RenderProxy.h"
+#include "core/Mesh.h"
 #include "assets/GltfLoader.h"
 #include "importer/PacWorldImporter.h"
 
@@ -230,9 +234,78 @@ static void TestWorldImporter() {
     fs::remove_all(tmpDir);
 }
 
+// ─── Test 5: RenderScene draw recording ───────────────────────────────────────
+// Validates that RecordDrawCalls iterates proxies and handles the
+// vertexBufferHandle / indexBufferHandle guard correctly.
+// In stub mode (no GPU), the commandBuffer pointer is non-null but never
+// dereferenced as a VkCommandBuffer handle; this exercises the diagnostic loop.
+static void TestRecordDrawCalls() {
+    std::printf("\n── Test 5: RenderScene::RecordDrawCalls ──────────────────────\n");
+
+    // Build a minimal in-memory mesh with fake GPU buffer handles.
+    auto mesh = std::make_shared<pac::render::Mesh>();
+    mesh->name = "smoke_tri";
+    {
+        pac::render::MeshPrimitive prim;
+        // Three dummy vertices — positions/normals don't matter for this test.
+        prim.vertices.resize(3);
+        prim.indices  = {0, 1, 2};
+        // Stamp non-zero handles to simulate a successful UploadToGpu call.
+        prim.vertexBufferHandle = 0xDEADBEEFull;
+        prim.indexBufferHandle  = 0xCAFEBABEull;
+        mesh->primitives.push_back(std::move(prim));
+    }
+
+    pac::render::RenderScene scene;
+    auto* proxy = scene.CreateProxy(42u);
+    EXPECT(proxy != nullptr);
+    if (!proxy) return;
+
+    proxy->visible = true;
+    proxy->mesh    = mesh.get();       // raw ptr — scene keeps the shared_ptr alive
+    scene.RegisterMesh(mesh);
+
+    // In stub mode (no HAVE_VULKAN) the HAVE_VULKAN branch is not compiled in,
+    // so the commandBuffer pointer is never cast to VkCommandBuffer.
+    // Passing a non-null sentinel lets us exercise the proxy iteration loop
+    // rather than the early-return guard at the top of RecordDrawCalls.
+    int sentinel = 0;
+    void* fakeCmdBuf = &sentinel;
+    const float identity[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+
+    scene.RecordDrawCalls(fakeCmdBuf, nullptr, identity);
+    EXPECT(true); // reached here without crash/assert
+
+#if defined(HAVE_FASTGLTF)
+    // Re-use the already-parsed triangle from Test 2 to check UploadToGpu→draw path.
+    pac::render::GltfLoader loader;
+    auto loaded = loader.LoadMemory(kMinimalGltf, std::strlen(kMinimalGltf), ".");
+    EXPECT(loaded.success);
+    if (loaded.success && !loaded.meshes.empty() &&
+        !loaded.meshes[0]->primitives.empty()) {
+        // Stamp fake handles as if UploadToGpu ran against a real GPU.
+        loaded.meshes[0]->primitives[0].vertexBufferHandle = 0xBEEFull;
+        loaded.meshes[0]->primitives[0].indexBufferHandle  = 0xFACEull;
+
+        pac::render::RenderScene scene2;
+        auto* p2 = scene2.CreateProxy(99u);
+        EXPECT(p2 != nullptr);
+        if (p2) {
+            p2->visible = true;
+            p2->mesh    = loaded.meshes[0].get();
+            scene2.RegisterMesh(loaded.meshes[0]);
+            scene2.RecordDrawCalls(fakeCmdBuf, nullptr, identity);
+            EXPECT(true); // no crash with real parsed mesh + fake GPU handles
+            std::printf("  RecordDrawCalls with real parsed mesh: OK\n");
+        }
+    }
+#endif
+    std::printf("  RecordDrawCalls: OK\n");
+}
+
 #if defined(HAVE_VULKAN)
 static void TestVulkanGpu() {
-    std::printf("\n── Test 5: VulkanContext GPU (requires Vulkan SDK) ──────────\n");
+    std::printf("\n── Test 6: VulkanContext GPU (requires Vulkan SDK) ──────────\n");
     pac::render::VulkanContext ctx;
     // Pass nullptr window handle → headless GPU path
     const bool ok = ctx.Initialize(nullptr, 800, 600);
@@ -265,6 +338,7 @@ int main() {
     TestGltfLoader();
     TestGltfLoaderFile();
     TestWorldImporter();
+    TestRecordDrawCalls();
 #if defined(HAVE_VULKAN)
     TestVulkanGpu();
 #endif

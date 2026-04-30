@@ -1,0 +1,1 @@
+/nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/g++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/render_smoke.dir/link.d CMakeFiles/render_smoke.dir/tests/render_smoke.cpp.o -o render_smoke  libpacengine_render.a ../_deps/fastgltf-build/libfastgltf.a

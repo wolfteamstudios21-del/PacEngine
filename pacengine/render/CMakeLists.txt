@@ -33,6 +33,18 @@ FetchContent_Declare(fastgltf
 set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(fastgltf)
 
+# Silence all warnings emitted by the third-party fastgltf and simdjson targets.
+# We don't control their code and their diagnostics add noise to our CI.
+foreach(_3P fastgltf simdjson)
+    if(TARGET ${_3P})
+        target_compile_options(${_3P} PRIVATE
+            $<$<CXX_COMPILER_ID:GNU>:-w>
+            $<$<CXX_COMPILER_ID:Clang>:-w>
+            $<$<CXX_COMPILER_ID:AppleClang>:-w>
+        )
+    endif()
+endforeach()
+
 # -----------------------------------------------------------------------
 # SPIR-V shader compilation (optional — requires glslc from Vulkan SDK)
 # Pre-compiled SPV is also committed under shaders/prebuilt/ for offline
@@ -89,7 +101,10 @@ add_dependencies(pacengine_render pacengine_shaders)
 target_include_directories(pacengine_render
     PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}
     PRIVATE ${NLOHMANN_JSON_INCLUDE}
-            ${CMAKE_BINARY_DIR}/_deps/fastgltf-src/include
+)
+# SYSTEM keyword prevents compiler from emitting warnings from third-party headers.
+target_include_directories(pacengine_render SYSTEM
+    PRIVATE ${CMAKE_BINARY_DIR}/_deps/fastgltf-src/include
 )
 
 target_compile_features(pacengine_render PUBLIC cxx_std_20)

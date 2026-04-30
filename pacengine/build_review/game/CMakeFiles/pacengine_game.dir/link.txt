@@ -1,0 +1,1 @@
+/nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/g++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/pacengine_game.dir/link.d CMakeFiles/pacengine_game.dir/main.cpp.o -o pacengine_game  ../engine/libpacengine_runtime.a ../pacdata/libpacdata.a

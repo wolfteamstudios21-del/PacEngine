@@ -1,0 +1,2 @@
+/nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/ar qc libpacdata.a CMakeFiles/pacdata.dir/src/PacData.cpp.o CMakeFiles/pacdata.dir/src/PacDataLoader.cpp.o
+/nix/store/a0d7m3zn9p2dfa1h7ag9h2wzzr2w25sn-gcc-wrapper-14.2.1.20250322/bin/ranlib libpacdata.a
