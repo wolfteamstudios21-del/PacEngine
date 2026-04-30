@@ -106,10 +106,11 @@ describe("parseVisualManifest — v7 compatibility", () => {
   });
 
   it("accepts terrain and lights.shadows unknown keys without failing", () => {
+    const terrain = { heightmap: "terrain/hm.png", scale: [100, 10, 100] };
     const raw = JSON.stringify({
       version: "1.0.0",
       entities: [],
-      terrain: { heightmap: "terrain/hm.png", scale: [100, 10, 100] },
+      terrain,
       lights: [
         {
           type: "directional",
@@ -121,6 +122,13 @@ describe("parseVisualManifest — v7 compatibility", () => {
     const result = parseVisualManifest(raw);
     assert.ok(result.lights?.length === 1);
     assert.equal((result.lights?.[0] as Record<string, unknown>).intensity, 1.0);
+    // passthrough() must preserve the unknown terrain block unchanged
+    assert.deepEqual((result as Record<string, unknown>).terrain, terrain);
+    // shadows sub-object on a light must also be preserved
+    assert.deepEqual(
+      (result.lights?.[0] as Record<string, unknown>).shadows,
+      { enabled: true, distance: 200 },
+    );
   });
 
   it("throws VisualManifestParseError for invalid JSON", () => {
