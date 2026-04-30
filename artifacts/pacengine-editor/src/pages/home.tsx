@@ -170,6 +170,16 @@ export default function Home() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("");
 
+  const resetImportDialog = () => {
+    setImportName("");
+    setImportWorldJson("");
+    setImportVisualJson("");
+    setZipStatus("idle");
+    setZipError("");
+    setZipFileName("");
+    setImportError(null);
+  };
+
   const handleImport = () => {
     setImportError(null);
 
@@ -198,6 +208,8 @@ export default function Home() {
       }
     }
 
+    setImportError(null);
+
     const payload: { name: string; worldPacdataJson: string; visualManifestJson?: string } = {
       name: importName,
       worldPacdataJson: worldJson,
@@ -214,7 +226,6 @@ export default function Home() {
         setLocation(`/projects/${data.project.id}`);
       },
       onError: (err: unknown) => {
-        // ApiError stores the parsed response body in .data
         const apiData = (err as { data?: { error?: string; details?: string } })?.data;
         const message = apiData?.error ?? (err instanceof Error ? err.message : "Import failed");
         const details = apiData?.details;
