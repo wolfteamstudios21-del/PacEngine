@@ -345,44 +345,34 @@ uint64_t PacRenderer::HashMeshId(const std::string& id) {
 }
 
 void PacRenderer::RegisterBuiltinTriangle() {
-    // A minimal coloured triangle in clip-space NDC so it is visible regardless
-    // of the camera transform.  Vertex colours are passed as the normal field so
-    // the simple unlit shader can render with colour variety.
+    // Three-vertex coloured triangle in NDC so the first frame always issues
+    // at least one draw call even when no scene assets are loaded.
     auto mesh = std::make_shared<Mesh>();
     mesh->name = "__builtin_triangle";
 
     MeshPrimitive prim;
     prim.vertices = {
-        // position               normal (used as colour by unlit shader)
-        {{ 0.0f,  0.5f, 0.0f},  {1.0f, 0.0f, 0.0f}},   // top    — red
-        {{ 0.5f, -0.5f, 0.0f},  {0.0f, 1.0f, 0.0f}},   // right  — green
-        {{-0.5f, -0.5f, 0.0f},  {0.0f, 0.0f, 1.0f}},   // left   — blue
+        {{ 0.0f,  0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+        {{ 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
     };
     prim.indices = {0u, 1u, 2u};
 
-    // Upload to GPU immediately via the host-visible path — no staging command
-    // buffer is required because AllocateHostBuffer uses persistent mapping.
-    // In headless / no-GPU builds this is a no-op (AllocateHostBuffer stubs out).
     VulkanContext* ctx = m_impl->vkCtx.get();
     if (ctx && ctx->IsGpuActive()) {
-        constexpr uint32_t kVBUsage = 0x00000080; // VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-        constexpr uint32_t kIBUsage = 0x00000040; // VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+        constexpr uint32_t kVB = 0x00000080; // VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+        constexpr uint32_t kIB = 0x00000040; // VK_BUFFER_USAGE_INDEX_BUFFER_BIT
         ctx->AllocateHostBuffer(prim.vertices.data(),
                                 prim.vertices.size() * sizeof(Vertex),
-                                kVBUsage,
-                                &prim.vertexBufferHandle,
-                                &prim.vertexMemoryHandle);
+                                kVB, &prim.vertexBufferHandle, &prim.vertexMemoryHandle);
         ctx->AllocateHostBuffer(prim.indices.data(),
                                 prim.indices.size() * sizeof(uint32_t),
-                                kIBUsage,
-                                &prim.indexBufferHandle,
-                                &prim.indexMemoryHandle);
+                                kIB, &prim.indexBufferHandle, &prim.indexMemoryHandle);
     }
 
     mesh->primitives.push_back(std::move(prim));
     m_impl->scene->RegisterMesh(mesh);
 
-    // Register a proxy so RecordDrawCalls iterates it on the first frame.
     constexpr uint64_t kBuiltinId = 0xFFFF'FFFE'DEAD'BEEFull;
     RenderProxy* proxy = m_impl->scene->CreateProxy(kBuiltinId);
     proxy->mesh = mesh.get();

@@ -45,9 +45,8 @@ public:
     void RegisterMesh(std::shared_ptr<class Mesh> mesh);
     void RegisterMaterial(std::shared_ptr<Material> mat);
 
-    // Provide the GPU context so the scene destructor can free VkBuffer/VkMemory
-    // for every cached mesh.  Call once after VulkanContext::Initialize succeeds.
-    // Passing nullptr is safe (GPU free is skipped).
+    // Provide the GPU context for buffer cleanup on destruction.
+    // Call once after VulkanContext::Initialize succeeds.  Passing nullptr is safe.
     void SetVulkanContext(VulkanContext* ctx);
 
 private:

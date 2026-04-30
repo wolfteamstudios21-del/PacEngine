@@ -20,9 +20,9 @@ struct MeshPrimitive {
     std::vector<uint32_t> indices;
     int materialIndex = 0;
 
-    // Phase 2.5.1 — GPU buffer handles (set by GltfLoader::UploadToGpu).
-    // Both the VkBuffer handle and its backing VkDeviceMemory are stored so
-    // that VulkanContext::FreeHostBuffer can release both at shutdown/reload.
+    // GPU handles — VkBuffer and VkDeviceMemory for each buffer, stored as
+    // opaque uint64 so the header stays SDK-free.  Set by GltfLoader::UploadToGpu;
+    // freed by RenderScene::~RenderScene via VulkanContext::FreeHostBuffer.
     uint64_t vertexBufferHandle = 0;
     uint64_t vertexMemoryHandle = 0;
     uint64_t indexBufferHandle  = 0;
