@@ -1,6 +1,8 @@
 #pragma once
+#include <filesystem>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include "render_types.h"
 #include "VisualManifest.h"
 
@@ -26,7 +28,9 @@ public:
     void EndFrame();
 
     // ── PacAi Import Pipeline (M2.5 core) ────────────────────────────────────
-    // exportFolderPath must contain visual_manifest.json + all referenced glTF assets.
+    // exportFolderPath must contain visual_manifest.json.
+    // Missing assets are filled with placeholder stubs; returns false only on
+    // hard errors (folder not found, out-of-memory, etc.).
     bool ImportPacAiExport(const std::string& exportFolderPath);
 
     // ── Simulation integration ────────────────────────────────────────────────
@@ -51,10 +55,30 @@ public:
     RenderScene* GetScene() const;
 
 private:
-    // Apply material_overrides from the visual manifest to a proxy's material.
+    // ── Import sub-steps ─────────────────────────────────────────────────────
+
+    // Ensures assets/models/{agent,terrain/arena}.gltf stubs exist so the
+    // scene is never entirely empty on first import.
+    void CreatePlaceholderAssets(const std::filesystem::path& assetsDir);
+
+    // Reads manifest.entities (vector of VisualEntityOverride) and creates /
+    // populates a RenderProxy per entry.
+    void LoadVisualEntities(const VisualManifest& manifest,
+                            const std::string& exportFolderPath);
+
+    // Reads manifest.static_meshes and creates a RenderProxy per entry,
+    // keyed by a stable hash of the mesh id string.
+    void LoadStaticMeshes(const VisualManifest& manifest,
+                          const std::string& exportFolderPath);
+
+    // Applies material slot overrides from the manifest to a proxy's material.
     void ApplyMaterialOverrides(
         RenderProxy* proxy,
         const std::unordered_map<std::string, MaterialOverride>& overrides);
+
+    // Returns a stable 64-bit key for a static-mesh id string.
+    // High bit is set so static-mesh ids never collide with entity int ids.
+    static uint64_t HashMeshId(const std::string& id);
 
     struct Impl;
     std::unique_ptr<Impl> m_impl;

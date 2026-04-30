@@ -7,9 +7,13 @@
 
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <unordered_map>
 
 namespace pac::render {
+namespace fs = std::filesystem;
+
+// ─── Impl ─────────────────────────────────────────────────────────────────────
 
 struct PacRenderer::Impl {
     std::unique_ptr<VulkanContext> vkCtx;
@@ -19,9 +23,9 @@ struct PacRenderer::Impl {
     PacVec3 camPos    = {0.f, 5.f, -10.f};
     PacVec3 camTarget = {0.f, 0.f,   0.f};
     float   camFov    = 60.f;
-    bool    use3D     = true;
-    bool    debugOverlay  = false;
-    bool    initialized   = false;
+    bool    use3D        = true;
+    bool    debugOverlay = false;
+    bool    initialized  = false;
 };
 
 PacRenderer::PacRenderer()  : m_impl(std::make_unique<Impl>()) {}
@@ -65,8 +69,6 @@ void PacRenderer::EndFrame() {}
 // ─── PacAi Import Pipeline ────────────────────────────────────────────────────
 
 bool PacRenderer::ImportPacAiExport(const std::string& exportFolderPath) {
-    namespace fs = std::filesystem;
-
     std::printf("[PacRenderer] ImportPacAiExport: %s\n", exportFolderPath.c_str());
 
     if (!fs::exists(exportFolderPath)) {
@@ -75,109 +77,79 @@ bool PacRenderer::ImportPacAiExport(const std::string& exportFolderPath) {
         return false;
     }
 
-    // 1. Load visual_manifest.json ─────────────────────────────────────────────
+    // 1. Ensure assets/ directory exists; seed it with placeholder stubs so the
+    //    scene is never completely empty while real glTF files are being authored.
+    const fs::path assetsDir = fs::path(exportFolderPath) / "assets";
+    if (!fs::exists(assetsDir)) {
+        std::error_code ec;
+        fs::create_directories(assetsDir, ec);
+        if (ec)
+            std::fprintf(stderr, "[PacRenderer] Warning: could not create assets dir: %s\n",
+                         ec.message().c_str());
+        else
+            std::printf("[PacRenderer] Created assets directory: %s\n",
+                        assetsDir.string().c_str());
+    }
+    CreatePlaceholderAssets(assetsDir);
+
+    // 2. Load visual_manifest.json — soft-fail: a missing manifest lets the
+    //    simulation data still be consumed.
     const std::string manifestPath = exportFolderPath + "/visual_manifest.json";
     VisualManifest manifest;
-    if (!VisualManifestLoader::Load(manifestPath, manifest)) {
-        std::fprintf(stderr, "[PacRenderer] Failed to load visual_manifest.json\n");
-        return false;
-    }
+    const bool manifestOk = VisualManifestLoader::Load(manifestPath, manifest);
+    if (!manifestOk)
+        std::fprintf(stderr, "[PacRenderer] visual_manifest.json missing or invalid — "
+                     "rendering with defaults\n");
 
-    // Clear any previously imported scene state.
+    // 3. Clear any previously imported scene state.
     m_impl->scene->ClearLights();
 
-    // 2. Apply environment (sky, fog, sun) ─────────────────────────────────────
-    m_impl->scene->SetEnvironment(ToEnvironmentData(manifest.environment));
+    if (manifestOk) {
+        // 4. Apply environment (sky, fog, sun)
+        m_impl->scene->SetEnvironment(ToEnvironmentData(manifest.environment));
 
-    // 3. Apply lights ──────────────────────────────────────────────────────────
-    for (const auto& vl : manifest.lights) {
-        m_impl->scene->AddLight(ToLightData(vl));
-    }
+        // 5. Apply lights
+        for (const auto& vl : manifest.lights)
+            m_impl->scene->AddLight(ToLightData(vl));
 
-    // 4. Apply GI settings ─────────────────────────────────────────────────────
-    {
-        GiSettings gi;
-        const auto& vgi = manifest.global_illumination;
-        if      (vgi.gi_type == "none")       gi.giType = GiType::None;
-        else if (vgi.gi_type == "voxel")      gi.giType = GiType::Voxel;
-        else if (vgi.gi_type == "hybrid")     gi.giType = GiType::Hybrid;
-        else                                  gi.giType = GiType::ProbeGrid;
-        if      (vgi.probe_density == "low")  gi.probeDensity = 0;
-        else if (vgi.probe_density == "high") gi.probeDensity = 2;
-        else                                  gi.probeDensity = 1;
-        m_impl->scene->SetGi(gi);
-    }
-
-    // 5. Apply post-processing ─────────────────────────────────────────────────
-    {
-        PostProcessSettings pp;
-        const auto& vpp = manifest.post_processing;
-        if      (vpp.tonemap == "filmic") pp.tonemap = Tonemap::Filmic;
-        else if (vpp.tonemap == "linear") pp.tonemap = Tonemap::Linear;
-        else                              pp.tonemap = Tonemap::Aces;
-        pp.bloomIntensity = vpp.bloom_intensity;
-        pp.exposure       = vpp.exposure;
-        m_impl->scene->SetPostProcess(pp);
-    }
-
-    // 6. Load static meshes ────────────────────────────────────────────────────
-    for (const auto& meshData : manifest.static_meshes) {
-        // Use a stable hash of the id string as entity key.
-        const auto entityKey = static_cast<uint64_t>(
-            std::hash<std::string>{}(meshData.id) & 0x0FFF'FFFF'FFFF'FFFFull
-        ) | 0x8000'0000'0000'0000ull; // high bit marks static meshes
-
-        auto* proxy = m_impl->scene->CreateProxy(entityKey);
-        if (!proxy) continue;
-
-        proxy->castShadows    = true;
-        proxy->receiveShadows = true;
-
-        if (!meshData.asset.empty()) {
-            const std::string fullPath = exportFolderPath + "/" + meshData.asset;
-            auto loaded = m_impl->gltfLoader.LoadFile(fullPath);
-            if (loaded.success && !loaded.meshes.empty()) {
-                // Scene takes shared ownership; proxy borrows a raw pointer.
-                proxy->mesh = loaded.meshes[0].get();
-                m_impl->scene->RegisterMesh(loaded.meshes[0]);
-                if (!loaded.materials.empty()) {
-                    proxy->material = loaded.materials[0].get();
-                    m_impl->scene->RegisterMaterial(loaded.materials[0]);
-                }
-            }
+        // 6. Apply GI settings
+        {
+            GiSettings gi;
+            const auto& vgi = manifest.global_illumination;
+            if      (vgi.gi_type == "none")   gi.giType = GiType::None;
+            else if (vgi.gi_type == "voxel")  gi.giType = GiType::Voxel;
+            else if (vgi.gi_type == "hybrid") gi.giType = GiType::Hybrid;
+            else                              gi.giType = GiType::ProbeGrid;
+            gi.probeDensity = (vgi.probe_density == "low") ? 0
+                            : (vgi.probe_density == "high") ? 2 : 1;
+            m_impl->scene->SetGi(gi);
         }
-        // Apply transform (Phase 2.5.1 — build PacMat4 from TRS)
-        // proxy->transform = TRSToMat4(meshData.transform.position,
-        //                              meshData.transform.rotation,
-        //                              meshData.transform.scale);
-    }
 
-    // 7. Load entity proxies ───────────────────────────────────────────────────
-    for (const auto& entityData : manifest.entities) {
-        auto* proxy = m_impl->scene->CreateProxy(static_cast<uint64_t>(entityData.id));
-        if (!proxy) continue;
-
-        proxy->visible        = entityData.render.visible;
-        proxy->castShadows    = entityData.render.cast_shadows;
-        proxy->receiveShadows = entityData.render.receive_shadows;
-
-        if (!entityData.render.asset.empty()) {
-            const std::string fullPath = exportFolderPath + "/" + entityData.render.asset;
-            auto loaded = m_impl->gltfLoader.LoadFile(fullPath);
-            if (loaded.success && !loaded.meshes.empty()) {
-                proxy->mesh = loaded.meshes[0].get();
-                m_impl->scene->RegisterMesh(loaded.meshes[0]);
-                if (!loaded.materials.empty()) {
-                    proxy->material = loaded.materials[0].get();
-                    m_impl->scene->RegisterMaterial(loaded.materials[0]);
-                }
-            }
-            ApplyMaterialOverrides(proxy, entityData.render.material_overrides);
+        // 7. Apply post-processing
+        {
+            PostProcessSettings pp;
+            const auto& vpp = manifest.post_processing;
+            if      (vpp.tonemap == "filmic") pp.tonemap = Tonemap::Filmic;
+            else if (vpp.tonemap == "linear") pp.tonemap = Tonemap::Linear;
+            else                              pp.tonemap = Tonemap::Aces;
+            pp.bloomIntensity = vpp.bloom_intensity;
+            pp.exposure       = vpp.exposure;
+            m_impl->scene->SetPostProcess(pp);
         }
+
+        // 8. Load static meshes from manifest
+        LoadStaticMeshes(manifest, exportFolderPath);
+
+        // 9. Load entity proxies from manifest
+        LoadVisualEntities(manifest, exportFolderPath);
+
+        // 10. Apply camera default
+        SetCamera(manifest.camera_default.position, manifest.camera_default.target);
     }
 
-    // 8. Apply camera default ──────────────────────────────────────────────────
-    SetCamera(manifest.camera_default.position, manifest.camera_default.target);
+    // 11. TODO (Phase 2.5.2): load world.pacdata.json via PacDataLoader
+    std::printf("[PacRenderer] PacData path: %s/world.pacdata.json\n",
+                exportFolderPath.c_str());
 
     std::printf("[PacRenderer] Import complete — entities: %zu  static_meshes: %zu  lights: %zu\n",
                 manifest.entities.size(),
@@ -209,9 +181,7 @@ void PacRenderer::SetViewportMode(bool use3D) {
     std::printf("[PacRenderer] Viewport mode: %s\n", use3D ? "3D atmospheric" : "2D ortho");
 }
 
-bool PacRenderer::IsUsing3D() const {
-    return m_impl->use3D;
-}
+bool PacRenderer::IsUsing3D() const { return m_impl->use3D; }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -223,11 +193,88 @@ void PacRenderer::ToggleDebugOverlay(bool enabled) {
     m_impl->debugOverlay = enabled;
 }
 
-RenderScene* PacRenderer::GetScene() const {
-    return m_impl->scene.get();
+RenderScene* PacRenderer::GetScene() const { return m_impl->scene.get(); }
+
+// ─── Import helpers ───────────────────────────────────────────────────────────
+
+void PacRenderer::CreatePlaceholderAssets(const fs::path& assetsDir) {
+    // Minimal valid glTF 2.0 JSON — enough for the loader to open without error.
+    constexpr const char* kMinimalGltf =
+        "{\"asset\":{\"version\":\"2.0\"},\"scene\":0,"
+        "\"scenes\":[{\"nodes\":[]}],\"nodes\":[]}";
+
+    auto ensurePlaceholder = [&](const fs::path& relPath) {
+        const fs::path full = assetsDir / relPath;
+        std::error_code ec;
+        fs::create_directories(full.parent_path(), ec);
+        if (!fs::exists(full)) {
+            std::ofstream f(full);
+            if (f) {
+                f << kMinimalGltf;
+                std::printf("[PacRenderer] Placeholder created: %s\n",
+                            full.string().c_str());
+            }
+        }
+    };
+
+    ensurePlaceholder("models/agent.gltf");
+    ensurePlaceholder("models/terrain/arena.gltf");
 }
 
-// ─── Private helpers ──────────────────────────────────────────────────────────
+void PacRenderer::LoadVisualEntities(const VisualManifest& manifest,
+                                     const std::string& exportFolderPath) {
+    // manifest.entities is std::vector<VisualEntityOverride> — each entry has
+    // an integer .id and a .render sub-struct.
+    for (const auto& entityData : manifest.entities) {
+        auto* proxy = m_impl->scene->CreateProxy(static_cast<uint64_t>(entityData.id));
+        if (!proxy) continue;
+
+        proxy->visible        = entityData.render.visible;
+        proxy->castShadows    = entityData.render.cast_shadows;
+        proxy->receiveShadows = entityData.render.receive_shadows;
+
+        if (!entityData.render.asset.empty()) {
+            const std::string fullPath = exportFolderPath + "/" + entityData.render.asset;
+            auto loaded = m_impl->gltfLoader.LoadFile(fullPath);
+            if (loaded.success && !loaded.meshes.empty()) {
+                proxy->mesh = loaded.meshes[0].get();
+                m_impl->scene->RegisterMesh(loaded.meshes[0]);
+                if (!loaded.materials.empty()) {
+                    proxy->material = loaded.materials[0].get();
+                    m_impl->scene->RegisterMaterial(loaded.materials[0]);
+                }
+            }
+            ApplyMaterialOverrides(proxy, entityData.render.material_overrides);
+        }
+    }
+    std::printf("[PacRenderer] Loaded %zu entity proxies\n", manifest.entities.size());
+}
+
+void PacRenderer::LoadStaticMeshes(const VisualManifest& manifest,
+                                   const std::string& exportFolderPath) {
+    for (const auto& meshData : manifest.static_meshes) {
+        auto* proxy = m_impl->scene->CreateProxy(HashMeshId(meshData.id));
+        if (!proxy) continue;
+
+        proxy->castShadows    = true;
+        proxy->receiveShadows = true;
+
+        if (!meshData.asset.empty()) {
+            const std::string fullPath = exportFolderPath + "/" + meshData.asset;
+            auto loaded = m_impl->gltfLoader.LoadFile(fullPath);
+            if (loaded.success && !loaded.meshes.empty()) {
+                proxy->mesh = loaded.meshes[0].get();
+                m_impl->scene->RegisterMesh(loaded.meshes[0]);
+                if (!loaded.materials.empty()) {
+                    proxy->material = loaded.materials[0].get();
+                    m_impl->scene->RegisterMaterial(loaded.materials[0]);
+                }
+            }
+        }
+        // Phase 2.5.1 — apply TRS transform from meshData.transform
+    }
+    std::printf("[PacRenderer] Loaded %zu static mesh proxies\n", manifest.static_meshes.size());
+}
 
 void PacRenderer::ApplyMaterialOverrides(
     RenderProxy* proxy,
@@ -235,8 +282,7 @@ void PacRenderer::ApplyMaterialOverrides(
 {
     if (!proxy || !proxy->material || overrides.empty()) return;
 
-    // Phase 2.5.2 — look up each slot override and patch the material.
-    // Slot "0" maps to material->properties on the primary material.
+    // Slot "0" → primary material. Additional slots map to sub-mesh materials (Phase 2.5.2).
     auto it = overrides.find("0");
     if (it != overrides.end()) {
         const auto& mo = it->second;
@@ -244,7 +290,17 @@ void PacRenderer::ApplyMaterialOverrides(
         proxy->material->properties.metallicFactor  = mo.metallicFactor;
         proxy->material->properties.roughnessFactor = mo.roughnessFactor;
     }
-    // Additional slots would map to sub-mesh materials (Phase 2.5.2).
+}
+
+uint64_t PacRenderer::HashMeshId(const std::string& id) {
+    // FNV-1a 64-bit — stable across runs, no external dependency.
+    uint64_t hash = 14695981039346656037ull;
+    for (unsigned char c : id) {
+        hash ^= static_cast<uint64_t>(c);
+        hash *= 1099511628211ull;
+    }
+    // Set the high bit so static-mesh keys never collide with entity int ids.
+    return hash | 0x8000'0000'0000'0000ull;
 }
 
 } // namespace pac::render
