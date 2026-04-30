@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { 
   useListProjects, 
@@ -170,6 +170,44 @@ export default function Home() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("");
 
+  // ── Page-level drag-and-drop ──────────────────────────────────────────────
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  const handlePageDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current++;
+    const hasFile = Array.from(e.dataTransfer.items).some((i) => i.kind === "file");
+    if (hasFile) setIsDragOver(true);
+  }, []);
+
+  const handlePageDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current--;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handlePageDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const handlePageDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current = 0;
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (!/\.(pacexport|zip)$/i.test(file.name)) return;
+    resetImportDialog();
+    setImportOpen(true);
+    await handleZipUpload(file);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleImport = () => {
     setImportError(null);
 
@@ -246,7 +284,22 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden font-sans">
+    <div
+      className="flex flex-col h-screen bg-background text-foreground overflow-hidden font-sans relative"
+      onDragEnter={handlePageDragEnter}
+      onDragLeave={handlePageDragLeave}
+      onDragOver={handlePageDragOver}
+      onDrop={handlePageDrop}
+    >
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 bg-primary/10 border-4 border-primary border-dashed rounded-lg flex items-center justify-center pointer-events-none">
+          <div className="flex flex-col items-center gap-3 text-primary bg-background/90 rounded-xl px-8 py-6 shadow-lg">
+            <Upload className="h-10 w-10" />
+            <p className="text-base font-semibold">Drop to import .pacexport</p>
+            <p className="text-xs text-muted-foreground">Release to open the import dialog</p>
+          </div>
+        </div>
+      )}
       {/* Topbar */}
       <header className="h-12 border-b border-border bg-card flex items-center px-4 justify-between shrink-0">
         <div className="flex items-center gap-2">
