@@ -85,7 +85,18 @@ export default function Home() {
   const [zipStatus, setZipStatus] = useState<"idle" | "success" | "error">("idle");
   const [zipError, setZipError] = useState<string>("");
   const [zipFileName, setZipFileName] = useState<string>("");
+  const [importError, setImportError] = useState<{ message: string; details?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const resetImportDialog = () => {
+    setImportName("");
+    setImportWorldJson("");
+    setImportVisualJson("");
+    setZipStatus("idle");
+    setZipError("");
+    setZipFileName("");
+    setImportError(null);
+  };
 
   const handleZipUpload = async (file: File) => {
     setZipStatus("idle");
@@ -160,8 +171,10 @@ export default function Home() {
   const [projectName, setProjectName] = useState("");
 
   const handleImport = () => {
+    setImportError(null);
+
     if (!importName || !importWorldJson) {
-      toast({ title: "Validation Error", description: "Name and world pacdata JSON are required.", variant: "destructive" });
+      setImportError({ message: "Project name and World PacData JSON are required." });
       return;
     }
 
@@ -172,7 +185,7 @@ export default function Home() {
     if (!visualJson.trim()) {
       const split = trySplitConcatenatedJson(importWorldJson);
       if (split === null) {
-        toast({ title: "Validation Error", description: "World PacData JSON is not valid JSON.", variant: "destructive" });
+        setImportError({ message: "World PacData JSON is not valid JSON.", details: "Check for syntax errors such as missing brackets, commas, or quotes." });
         return;
       }
       const [first, second] = split;
@@ -196,25 +209,16 @@ export default function Home() {
     importMutation.mutate({ data: payload }, {
       onSuccess: (data) => {
         setImportOpen(false);
-        setImportName("");
-        setImportWorldJson("");
-        setImportVisualJson("");
-        setZipStatus("idle");
-        setZipError("");
-        setZipFileName("");
+        resetImportDialog();
         toast({ title: "Import Successful", description: `Project ${data.project.name} imported.` });
         setLocation(`/projects/${data.project.id}`);
       },
       onError: (err: unknown) => {
         // ApiError stores the parsed response body in .data
         const apiData = (err as { data?: { error?: string; details?: string } })?.data;
-        const errorMsg = apiData?.error ?? (err instanceof Error ? err.message : "Unknown error");
+        const message = apiData?.error ?? (err instanceof Error ? err.message : "Import failed");
         const details = apiData?.details;
-        toast({
-          title: "Import Failed",
-          description: details ? `${errorMsg}: ${details}` : errorMsg,
-          variant: "destructive",
-        });
+        setImportError({ message, details });
       }
     });
   };
@@ -261,7 +265,7 @@ export default function Home() {
           <div className="p-4 border-b border-border">
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Actions</h2>
             <div className="space-y-2">
-              <Dialog open={importOpen} onOpenChange={setImportOpen}>
+              <Dialog open={importOpen} onOpenChange={(open) => { setImportOpen(open); if (!open) resetImportDialog(); }}>
                 <DialogTrigger asChild>
                   <Button variant="secondary" className="w-full justify-start gap-2 h-9 text-xs">
                     <FileJson className="h-4 w-4" /> Import PacData
@@ -341,7 +345,7 @@ export default function Home() {
                       <Textarea 
                         id="world-json" 
                         value={importWorldJson} 
-                        onChange={(e) => setImportWorldJson(e.target.value)} 
+                        onChange={(e) => { setImportWorldJson(e.target.value); setImportError(null); }} 
                         className="font-mono text-xs h-[120px]" 
                         placeholder='{"format": "pacai_pacdata_v7", "entities": [...], ...}'
                       />
@@ -353,14 +357,27 @@ export default function Home() {
                       <Textarea 
                         id="visual-json" 
                         value={importVisualJson} 
-                        onChange={(e) => setImportVisualJson(e.target.value)} 
+                        onChange={(e) => { setImportVisualJson(e.target.value); setImportError(null); }} 
                         className="font-mono text-xs h-[80px]" 
                         placeholder='{"visual_version": "1.0.0", "environment": {...}, ...}'
                       />
                     </div>
                   </div>
+
+                  {importError && (
+                    <div className="rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2.5 flex gap-2.5 items-start -mt-1">
+                      <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                      <div className="text-xs space-y-1 min-w-0">
+                        <p className="font-medium text-destructive">{importError.message}</p>
+                        {importError.details && (
+                          <p className="text-destructive/80 font-mono break-all whitespace-pre-wrap">{importError.details}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => { setImportOpen(false); setImportName(""); setImportWorldJson(""); setImportVisualJson(""); setZipStatus("idle"); setZipError(""); setZipFileName(""); }}>Cancel</Button>
+                    <Button variant="outline" onClick={() => { setImportOpen(false); resetImportDialog(); }}>Cancel</Button>
                     <Button onClick={handleImport} disabled={importMutation.isPending}>
                       {importMutation.isPending ? "Importing..." : "Import Project"}
                     </Button>
